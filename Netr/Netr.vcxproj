@@ -163,6 +163,8 @@
     <ClInclude Include="HvNestedNpt.h" />
     <ClInclude Include="HvNestedSvm.h" />
     <ClInclude Include="HvCompat.h" />
+    <!-- Step 1 (虚幻范式): r10/r11 软异常协议 + AsmMemcpySafe -->
+    <ClInclude Include="HvHostExc.h" />
     <!-- P2-5: DPC-based per-CPU VMCALL broadcast (HyperDbg 范式) -->
     <ClInclude Include="HvBroadcast.h" />
     <!-- Power Management -->

@@ -288,14 +288,46 @@ AsmSafeWriteMsr ENDP
 ;   [rsp+32]  trap RSP
 ;   [rsp+40]  trap SS
 ;
-; 策略: 比对 trap RIP 是否落在 AsmSafeReadMsrRdmsrLabel / AsmSafeWriteMsrWrmsrLabel,
-; 是则把栈上 RIP 改成对应 GpLabel, 丢 error_code, iretq 回 SafeMsr 出口。
-; 否则计数后 iretq (此时 RIP 不变会再次 #GP 进死循环, 但 diag.exe 看到 GpCount 暴涨)。
+; ===== Step 1 (虚幻调试器范式): r10/r11 软异常通用救生圈 =====
+;
+; 优先级:
+;   1) 看 r10 && r11 (虚幻范式 — 通用软异常协议)
+;        → 改栈上 RIP=r10, 写 *r11 = {ExceptionOccurred=1, Vector=13, Error=error_code},
+;          清零 r10/r11 防止无限异常, 丢 error_code, iretq.
+;   2) 比对 trap RIP 是否落在 AsmSafeReadMsrRdmsrLabel / AsmSafeWriteMsrWrmsrLabel
+;        (Netr 老路径, 兼容现有 AsmSafeReadMsr/AsmSafeWriteMsr 调用方)
+;   3) 都不匹配: 未知 #GP, 计数后 iretq (RIP 不变, 会再次 #GP 但 GpCount 暴涨可定位)
+;
+; HV_HOST_EXC_INFO 内存布局 (见 HvHostExc.h, 24 字节 pack):
+;   +0  UCHAR  ExceptionOccurred
+;   +1..7      Pad0[7]
+;   +8  UINT64 Vector
+;   +16 UINT64 ErrorCode
+
 PUBLIC AsmHostGpStub
 AsmHostGpStub PROC
     lock inc QWORD PTR g_HvHostGpCount
 
-    ; 比对 trap RIP — 是 SafeReadMsr 的 rdmsr 就跳到 SafeReadMsrGp
+    ; ---- (1) r10/r11 通用救生圈 (虚幻范式) ----
+    test    r10, r10
+    jz      _GpSkipR10R11
+    test    r11, r11
+    jz      _GpSkipR10R11
+
+    ; r10 = ehandler RIP, r11 = HV_HOST_EXC_INFO*
+    mov     rax, QWORD PTR [rsp + 0]       ; rax = error code
+    mov     BYTE  PTR [r11 + 0],  1        ; ExceptionOccurred = 1
+    mov     QWORD PTR [r11 + 8],  13       ; Vector = 13 (#GP)
+    mov     QWORD PTR [r11 + 16], rax      ; ErrorCode
+
+    mov     QWORD PTR [rsp + 8], r10       ; 栈上 RIP ← r10 (跳 stub 内的 ehandler)
+    xor     r10, r10                       ; 清 r10/r11 防止无限异常
+    xor     r11, r11
+    add     rsp, 8                         ; 丢 error code
+    iretq
+
+_GpSkipR10R11:
+    ; ---- (2) Netr 老 SafeMsr RIP 比对路径 (向后兼容) ----
     mov     rax, QWORD PTR [rsp + 8]
     lea     rcx, AsmSafeReadMsrRdmsrLabel
     cmp     rax, rcx
@@ -315,11 +347,102 @@ _GpTryWrite:
     iretq
 
 _GpUnknown:
-    ; 未知 #GP — 不是 SafeMsr 路径。计数后丢 error code + iretq。
-    ; 系统可能 hang 但不立刻 triple, diag.exe 能看到 GpCount 暴涨判定问题点。
+    ; ---- (3) 未知 #GP — 不是 SafeMsr 路径也没 r10/r11 协议。
+    ; 计数后丢 error code + iretq。RIP 不变会再次 #GP 进死循环,
+    ; 但 diag.exe 看到 GpCount 暴涨能立刻定位问题点。
     add     rsp, 8
     iretq
 AsmHostGpStub ENDP
+
+; ==================== AsmHostPfStub (Host IDT vector 14 #PF handler) ====================
+;
+; Step 1 新增. 虚幻范式: 任何 vec 都用同一套 r10/r11 协议接住.
+; Netr 之前没装 #PF host handler, host 内访问 page-out / 非法 GVA → KiPageFault →
+; (HOST_CR3 不一定能映射 KiPageFault 代码) → triple fault. 现在 #PF 也走 r10/r11.
+;
+; #PF 进入: CPU push error_code + 5 qword machine frame, CR2 由 CPU 自动设置 (我们暂不读 CR2).
+;
+; 计数器: 借用 g_HvHostGpCount (诊断可看到 host #PF 频次)? 不, 新增 g_HvHostPfCount 更干净.
+
+EXTERN g_HvHostPfCount:QWORD
+
+PUBLIC AsmHostPfStub
+AsmHostPfStub PROC
+    lock inc QWORD PTR g_HvHostPfCount
+
+    ; ---- r10/r11 通用救生圈 ----
+    test    r10, r10
+    jz      _PfUnknown
+    test    r11, r11
+    jz      _PfUnknown
+
+    mov     rax, QWORD PTR [rsp + 0]       ; rax = #PF error code (PFEC)
+    mov     BYTE  PTR [r11 + 0],  1
+    mov     QWORD PTR [r11 + 8],  14       ; Vector = 14 (#PF)
+    mov     QWORD PTR [r11 + 16], rax      ; ErrorCode = PFEC
+
+    mov     QWORD PTR [rsp + 8], r10
+    xor     r10, r10
+    xor     r11, r11
+    add     rsp, 8                         ; 丢 error code
+    iretq
+
+_PfUnknown:
+    ; 未知 host #PF — 没人在 stub 路径里. 这是真正的"host PT 不完整"问题.
+    ; 计数 + iretq, RIP 不变会再次 #PF 死循环, PfCount 暴涨可定位.
+    add     rsp, 8
+    iretq
+AsmHostPfStub ENDP
+
+; ==================== AsmMemcpySafe (虚幻范式 r10/r11 软异常 memcpy) ====================
+;
+; 入参 (Windows x64 ABI):
+;   RCX = HV_HOST_EXC_INFO*   (24 字节, stub 入口写 byte 0 = 0)
+;   RDX = dst
+;   R8  = src
+;   R9  = size
+;
+; 实现: 走 rep movsb. 任何字节 #PF → AsmHostPfStub 通过 r10/r11 协议
+; 把 RIP 跳到 _AsmMemcpySafeEhandler, 同时写 ExceptionOccurred=1.
+;
+; 返回: ULONG = 0 normal, 1 fault (调用方主要看 Info->ExceptionOccurred,
+;       返回值仅做辅助校验, e.g. Info 被 corrupt 时仍可看 EAX).
+;
+; 保存 RSI/RDI (Windows non-volatile).
+
+PUBLIC AsmMemcpySafe
+PUBLIC _AsmMemcpySafeEhandler
+AsmMemcpySafe PROC
+    ; 设置 r10/r11 软异常路径
+    lea     r10, _AsmMemcpySafeEhandler
+    mov     r11, rcx                       ; r11 = HV_HOST_EXC_INFO*
+    mov     BYTE PTR [rcx + 0], 0          ; Info->ExceptionOccurred = 0
+
+    ; 保存 rsi/rdi
+    push    rsi
+    push    rdi
+
+    mov     rdi, rdx                       ; rdi = dst
+    mov     rsi, r8                        ; rsi = src
+    mov     rcx, r9                        ; rcx = count
+    cld
+    rep movsb
+    ; 如果 movsb 内 #PF, AsmHostPfStub 会改 RIP = _AsmMemcpySafeEhandler,
+    ; 此时 rsi/rdi/rcx 不可信但栈上已 push 过, ehandler 内 pop 恢复.
+
+_AsmMemcpySafeEhandler LABEL NEAR
+    pop     rdi
+    pop     rsi
+
+    ; 清 r10/r11 (虚幻范式: stub 出口防止 IDT handler 误判 "仍在 stub 内")
+    xor     r10, r10
+    xor     r11, r11
+
+    ; 返回值: 读 Info->ExceptionOccurred. 但 r11 已被清, 这里 fast path 直接 xor eax,
+    ; ehandler 实际取值通过 Info* 给调用方查 (调用方持有原 Info 指针).
+    xor     eax, eax
+    ret
+AsmMemcpySafe ENDP
 
 ; ==================== VM Exit Handler ====================
 ;

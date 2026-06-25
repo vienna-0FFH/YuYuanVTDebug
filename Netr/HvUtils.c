@@ -184,6 +184,8 @@ volatile ULONG64 g_HvHostNmiCount = 0;
 volatile ULONG64 g_HvHostMceCount = 0;
 volatile ULONG64 g_HvHostDfCount  = 0;
 volatile ULONG64 g_HvHostGpCount  = 0;
+// Step 1 (虚幻范式): host #PF 计数 (vec 14)
+volatile ULONG64 g_HvHostPfCount  = 0;
 
 // (撤回 P133 generic catch-all stubs — 全部已删除, 共享 Windows IDT)
 
@@ -237,13 +239,17 @@ NTSTATUS HvUtilsInitializeHostIdt(VOID)
     HvUtilsSetIdtGate(&g_HvHostIdt[2],  (ULONG_PTR)AsmHostNmiStub, kernelCs, 1);   // NMI  → IST1
     HvUtilsSetIdtGate(&g_HvHostIdt[8],  (ULONG_PTR)AsmHostDfStub,  kernelCs, 3);   // #DF  → IST3
     HvUtilsSetIdtGate(&g_HvHostIdt[13], (ULONG_PTR)AsmHostGpStub,  kernelCs, 3);   // #GP  → IST3 (与 #DF 共享, stub 自身不会再 #GP)
+    // Step 1 (虚幻范式): #PF host handler. IST3 共享 (stub 自身只 lock inc + iretq, 不会再 #PF)
+    HvUtilsSetIdtGate(&g_HvHostIdt[14], (ULONG_PTR)AsmHostPfStub,  kernelCs, 3);   // #PF  → IST3
     HvUtilsSetIdtGate(&g_HvHostIdt[18], (ULONG_PTR)AsmHostMceStub, kernelCs, 2);   // #MC  → IST2
-    DbgPrint("[HV-Util] HostIdt: NMI/IST1 #DF/IST3 #GP/IST3 #MC/IST2 (TSS override on)\n");
+    DbgPrint("[HV-Util] HostIdt: NMI/IST1 #DF/IST3 #GP/IST3 #PF/IST3 #MC/IST2 (TSS override on)\n");
 #else
     HvUtilsSetIdtGate(&g_HvHostIdt[2],  (ULONG_PTR)AsmHostNmiStub, kernelCs, 0);
     HvUtilsSetIdtGate(&g_HvHostIdt[13], (ULONG_PTR)AsmHostGpStub,  kernelCs, 0);
+    // Step 1: #PF host handler with IST=0 (无 TSS override 时用当前 host RSP)
+    HvUtilsSetIdtGate(&g_HvHostIdt[14], (ULONG_PTR)AsmHostPfStub,  kernelCs, 0);
     HvUtilsSetIdtGate(&g_HvHostIdt[18], (ULONG_PTR)AsmHostMceStub, kernelCs, 0);
-    DbgPrint("[HV-Util] HostIdt: NMI/IST=0 #GP/IST=0 #MC/IST=0 (TSS override off)\n");
+    DbgPrint("[HV-Util] HostIdt: NMI/IST=0 #GP/IST=0 #PF/IST=0 #MC/IST=0 (TSS override off)\n");
 #endif
 
     // (撤回 P133: 不再装 22 个 generic catch-all stubs)

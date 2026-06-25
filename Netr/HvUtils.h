@@ -115,6 +115,8 @@ extern volatile ULONG64 g_HvHostNmiCount;
 extern volatile ULONG64 g_HvHostMceCount;
 extern volatile ULONG64 g_HvHostDfCount;
 extern volatile ULONG64 g_HvHostGpCount;
+// Step 1 (虚幻范式): host #PF 计数 (AsmHostPfStub 接到 r10/r11 协议或未知 #PF 都计数)
+extern volatile ULONG64 g_HvHostPfCount;
 
 // DriverEntry 早期调用 (在 HvUtilsInitializeSystemCr3 之后, HvInitialize 之前):
 // 拷贝 Windows IDT 到 g_HvHostIdt, 覆盖 vector 2 (NMI) / 18 (#MC) 指向 stub。
@@ -125,6 +127,8 @@ extern VOID AsmHostNmiStub(VOID);
 extern VOID AsmHostMceStub(VOID);
 extern VOID AsmHostDfStub(VOID);
 extern VOID AsmHostGpStub(VOID);
+// Step 1 (虚幻范式) 新增: vec 14 #PF host stub
+extern VOID AsmHostPfStub(VOID);
 
 // 2026-06-16: vmx-root 安全 MSR 读写 (替换 __readmsr/__writemsr 的透传路径)。
 // 内部 #GP 时由 AsmHostGpStub 拦截。GpRaised/返回值告诉调用者是否 #GP, 调用者
