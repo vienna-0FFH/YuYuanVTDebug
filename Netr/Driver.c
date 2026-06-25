@@ -14,6 +14,7 @@
 #include "HvCore.h"
 #include "HvCpu.h"
 #include "HvUtils.h"         // OS 版本全局初始化 (DriverEntry 早期)
+#include "HvHostPt.h"        // Step 4 (虚幻范式): host 自家 PT + 0..64GB 物理段映射
 #include "HvHook.h"          // 统一的 Hook 抽象层（含 EPT/NPT 驱动隐藏）
 // P125 (2026-06-25): HvCloak 整套 dual-EPTP 全 0 cloak 移除 (从未稳定启用,
 //   HV_ENABLE_CLOAK=0 长期禁用中). 新的 PEB 字段级 spoof 见 HvPebCloak.h.
@@ -2424,6 +2425,12 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject)
     HvUtilsCleanupHostTssAll();
     HvUnloadStageLog("S16 AFTER  HvUtilsCleanupHostTssAll");
 
+    // Step 4 (虚幻范式): host PT 释放. 必须在 HvCleanup (VMXOFF) 之后 — 现状是
+    // HvCleanup 在更早阶段已跑完 (S00..S15.5 路径里). 这里安全释放 264KB.
+    HvUnloadStageLog("S17 BEFORE HvHostPtCleanup");
+    HvHostPtCleanup();
+    HvUnloadStageLog("S17 AFTER  HvHostPtCleanup");
+
     HvUnloadStageLog("S99 DONE  Driver unloaded - all stages OK");
     DbgPrint("[HV] Driver unloaded\n");
 }
@@ -2605,6 +2612,18 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     // (VMCS setup) 之前 — VMCS 写 HOST_TR_BASE/HOST_GDTR_BASE 时要能从
     // HvUtilsGetHostCpuCtx 拿到已初始化的 per-CPU TSS+GDT。
     (VOID)HvUtilsInitializeHostTssAll();
+
+    // Step 4 (虚幻范式): host 自家页表 + 0..64GB 物理直通段映射. 必须在
+    // HvUtilsInitializeSystemCr3 之后 (要读 g_HvSystemCr3). 本步不切 HOST_CR3,
+    // 数据结构起来后供未来 (Step 4b / Step 5 SymbolicAccess) 使用. 失败不影响
+    // driver 继续 — 现有路径 (System CR3 + VtRoot scratch) 仍工作.
+    {
+        NTSTATUS hpStatus = HvHostPtInitialize();
+        if (!NT_SUCCESS(hpStatus)) {
+            DbgPrint("[HV] HvHostPtInitialize failed 0x%08X — continuing without host PT\n",
+                     hpStatus);
+        }
+    }
 
     // P0-5 (2026-05-31): KeRegisterNmiCallback 诊断 non-root 模式 NMI 频率。
     // DriverUnload 必须 deregister, 否则 BSOD。

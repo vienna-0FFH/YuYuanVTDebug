@@ -165,6 +165,8 @@
     <ClInclude Include="HvCompat.h" />
     <!-- Step 1 (虚幻范式): r10/r11 软异常协议 + AsmMemcpySafe -->
     <ClInclude Include="HvHostExc.h" />
+    <!-- Step 4 (虚幻范式): host 自家页表 + 0..64GB 物理直通段映射 -->
+    <ClInclude Include="HvHostPt.h" />
     <!-- P2-5: DPC-based per-CPU VMCALL broadcast (HyperDbg 范式) -->
     <ClInclude Include="HvBroadcast.h" />
     <!-- Power Management -->
@@ -211,6 +213,8 @@
     <ClCompile Include="HvPhysAccess.c" />
     <ClCompile Include="HvVtRoot.c" />
     <ClCompile Include="HvCr3Snoop.c" />
+    <!-- Step 4 (虚幻范式): host 自家页表 + 0..64GB 物理直通段映射 -->
+    <ClCompile Include="HvHostPt.c" />
     <!-- Nested Virtualization -->
     <ClCompile Include="HvNested.c" />
     <ClCompile Include="HvNestedEpt.c" />
