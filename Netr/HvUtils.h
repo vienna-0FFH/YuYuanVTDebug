@@ -130,6 +130,26 @@ extern VOID AsmHostGpStub(VOID);
 // Step 1 (虚幻范式) 新增: vec 14 #PF host stub
 extern VOID AsmHostPfStub(VOID);
 
+// Step 2 (虚幻范式): 15 个通用 host stub, 索引 = vec 号. g_HvHostGenericCount[vec]
+// 在 stub 里 lock inc, 诊断查谁在死循环.
+extern volatile ULONG64 g_HvHostGenericCount[32];
+
+extern VOID AsmHostGenStub0(VOID);   // #DE
+extern VOID AsmHostGenStub1(VOID);   // #DB
+extern VOID AsmHostGenStub3(VOID);   // #BP
+extern VOID AsmHostGenStub4(VOID);   // #OF
+extern VOID AsmHostGenStub5(VOID);   // #BR
+extern VOID AsmHostGenStub6(VOID);   // #UD
+extern VOID AsmHostGenStub7(VOID);   // #NM
+extern VOID AsmHostGenStub10(VOID);  // #TS
+extern VOID AsmHostGenStub11(VOID);  // #NP
+extern VOID AsmHostGenStub12(VOID);  // #SS
+extern VOID AsmHostGenStub16(VOID);  // #MF
+extern VOID AsmHostGenStub17(VOID);  // #AC
+extern VOID AsmHostGenStub19(VOID);  // #XF
+extern VOID AsmHostGenStub20(VOID);  // #VE
+extern VOID AsmHostGenStub30(VOID);  // #SX
+
 // 2026-06-16: vmx-root 安全 MSR 读写 (替换 __readmsr/__writemsr 的透传路径)。
 // 内部 #GP 时由 AsmHostGpStub 拦截。GpRaised/返回值告诉调用者是否 #GP, 调用者
 // 把 #GP 注入回 guest 使行为与 bare metal 一致 (反 VM 透明化)。

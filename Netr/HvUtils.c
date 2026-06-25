@@ -186,6 +186,8 @@ volatile ULONG64 g_HvHostDfCount  = 0;
 volatile ULONG64 g_HvHostGpCount  = 0;
 // Step 1 (虚幻范式): host #PF 计数 (vec 14)
 volatile ULONG64 g_HvHostPfCount  = 0;
+// Step 2 (虚幻范式): 15 个通用 stub 计数, 索引 = vec 号 (0..30)
+DECLSPEC_ALIGN(16) volatile ULONG64 g_HvHostGenericCount[32] = { 0 };
 
 // (撤回 P133 generic catch-all stubs — 全部已删除, 共享 Windows IDT)
 
@@ -252,7 +254,34 @@ NTSTATUS HvUtilsInitializeHostIdt(VOID)
     DbgPrint("[HV-Util] HostIdt: NMI/IST=0 #GP/IST=0 #PF/IST=0 #MC/IST=0 (TSS override off)\n");
 #endif
 
-    // (撤回 P133: 不再装 22 个 generic catch-all stubs)
+    // Step 2 (虚幻范式): 装满虚幻 20 vec 覆盖里我们差的 15 个通用 stub.
+    // IST: TSS_OVERRIDE=1 时复用 IST3 (跟 #GP 同栈, generic stub 自身只 lock inc
+    // + iretq, 不会再 trap); TSS_OVERRIDE=0 时 IST=0 走当前 host RSP.
+    //
+    // 注意: 老 P133 撤回的是"22 个 catch-all stub + 无 r10/r11 协议", 这次是
+    // "15 个跟着虚幻 20 vec 覆盖 + 全用 r10/r11 通用救生圈" — 不一样.
+#if HV_USE_HOST_TSS_OVERRIDE
+    #define HV_GEN_IST  3
+#else
+    #define HV_GEN_IST  0
+#endif
+    HvUtilsSetIdtGate(&g_HvHostIdt[0],  (ULONG_PTR)AsmHostGenStub0,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[1],  (ULONG_PTR)AsmHostGenStub1,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[3],  (ULONG_PTR)AsmHostGenStub3,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[4],  (ULONG_PTR)AsmHostGenStub4,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[5],  (ULONG_PTR)AsmHostGenStub5,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[6],  (ULONG_PTR)AsmHostGenStub6,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[7],  (ULONG_PTR)AsmHostGenStub7,  kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[10], (ULONG_PTR)AsmHostGenStub10, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[11], (ULONG_PTR)AsmHostGenStub11, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[12], (ULONG_PTR)AsmHostGenStub12, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[16], (ULONG_PTR)AsmHostGenStub16, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[17], (ULONG_PTR)AsmHostGenStub17, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[19], (ULONG_PTR)AsmHostGenStub19, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[20], (ULONG_PTR)AsmHostGenStub20, kernelCs, HV_GEN_IST);
+    HvUtilsSetIdtGate(&g_HvHostIdt[30], (ULONG_PTR)AsmHostGenStub30, kernelCs, HV_GEN_IST);
+#undef HV_GEN_IST
+    DbgPrint("[HV-Util] HostIdt: +15 generic stubs (0/1/3/4/5/6/7/10/11/12/16/17/19/20/30)\n");
 
     DbgPrint("[HV-Util] HostIdt initialized: base=0x%llX, NMI handler=0x%llX, MCE handler=0x%llX\n",
              (ULONG64)g_HvHostIdt,

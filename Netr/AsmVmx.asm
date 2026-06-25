@@ -394,6 +394,108 @@ _PfUnknown:
     iretq
 AsmHostPfStub ENDP
 
+; ==================== Step 2 (虚幻范式): 通用 host stub + 15 个 vec 引子 ====================
+;
+; 设计:
+;   - Netr 老路径 vec 2/8/13/14/18 (NMI/#DF/#GP/#PF/#MC) 保留自己专用 stub (有 IST/计数).
+;   - 虚幻 20 vec 覆盖里我们差的 15 个: 0,1,3,4,5,6,7,10,11,12,16,17,19,20,30 走通用 stub.
+;
+; 通用 stub 入口约定 (跟虚幻 interrupt-handlers.asm 一致):
+;   栈布局 (进入 stub_genN_xxx 前 CPU 已 push 完 MACHINE_FRAME, 可能有 error code):
+;     [rsp+0]   error code  (有些 vec 有, 没有的 stub 引子先 push 0 占位)
+;     [rsp+8]   trap RIP
+;     [rsp+16]  trap CS
+;     [rsp+24]  trap RFLAGS
+;     [rsp+32]  trap RSP
+;     [rsp+40]  trap SS
+;
+; 引子: 先 push 0 (no-error vec) 或啥都不做 (error vec), 然后 push vec_num,
+;       jmp _AsmHostGenericCommon. 进 _AsmHostGenericCommon 时:
+;     [rsp+0]   vec_num (引子刚 push)
+;     [rsp+8]   error code (引子 push 的 0 或 CPU push 的真 error)
+;     [rsp+16]  trap RIP, ...
+;
+; 通用 stub:
+;   1) g_HvHostGenericCount[vec] += 1
+;   2) 看 r10 && r11: 走 r10/r11 协议 (frame->rip=r10, *r11={Occ=1, Vec, Err})
+;   3) 都没: 计数后 iretq (RIP 不变, 可能再次 trap 死循环, GenericCount 暴涨可定位)
+;
+; 注意: error code 位置 — 跟 #GP/#PF stub 一致, 都是 [rsp+0]/[rsp+8] 偏移. 但通用 stub
+;       的 [rsp+0] 是 vec_num, [rsp+8] 才是 error. add rsp, 16 才能丢掉这两个跳到
+;       MACHINE_FRAME 进行 iretq.
+
+EXTERN g_HvHostGenericCount:QWORD
+
+PUBLIC _AsmHostGenericCommon
+_AsmHostGenericCommon PROC
+    ; 栈: [rsp+0]=vec_num, [rsp+8]=error_code, [rsp+16]=rip, [+24]=cs, [+32]=rflags, [+40]=rsp, [+48]=ss
+    mov     rax, QWORD PTR [rsp + 0]                ; rax = vec_num
+    ; g_HvHostGenericCount[vec_num] += 1
+    lea     rcx, g_HvHostGenericCount
+    lock inc QWORD PTR [rcx + rax*8]
+
+    ; ---- r10/r11 通用救生圈 ----
+    test    r10, r10
+    jz      _GenUnknown
+    test    r11, r11
+    jz      _GenUnknown
+
+    mov     rcx, QWORD PTR [rsp + 8]                ; rcx = error code
+    mov     BYTE  PTR [r11 + 0],  1                 ; ExceptionOccurred = 1
+    mov     QWORD PTR [r11 + 8],  rax               ; Vector = vec_num
+    mov     QWORD PTR [r11 + 16], rcx               ; ErrorCode
+
+    mov     QWORD PTR [rsp + 16], r10               ; 栈上 RIP ← r10 (跳 stub ehandler)
+    xor     r10, r10
+    xor     r11, r11
+    add     rsp, 16                                 ; 丢 vec_num + error_code
+    iretq
+
+_GenUnknown:
+    ; 未知 host exception 没人在 stub 路径里. 计数后 iretq 让 RIP 自然重新触发,
+    ; GenericCount[vec] 暴涨能立刻在 diag.exe 看出哪个 vec 在死循环.
+    add     rsp, 16
+    iretq
+_AsmHostGenericCommon ENDP
+
+; ---- 15 个 vec 引子. 宏定义同虚幻范式. ----
+
+; 无 error code 的 vec: 引子 push 0 占位 + push vec_num + jmp common
+DEFINE_GEN_STUB_NOERR MACRO vec_num, stub_name
+PUBLIC stub_name
+stub_name PROC
+    push    0                                       ; dummy error code
+    push    vec_num                                 ; vec
+    jmp     _AsmHostGenericCommon
+stub_name ENDP
+ENDM
+
+; 有 error code 的 vec: CPU 已 push error, 引子只 push vec_num
+DEFINE_GEN_STUB_ERR MACRO vec_num, stub_name
+PUBLIC stub_name
+stub_name PROC
+    push    vec_num                                 ; vec (error code 已在 [rsp+0])
+    jmp     _AsmHostGenericCommon
+stub_name ENDP
+ENDM
+
+; ---- 15 个 stub. Netr 老 stub 占用的 vec 2/8/13/14/18 不在此列. ----
+DEFINE_GEN_STUB_NOERR 0,  AsmHostGenStub0          ; #DE Divide Error
+DEFINE_GEN_STUB_NOERR 1,  AsmHostGenStub1          ; #DB Debug
+DEFINE_GEN_STUB_NOERR 3,  AsmHostGenStub3          ; #BP Breakpoint
+DEFINE_GEN_STUB_NOERR 4,  AsmHostGenStub4          ; #OF Overflow
+DEFINE_GEN_STUB_NOERR 5,  AsmHostGenStub5          ; #BR BOUND range
+DEFINE_GEN_STUB_NOERR 6,  AsmHostGenStub6          ; #UD Invalid Opcode
+DEFINE_GEN_STUB_NOERR 7,  AsmHostGenStub7          ; #NM Device Not Available
+DEFINE_GEN_STUB_ERR   10, AsmHostGenStub10         ; #TS Invalid TSS (has error)
+DEFINE_GEN_STUB_ERR   11, AsmHostGenStub11         ; #NP Segment Not Present
+DEFINE_GEN_STUB_ERR   12, AsmHostGenStub12         ; #SS Stack Segment Fault
+DEFINE_GEN_STUB_NOERR 16, AsmHostGenStub16         ; #MF x87 FPU
+DEFINE_GEN_STUB_ERR   17, AsmHostGenStub17         ; #AC Alignment Check (has error)
+DEFINE_GEN_STUB_NOERR 19, AsmHostGenStub19         ; #XF SIMD FP
+DEFINE_GEN_STUB_NOERR 20, AsmHostGenStub20         ; #VE Virtualization
+DEFINE_GEN_STUB_ERR   30, AsmHostGenStub30         ; #SX Security Exception (has error)
+
 ; ==================== AsmMemcpySafe (虚幻范式 r10/r11 软异常 memcpy) ====================
 ;
 ; 入参 (Windows x64 ABI):
