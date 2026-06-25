@@ -1,0 +1,80 @@
+# 只追踪 Netr 子项目, 其他兄弟项目和根目录文件全部忽略
+/*
+!/.gitignore
+!/Netr/
+
+# ===== Netr 内部排除 build artifacts =====
+Netr/x64/
+Netr/Win32/
+Netr/Debug/
+Netr/Release/
+Netr/.vs/
+Netr/.vscode/
+Netr/backup/
+
+*.obj
+*.pdb
+*.lib
+*.exp
+*.ilk
+*.idb
+*.ipdb
+*.iobj
+*.tlog
+*.log
+*.cache
+*.user
+*.suo
+*.aps
+*.sbr
+*.bsc
+*.ncb
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.sys
+*.cat
+
+# ===== Rust / Cargo =====
+target/
+**/target/
+
+# ===== Node / npm =====
+node_modules/
+dist/
+build/
+*.bundle.js
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ===== PyInstaller / Tauri build =====
+Netr/tools/netr-gui/build/
+Netr/tools/netr-gui/dist/
+Netr/tools/build_tmp/
+Netr/tools/**/build_tmp/
+Netr/tools/netr-gui-rs/src-tauri/gen/
+Netr/tools/netr-gui-rs/src-tauri/target/
+Netr/tools/netr-gui-rs/node_modules/
+Netr/tools/netr-gui-rs/dist/
+
+# ===== 二进制 / 压缩 =====
+*.zip
+*.7z
+*.rar
+*.exe
+*.dll
+
+# ===== 备份 =====
+*.bak
+backup/
+
+# ===== AI 助手 per-session 数据 =====
+*.gmproj
+Netr/tools/netr-gui-rs/sessions/
+Netr/tools/netr-gui-rs/.gmproj/

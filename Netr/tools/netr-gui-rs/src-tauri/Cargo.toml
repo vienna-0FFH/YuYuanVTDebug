@@ -1,0 +1,79 @@
+[package]
+name = "guardmeta-vsp"
+version = "0.1.0"
+description = "御元虚拟化安全工具 — GuardMetaVirtualSecurityPlatform"
+authors = ["GuardMeta"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+# Tauri v2 用 lib + binary 模式,desktop 自动从 lib 入口启动。
+name = "guardmeta_vsp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+# Phase 1: 网络验证 + 凭证存储
+# 用 path 引用本机的 yuyuan-client(workspace member)
+yuyuan-client = { path = "D:/御元网络验证/crates/yuyuan-client" }
+yuyuan-protocol = { path = "D:/御元网络验证/crates/yuyuan-protocol" }
+base64 = "0.22"
+hex = "0.4"
+sha2 = "0.10"
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+
+# 异步 — Tauri command 默认 async 化, 同步阻塞调用要包 spawn_blocking
+tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros", "time", "process", "io-util"] }
+parking_lot = "0.12"
+
+# Phase 14: 调试器 — 反汇编/汇编
+# iced-x86: 纯 Rust,x86/x64 encoder+decoder+formatter,无 C 依赖,体积约 1MB
+iced-x86 = { version = "1.21", default-features = false, features = ["std", "decoder", "encoder", "intel", "code_asm", "instr_info"] }
+
+# P54: Lua 5.4 嵌入 (vendored = 用源码编译, 不依赖系统 liblua)
+mlua = { version = "0.10", features = ["lua54", "vendored", "send"] }
+
+# P82: HTTP 客户端 (LLM API 调用) — rustls-tls 无 OpenSSL 依赖
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# P87: agent 循环并行 (futures::join_all)
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+
+# P116: 内存扫描 — rayon 多线程, smallvec 把 4/8 字节 hit 内联到栈避免百万级小分配
+rayon = "1.10"
+smallvec = { version = "1", features = ["union"] }
+
+# Phase 2+: Windows API (DeviceIoControl, registry, SCM)
+[dependencies.windows]
+version = "0.58"
+features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_Registry",
+    "Win32_System_Services",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Memory",
+    "Win32_System_SystemServices",
+    "Win32_System_Kernel",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+]
+
+[features]
+# 默认 dev 配置;真正打包发行时 cli 会覆盖。
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

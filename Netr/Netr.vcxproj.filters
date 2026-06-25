@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Driver Files">
+      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
+      <Extensions>inf;inv;inx;mof;mc;</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SimpleHypervisor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvLde.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvPebCloak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvVwatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvCore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvVmExit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvCpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvEpt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvVmcs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvVmcb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNpt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EptHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NptHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvDebugger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvInput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvUsbXhci.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvXhciEptTrap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvRegistryHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNetworkHook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvInjection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvPhysAccess.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvVtRoot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvCr3Snoop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNested.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNestedEpt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNestedNpt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvNestedSvm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HvCompat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HvUtils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvLde.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvPebCloak.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvVwatch.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvVmExit.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvCore.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Driver.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvCpu.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvEpt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvVmcs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvVmcb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNpt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EptHook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NptHook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvHook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvDebugger.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvInput.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvUsbXhci.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvUsbHid.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvXhciEptTrap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvRegistryHook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNetworkHook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvInjection.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvPhysAccess.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvVtRoot.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvCr3Snoop.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNested.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNestedEpt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNestedNpt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HvNestedSvm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="AsmVmx.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="AsmSvm.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>

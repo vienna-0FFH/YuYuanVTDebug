@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{4FE73B4A-F617-0401-CBFA-F062CAB2B911}</ProjectGuid>
+    <TemplateGuid>{dd38f7fc-d7bd-488b-9242-7d8754cde80d}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration>Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <RootNamespace>Netr</RootNamespace>
+    <ProjectName>GuardMetaCore</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>NDIS60=1;NDIS_SUPPORT_NDIS6=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- P3-10 (2026-05-31): 禁用 CFG + CET 编译时插桩,根除 vmlaunch 后第一次
+           indirect call 必 #UD (用户报告 flag=103/KeGenericCallDpc 死锁的真根因)。
+           Win11 24H2 WDK 默认开启 /guard:cf + /CETCOMPAT,在 driver 内每个 indirect
+           call 之前编译器插入 CFG check + ENDBR64 check 指令,某些指令在 vmlaunch
+           后 guest mode 下行为不一致 → #UD。HyperDbg 默认不开启这些,所以跑得过。 -->
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <AdditionalOptions>/utf-8 /guard:cf- /Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(DDK_LIB_PATH)ndis.lib;$(DDK_LIB_PATH)ntoskrnl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <CETCompat>false</CETCompat>
+      <AdditionalOptions>/CETCOMPAT:NO /GUARD:NO /INTEGRITYCHECK /SECTION:.HVTRAMP,RWE %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <DriverSign>
+      <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>NDIS60=1;NDIS_SUPPORT_NDIS6=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- P3-10: 同 Debug 配置,禁用 CFG + CETCOMPAT -->
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <AdditionalOptions>/utf-8 /guard:cf- /Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(DDK_LIB_PATH)ndis.lib;$(DDK_LIB_PATH)ntoskrnl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <CETCompat>false</CETCompat>
+      <AdditionalOptions>/CETCOMPAT:NO /GUARD:NO /INTEGRITYCHECK /SECTION:.HVTRAMP,RWE %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <DriverSign>
+      <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
+    </DriverSign>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Common Headers -->
+    <ClInclude Include="HvTypes.h" />
+    <ClInclude Include="HvUtils.h" />
+    <ClInclude Include="HvLde.h" />
+    <ClInclude Include="HvLicense.h" />
+    <ClInclude Include="HvEd25519.h" />
+    <ClInclude Include="HvPebCloak.h" />
+    <ClInclude Include="HvVwatch.h" />
+    <ClInclude Include="HvCore.h" />
+    <ClInclude Include="HvVmExit.h" />
+    <!-- CPU Detection -->
+    <ClInclude Include="HvCpu.h" />
+    <!-- Intel VMX -->
+    <ClInclude Include="HvEpt.h" />
+    <ClInclude Include="HvVmcs.h" />
+    <!-- AMD SVM -->
+    <ClInclude Include="HvVmcb.h" />
+    <ClInclude Include="HvNpt.h" />
+    <!-- Legacy/Other -->
+    <ClInclude Include="SimpleHypervisor.h" />
+    <!-- Hook Modules -->
+    <ClInclude Include="EptHook.h" />
+    <ClInclude Include="NptHook.h" />
+    <ClInclude Include="HvHook.h" />
+    <ClInclude Include="HvNetworkHook.h" />
+    <!-- Debugger Enablement (Phase 7) -->
+    <ClInclude Include="HvDebugger.h" />
+    <!-- Input Injection (Phase 7.10) -->
+    <ClInclude Include="HvInput.h" />
+    <ClInclude Include="HvUsbXhci.h" />
+    <ClInclude Include="HvXhciEptTrap.h" />
+    <!-- Stealth Hardening (Phase 8) -->
+    <ClInclude Include="HvRegistryHook.h" />
+    <!-- Injection -->
+    <ClInclude Include="HvInjection.h" />
+    <ClInclude Include="HvPhysAccess.h" />
+    <ClInclude Include="HvVtRoot.h" />
+    <ClInclude Include="HvCr3Snoop.h" />
+    <!-- Nested Virtualization -->
+    <ClInclude Include="HvNested.h" />
+    <ClInclude Include="HvNestedEpt.h" />
+    <ClInclude Include="HvNestedNpt.h" />
+    <ClInclude Include="HvNestedSvm.h" />
+    <ClInclude Include="HvCompat.h" />
+    <!-- P2-5: DPC-based per-CPU VMCALL broadcast (HyperDbg 范式) -->
+    <ClInclude Include="HvBroadcast.h" />
+    <!-- Power Management -->
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Common Sources -->
+    <ClCompile Include="HvUtils.c" />
+    <ClCompile Include="HvLde.c" />
+    <ClCompile Include="HvLicense.c" />
+    <ClCompile Include="HvEd25519.c" />
+    <ClCompile Include="HvPebCloak.c" />
+    <ClCompile Include="HvVwatch.c" />
+    <ClCompile Include="HvVmExit.c" />
+    <ClCompile Include="HvCore.c" />
+    <ClCompile Include="Driver.c" />
+    <!-- P2-5: DPC-based per-CPU VMCALL broadcast (HyperDbg 范式) -->
+    <ClCompile Include="HvBroadcast.c" />
+    <!-- CPU Detection -->
+    <ClCompile Include="HvCpu.c" />
+    <!-- Intel VMX -->
+    <ClCompile Include="HvEpt.c" />
+    <ClCompile Include="HvVmcs.c" />
+    <!-- AMD SVM -->
+    <ClCompile Include="HvVmcb.c" />
+    <ClCompile Include="HvNpt.c" />
+    <!-- Hook Modules -->
+    <ClCompile Include="EptHook.c" />
+    <ClCompile Include="NptHook.c" />
+    <ClCompile Include="HvHook.c" />
+    <ClCompile Include="HvNetworkHook.c" />
+    <!-- Debugger Enablement (Phase 7) -->
+    <ClCompile Include="HvDebugger.c" />
+    <!-- Input Injection (Phase 7.10) -->
+    <ClCompile Include="HvInput.c" />
+    <!-- Layer 4: 真 VT-透明 USB HID (xHCI Event Ring 注入) -->
+    <ClCompile Include="HvUsbXhci.c" />
+    <ClCompile Include="HvUsbHid.c" />
+    <!-- Item 2: EPT read trap on xHCI USBSTS/IMAN (让 ISR 看到 EINT/IP=1) -->
+    <ClCompile Include="HvXhciEptTrap.c" />
+    <!-- Stealth Hardening (Phase 8) -->
+    <ClCompile Include="HvRegistryHook.c" />
+    <!-- Injection -->
+    <ClCompile Include="HvInjection.c" />
+    <ClCompile Include="HvPhysAccess.c" />
+    <ClCompile Include="HvVtRoot.c" />
+    <ClCompile Include="HvCr3Snoop.c" />
+    <!-- Nested Virtualization -->
+    <ClCompile Include="HvNested.c" />
+    <ClCompile Include="HvNestedEpt.c" />
+    <ClCompile Include="HvNestedNpt.c" />
+    <ClCompile Include="HvNestedSvm.c" />
+    <!-- Power Management -->
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Intel VMX Assembly -->
+    <MASM Include="AsmVmx.asm" />
+    <!-- AMD SVM Assembly -->
+    <MASM Include="AsmSvm.asm" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

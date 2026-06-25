@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrator\\\\source\\\\repos\\\\MyDriver1\\\\Netr\" -Recurse -Force)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Format-Table FullName, Length)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrator\\\\source\\\\repos\\\\MyDriver1\\\\Netr\" -File)",
+      "Bash(Measure-Object)",
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(Get-Item \"C:\\\\Users\\\\Administrator\\\\source\\\\repos\\\\MyDriver1\\\\Netr\\\\HvVmExit.c\")",
+      "Bash(Select-Object -ExpandProperty Length)",
+      "Bash(python -m netr.structs)",
+      "Bash(python -c \"import netr.client, netr.service, netr.privilege, netr.ioctl, netr.structs, netr.winapi; print\\('all modules import OK'\\)\")",
+      "Bash(python *)",
+      "PowerShell($null = [System.Management.Automation.PSParser]::Tokenize\\(\\(Get-Content -Raw .\\\\build.ps1\\), [ref]$null\\); Write-Host \"build.ps1 parses OK\")",
+      "Bash(xargs grep -l \"HvAllocateNonPagedZeroed\")",
+      "Bash(where msbuild *)",
+      "PowerShell(& \"D:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" \"C:\\\\Users\\\\Administrator\\\\source\\\\repos\\\\MyDriver1\\\\Netr\\\\Netr.vcxproj\" /t:Build /p:Configuration=Release /p:Platform=x64 /nologo /verbosity:minimal 2>&1 | Select-Object -Last 200)",
+      "Bash(MSBuild Netr.vcxproj /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo)",
+      "PowerShell(Test-Path *)"
+    ]
+  },
+  "prefersReducedMotion": true
+}

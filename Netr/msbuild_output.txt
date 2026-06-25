@@ -1,0 +1,167 @@
+适用于 .NET Framework MSBuild 版本 17.14.8+a7a4d5af0
+生成启动时间为 2026-05-28 16:29:25。
+
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”在节点 1 上(Build 个目标)。
+DriverBuildNotifications:
+  Building 'Netr' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Using KMDF 1.15.
+PrepareForBuild:
+  已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+InitializeBuildStatus:
+  正在创建“x64\Release\Netr.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+  正在对“x64\Release\Netr.tlog\unsuccessfulbuild”执行 Touch 任务。
+_MASM:
+正在跳过目标“_MASM”，因为所有输出文件相对于输入文件而言都是最新的。
+_MASM:
+正在跳过目标“_MASM”，因为所有输出文件相对于输入文件而言都是最新的。
+VcpkgTripletSelection:
+  Using triplet "x64-windows" from "D:\curl-8.17.0\vcpkg\installed\x64-windows\"
+  Using normalized configuration "Release"
+ClCompile:
+  D:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\HostX86\x64\CL.exe /c /Ix64\Release\ /I"D:\curl-8.17.0\vcpkg\installed\x64-windows\include" /Zi /nologo /W3 /WX- /diagnostics:column /Ox /Os /Oy- /D NDIS60=1 /D NDIS_SUPPORT_NDIS6=1 /D _WIN64 /D _AMD64_ /D AMD64 /D _WIN32_WINNT=0x0A00 /D WINVER=0x0A00 /D WINNT=1 /D NTDDI_VERSION=0xA000010 /GF /Gm- /Zp8 /GS /guard:cf /Gy /fp:precise /Qspectre /Zc:wchar_t- /Zc:forScope /Zc:inline /GR- /Fo"x64\Release\\" /Fd"x64\Release\vc143.pdb" /external:W3 /Gz /wd4603 /wd4627 /wd4986 /wd4987 /FI"D:\Windows Kits\10\Include\10.0.26100.0\shared\warning.h" /FC /errorReport:queue /utf-8 /kernel -cbstring -d2epilogunwind  /d1nodatetime /d1import_no_registry /d2AllowCompatibleILVersions /d2Zi+ HvUtils.c HvVmExit.c HvCore.c Driver.c HvFileLog.c HvCpu.c HvEpt.c HvVmcs.c HvVmcb.c HvNpt.c EptHook.c NptHook.c HvHook.c HvNetworkHook.c HvDebugger.c HvInput.c HvUsbXhci.c HvUsbHid.c HvXhciEptTrap.c HvRegistryHook.c HvInjection.c HvPhysAccess.c HvVtRoot.c HvCr3Snoop.c HvNested.c HvNestedEpt.c HvNestedNpt.c HvNestedSvm.c
+  HvUtils.c
+  HvVmExit.c
+  HvCore.c
+  Driver.c
+C:\Users\Administrator\source\repos\MyDriver1\Netr\HvVmExit.c(168,9): warning C4005: “MSR_IA32_FEATURE_CONTROL”: 宏重定义 [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+      C:\Users\Administrator\source\repos\MyDriver1\Netr\HvTypes.h(113,9):
+      参见“MSR_IA32_FEATURE_CONTROL”的前一个定义
+  
+  HvFileLog.c
+  HvCpu.c
+  HvEpt.c
+  HvVmcs.c
+  HvVmcb.c
+  HvNpt.c
+  EptHook.c
+  NptHook.c
+  HvHook.c
+  HvNetworkHook.c
+  HvDebugger.c
+  HvInput.c
+  HvUsbXhci.c
+  HvUsbHid.c
+  HvXhciEptTrap.c
+  HvRegistryHook.c
+  正在生成代码...
+  正在编译...
+  HvInjection.c
+C:\Users\Administrator\source\repos\MyDriver1\Netr\HvInjection.c(391,26): warning C4133: “函数”: 从“PEPROCESS”到“PRKPROCESS”的类型不兼容 [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+C:\Users\Administrator\source\repos\MyDriver1\Netr\HvInjection.c(2379,18): warning C4996: 'ExAllocatePoolWithTag': ExAllocatePoolWithTag is deprecated, use ExAllocatePool2. [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+  HvPhysAccess.c
+  HvVtRoot.c
+  HvCr3Snoop.c
+  HvNested.c
+  HvNestedEpt.c
+  HvNestedNpt.c
+  HvNestedSvm.c
+  正在生成代码...
+Link:
+  D:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\HostX86\x64\link.exe /ERRORREPORT:QUEUE /OUT:"C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys" /VERSION:"10.0" /INCREMENTAL:NO /NOLOGO /LIBPATH:"D:\curl-8.17.0\vcpkg\installed\x64-windows\lib" /LIBPATH:"D:\curl-8.17.0\vcpkg\installed\x64-windows\lib\manual-link" /WX /SECTION:"INIT,d" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\ndis.lib" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\ntoskrnl.lib" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\BufferOverflowFastFailK.lib" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\ntoskrnl.lib" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\hal.lib" "D:\Windows Kits\10\lib\10.0.26100.0\km\x64\wmilib.lib" "D:\curl-8.17.0\vcpkg\installed\x64-windows\lib\*.lib" /NODEFAULTLIB /MANIFEST:NO /DEBUG /PDB:"C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.pdb" /SUBSYSTEM:NATIVE,"10.00" /Driver /OPT:REF /OPT:ICF /ENTRY:"GsDriverEntry" /RELEASE /IMPLIB:"C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.lib" /MERGE:"_TEXT=.text;_PAGE=PAGE" /MACHINE:X64 /PROFILE /guard:cf /kernel /IGNORE:4198,4010,4037,4039,4065,4070,4078,4087,4089,4221,4108,4088,4218,4218,4235 /osversion:10.0 /pdbcompress /debugtype:pdata x64\Release\AsmVmx.obj
+  x64\Release\AsmSvm.obj
+  x64\Release\HvUtils.obj
+  x64\Release\HvVmExit.obj
+  x64\Release\HvCore.obj
+  x64\Release\Driver.obj
+  x64\Release\HvFileLog.obj
+  x64\Release\HvCpu.obj
+  x64\Release\HvEpt.obj
+  x64\Release\HvVmcs.obj
+  x64\Release\HvVmcb.obj
+  x64\Release\HvNpt.obj
+  x64\Release\EptHook.obj
+  x64\Release\NptHook.obj
+  x64\Release\HvHook.obj
+  x64\Release\HvNetworkHook.obj
+  x64\Release\HvDebugger.obj
+  x64\Release\HvInput.obj
+  x64\Release\HvUsbXhci.obj
+  x64\Release\HvUsbHid.obj
+  x64\Release\HvXhciEptTrap.obj
+  x64\Release\HvRegistryHook.obj
+  x64\Release\HvInjection.obj
+  x64\Release\HvPhysAccess.obj
+  x64\Release\HvVtRoot.obj
+  x64\Release\HvCr3Snoop.obj
+  x64\Release\HvNested.obj
+  x64\Release\HvNestedEpt.obj
+  x64\Release\HvNestedNpt.obj
+  x64\Release\HvNestedSvm.obj
+  Netr.vcxproj -> C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(1)正在节点 1 上生成“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(1:2) (TestSign 个目标)。
+TestSign:
+  The driver will be test-signed. Driver signing options can be changed from the project properties.
+  Sign Inputs: C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys
+  D:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe sign /ph /fd "sha256" /sha1 "8406D9A10F63141F48AD2945805FA40729747608" 
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys
+  
+  Certificate used for signing: issued to = WDKTestCert Administrator,134067771689854751 and thumbprint = 8406D9A10F63141F48AD2945805FA40729747608
+  Exported Certificate: C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.cer
+已完成生成项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(TestSign 个目标)的操作。
+DriverPackageTarget:
+  Packaging up the following projects for the following configurations:
+  
+   Configuration='' Platform=''
+  
+  
+  The following files will be packaged:
+  
+  File to package:      C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys.
+  Location in Package:  \Netr.sys.
+  Requested by project: 
+  
+  
+  正在将文件从“C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys”复制到“C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr\Netr.sys”。
+Inf2Cat:
+  Inf2Cat task was skipped as there were no inf files to process
+  
+DrvCat:
+  DrvCat task was skipped as there was no catalog file to process
+  
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(1)正在节点 1 上生成“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(1:3) (TestSign 个目标)。
+TestSign:
+  The driver package will be test-signed. Driver signing options can be changed from the project properties.
+  No files to sign, skipping SignTask.
+已完成生成项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(TestSign 个目标)的操作。
+AppLocalFromInstalled:
+  pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\curl-8.17.0\vcpkg\scripts\buildsystems\msbuild\applocal.ps1" "C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys" "D:\curl-8.17.0\vcpkg\installed\x64-windows\bin" "x64\Release\Netr.tlog\Netr.write.1u.tlog" "x64\Release\vcpkg.applocal.log"
+  'pwsh.exe' 不是内部或外部命令，也不是可运行的程序
+  或批处理文件。
+  命令“pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\curl-8.17.0\vcpkg\scripts\buildsystems\msbuild\applocal.ps1" "C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys" "D:\curl-8.17.0\vcpkg\installed\x64-windows\bin" "x64\Release\Netr.tlog\Netr.write.1u.tlog" "x64\Release\vcpkg.applocal.log"”已退出，代码为 9009。
+  "C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy Bypass -noprofile -File "D:\curl-8.17.0\vcpkg\scripts\buildsystems\msbuild\applocal.ps1" "C:\Users\Administrator\source\repos\MyDriver1\Netr\x64\Release\Netr.sys" "D:\curl-8.17.0\vcpkg\installed\x64-windows\bin" "x64\Release\Netr.tlog\Netr.write.1u.tlog" "x64\Release\vcpkg.applocal.log"
+FinalizeBuildStatus:
+  正在删除文件“x64\Release\Netr.tlog\unsuccessfulbuild”。
+  正在对“x64\Release\Netr.tlog\Netr.lastbuildstate”执行 Touch 任务。
+已完成生成项目“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(Build 个目标)的操作。
+
+已成功生成。
+
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+
+
+“C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj”(Build 目标) (1) ->
+(ClCompile 目标) -> 
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\HvVmExit.c(168,9): warning C4005: “MSR_IA32_FEATURE_CONTROL”: 宏重定义 [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\HvInjection.c(391,26): warning C4133: “函数”: 从“PEPROCESS”到“PRKPROCESS”的类型不兼容 [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\HvInjection.c(2379,18): warning C4996: 'ExAllocatePoolWithTag': ExAllocatePoolWithTag is deprecated, use ExAllocatePool2. [C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj]
+
+
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+
+
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(61,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.props”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.Shared.props (366,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+  C:\Users\Administrator\source\repos\MyDriver1\Netr\Netr.vcxproj(205,5): warning MSB4011: 无法再次导入“D:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\BuildCustomizations\masm.targets”。可能已在“D:\Windows Kits\10\build\10.0.26100.0\WindowsDriver.common.targets (2087,3)”处导入过它。这很可能是生成创作错误。将忽略此后续导入。
+
+    9 个警告
+    0 个错误
+
+已用时间 00:00:11.84

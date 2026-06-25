@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ida-pro-mcp": {
+      "command": "C:\\Users\\Administrator\\AppData\\Roaming\\Python\\Python312\\Scripts\\ida-pro-mcp.exe",
+      "args": [],
+      "timeout": 1800
+    }
+  }
+}
