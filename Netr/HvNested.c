@@ -10,6 +10,8 @@
 
 #include "HvNested.h"
 #include "HvVmcs.h"
+#include <intrin.h>  // __readmsr (Step 3 虚幻范式 — 用 RDMSR(IA32_FS_BASE) 代替
+                     // _readfsbase_u64, 后者需 CR4.FSGSBASE=1, 不普适)
 #include "EptHook.h"
 #include "HvNestedEpt.h"
 #include "HvNestedSvm.h"
@@ -162,6 +164,30 @@ BOOLEAN HvNestedIsEnabled(VOID)
 
 PVCPU_DATA HvNestedGetCurrentVcpu(VOID)
 {
+    // Step 3 (虚幻范式): 优先用 HOST_FS_BASE 直接拿到 vcpu 指针.
+    // VMCS 在 HvSetupVmcsHostState 里把 HOST_FS_BASE 写成了当前 vcpu 的指针,
+    // host 路径 (VM-Exit 之后) RDMSR(IA32_FS_BASE) 直接返回 vcpu*.
+    //
+    // 用 RDMSR 而非 _readfsbase_u64 intrinsic — 后者需 CR4.FSGSBASE=1 才能执行,
+    // 不是所有 host 上下文都保证, RDMSR 永远可用.
+    //
+    // 校验: 拿到的指针必须落在 g_HypervisorContext.VcpuData[0..ProcessorCount) 范围内.
+    // 落在范围外 = guest 路径调的 (此时 FS_BASE 是 Windows kernel FS) 或还没 vmlaunch,
+    // 退回老 KPCR 路径.
+    ULONG64 fsBase = __readmsr(0xC0000100);  // MSR_IA32_FS_BASE
+    if (g_HypervisorContext.VcpuData &&
+        g_HypervisorContext.ProcessorCount > 0)
+    {
+        ULONG64 base = (ULONG64)g_HypervisorContext.VcpuData;
+        ULONG64 end  = base + (ULONG64)g_HypervisorContext.ProcessorCount * sizeof(VCPU_DATA);
+        if (fsBase >= base && fsBase < end &&
+            ((fsBase - base) % sizeof(VCPU_DATA)) == 0)
+        {
+            return (PVCPU_DATA)fsBase;
+        }
+    }
+
+    // Fallback: 老路径 (PASSIVE / 未启用 VMX / KPCR 可靠时)
     ULONG cpuNumber = KeGetCurrentProcessorNumber();
     if (cpuNumber < g_HypervisorContext.ProcessorCount) {
         return &g_HypervisorContext.VcpuData[cpuNumber];

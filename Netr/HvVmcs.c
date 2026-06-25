@@ -708,12 +708,19 @@ NTSTATUS HvSetupVmcsHostState(PVCPU_DATA VcpuData)
     __vmx_vmwrite(HOST_SS_SELECTOR, __readss() & 0xF8);
     __vmx_vmwrite(HOST_DS_SELECTOR, __readds() & 0xF8);
     __vmx_vmwrite(HOST_ES_SELECTOR, __reades() & 0xF8);
-    __vmx_vmwrite(HOST_FS_SELECTOR, __readfs() & 0xF8);
+    // Step 3 (虚幻范式): HOST_FS_SELECTOR = 0 (空段), HOST_FS_BASE = vcpu 指针.
+    // host 路径任何代码调 __readfsbase_u64() 直接拿到 PVCPU_DATA, 不再依赖
+    // KeGetCurrentProcessorNumberEx (后者在 host 上下文读 KPCR 不一定可靠).
+    //
+    // 之前 HOST_FS_SELECTOR/HOST_FS_BASE 写 Windows kernel FS — 现在覆写, 不影响:
+    // (1) driver 内核代码无任何 fs:[xxx] / __readfsbase_u64 调用 (grep 全确认)
+    // (2) HOST_GS 继续走 Windows GS_BASE 保留 KPCR 访问以防万一 (虚幻置 0 是更激进)
+    __vmx_vmwrite(HOST_FS_SELECTOR, 0);
     __vmx_vmwrite(HOST_GS_SELECTOR, __readgs() & 0xF8);
     __vmx_vmwrite(HOST_TR_SELECTOR, __readtr() & 0xF8);
 
     // Host段基址
-    __vmx_vmwrite(HOST_FS_BASE, __readmsr(MSR_IA32_FS_BASE));
+    __vmx_vmwrite(HOST_FS_BASE, (ULONG64)VcpuData);
     __vmx_vmwrite(HOST_GS_BASE, __readmsr(MSR_IA32_GS_BASE));
 
     // P0-6 (2026-06-16): 0x1AA 全面修复 — host TSS + 复制 GDT。
