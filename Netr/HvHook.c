@@ -85,7 +85,11 @@ static CPU_VENDOR g_HvHookBackend = CPU_VENDOR_UNKNOWN;
 volatile BOOLEAN g_BypassNtQueryInformationProcess = FALSE;
 // P119: 真根因是 VMCS Exception Bitmap 默认拦 #DB → vm-entry re-inject 与 guest IDT
 //       delivery 状态不一致。已在 HvVmcs.c:527 删 #DB 拦截。hook 业务逻辑可恢复。
-volatile BOOLEAN g_BypassNtSetContextThread       = FALSE;
+// 2026-06-26: 全开 NtSet/GetContextThread bypass = driver 不碰 CE 的 DR 写/读.
+//   理由: CE attach 后 EPROCESS.DebugPort 非空, target #DB 应走 Windows 原生
+//   KiDispatchException -> DbgkForwardException -> CE 收事件. 我们 hook 转 vwatch
+//   反而让 target #DB 没人接闪退. 关掉看是否走通原生路径.
+volatile BOOLEAN g_BypassNtSetContextThread       = TRUE;   // 2026-06-26 全 bypass
 volatile BOOLEAN g_BypassNtReadVirtualMemory      = FALSE;
 volatile BOOLEAN g_BypassNtWriteVirtualMemory     = FALSE;  // 2026-06-22 启用 proxy: HvPhys 物理直通写, 反作弊拦不到
 volatile BOOLEAN g_BypassNtOpenProcess            = FALSE;  // 2026-06-19 关闭: 之前 TRUE 导致 hook 入口直接 passthrough, CE 能开 debugger handle
@@ -94,7 +98,7 @@ volatile BOOLEAN g_BypassNtOpenProcess            = FALSE;  // 2026-06-19 关闭
 volatile BOOLEAN g_BypassNtSuspendThread          = FALSE;
 volatile BOOLEAN g_BypassNtResumeThread           = FALSE;
 volatile BOOLEAN g_BypassNtOpenThread             = FALSE;
-volatile BOOLEAN g_BypassNtGetContextThread       = FALSE;
+volatile BOOLEAN g_BypassNtGetContextThread       = TRUE;   // 2026-06-26 全 bypass
 
 // ============================================================
 // 2026-06-19: 进程伪装目标路径 (UWP Notepad, Win11 全系)
