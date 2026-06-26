@@ -989,7 +989,14 @@ BOOLEAN HvVwatchHandleEptViolation(
         //   WRONG_PROC  — 不是 target (同页共享 dll 触发),透传 不跨进程伤人
         HV_VWATCH_GATE gate = HvVwatchpGateForCurrentGuest(hitEntry->TargetPid);
         if (gate == HV_VWATCH_GATE_INJECT) {
-            mtf->Reason = HV_VWATCH_MTF_HIT;
+            // 2026-06-26 致命 bug 修复: inject #DB/#BP 后 guest 立刻跳
+            // KiUserExceptionDispatcher (不是单步那条指令) -> MTF 永远不 fire ->
+            // mtf->Active 永远卡 1 -> 下次 EPT violation vwatch return FALSE,
+            // PebCloak FALSE, 走 fallback grant-RWX 改主 EPT (无效因为当前 EPTP 是
+            // PebSpoof) -> 死循环 violation -> repeat guard 注 #UD -> target 崩.
+            //
+            // 修复: inject 路径不 arm MTF, 立刻把 PT slot 恢复 trap mask,
+            // 清 Active 让下次 violation 能进来.
             InterlockedIncrement64(&g_VwatchManager.TrueHits);
 
             if (hitEntry->Type == HV_VWATCH_TYPE_EXECUTE) {
@@ -999,6 +1006,18 @@ BOOLEAN HvVwatchHandleEptViolation(
                 HvVwatchpInjectDb();
                 InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
             }
+
+            // 立刻恢复 PT slot 到 trap mask, 这样:
+            // 1) #DB delivery 不会触发 MTF, 不需要后续 MTF exit handler
+            // 2) trap mask 保留 -> 下次 target 访问继续触发 violation -> 继续 watch
+            // 3) Active 清掉, 别的核能进来处理.
+            HvVwatchpWritePtSlot(slot, page->OriginalPfn, page->CombinedTrapMask);
+            EptInveptAllContexts();
+
+            mtf->PendingPage = NULL;
+            mtf->Reason = HV_VWATCH_MTF_NONE;
+            InterlockedExchange(&mtf->Active, 0);
+            return TRUE;
         } else {
             // 是 target 但没 attach (PASS) 或 不是 target (WRONG_PROC) —— 都透传不注异常.
             mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;

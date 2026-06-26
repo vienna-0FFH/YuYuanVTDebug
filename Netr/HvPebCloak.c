@@ -19,11 +19,11 @@
 
 // 2026-06-25: 全局开关. 让现场可以一次性灰度.
 #ifndef HV_ENABLE_PEB_CLOAK
-// 2026-06-26 临时关闭: 排查 CE attach + 下硬断 target 闪退根因.
-// PebCloak 用 EPT split + 双页 patch (BeingDebugged + ProcessHeap.Flags),
-// 一旦 EPT split 或 patch 边界错误, target 进程直接崩.
-// 验证: 关掉 cloak 还闪退 -> 不是 cloak. 不闪 -> cloak 路径有 bug.
-#define HV_ENABLE_PEB_CLOAK 0
+// 2026-06-26: 关闭过验证 -> 确认根因 = vwatch inject 后 mtf->Active 永远卡 1
+// 导致死循环 violation. 已在 HvVwatch.c::HvVwatchHandleEptViolation INJECT
+// 分支修复 (inject 后立刻清 Active + 恢复 trap mask, 不 arm MTF).
+// 重新打开 cloak.
+#define HV_ENABLE_PEB_CLOAK 1
 #endif
 
 // KeStackAttachProcess prototype (KAPC_STATE opaque)
