@@ -19,7 +19,11 @@
 
 // 2026-06-25: 全局开关. 让现场可以一次性灰度.
 #ifndef HV_ENABLE_PEB_CLOAK
-#define HV_ENABLE_PEB_CLOAK 1
+// 2026-06-26 临时关闭: 排查 CE attach + 下硬断 target 闪退根因.
+// PebCloak 用 EPT split + 双页 patch (BeingDebugged + ProcessHeap.Flags),
+// 一旦 EPT split 或 patch 边界错误, target 进程直接崩.
+// 验证: 关掉 cloak 还闪退 -> 不是 cloak. 不闪 -> cloak 路径有 bug.
+#define HV_ENABLE_PEB_CLOAK 0
 #endif
 
 // KeStackAttachProcess prototype (KAPC_STATE opaque)
