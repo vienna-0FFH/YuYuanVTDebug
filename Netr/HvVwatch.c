@@ -983,41 +983,24 @@ BOOLEAN HvVwatchHandleEptViolation(
 
     if (hitEntry) {
         // 字节范围 + 方向匹配. 还要过 "方案 B 闪退修复 gate" 决定是否注异常.
-        // gate 三态:
-        //   INJECT      — 是 target + 已 attach,注异常给 KiDispatchException
-        //   PASS        — 是 target 但没 attach,不注异常 (避免目标闪退)
-        //   WRONG_PROC  — 不是 target (同页共享 dll 触发),透传 不跨进程伤人
         HV_VWATCH_GATE gate = HvVwatchpGateForCurrentGuest(hitEntry->TargetPid);
         if (gate == HV_VWATCH_GATE_INJECT) {
-            // 2026-06-26 致命 bug 修复: inject #DB/#BP 后 guest 立刻跳
-            // KiUserExceptionDispatcher (不是单步那条指令) -> MTF 永远不 fire ->
-            // mtf->Active 永远卡 1 -> 下次 EPT violation vwatch return FALSE,
-            // PebCloak FALSE, 走 fallback grant-RWX 改主 EPT (无效因为当前 EPTP 是
-            // PebSpoof) -> 死循环 violation -> repeat guard 注 #UD -> target 崩.
+            // 2026-06-26 v2 致命 bug 修复 (虚幻范式 EPT.cpp:2629-2645):
+            // 不能 violation 时立刻注 #DB! 那会让 guest 跳 KiUserExceptionDispatcher,
+            // 而那条访问 watch 字节的指令永远没执行 -> debugger continue 后又重新
+            // 执行那条指令 -> 再次 violation -> 无限循环 -> target 崩.
             //
-            // 修复: inject 路径不 arm MTF, 立刻把 PT slot 恢复 trap mask,
-            // 清 Active 让下次 violation 能进来.
+            // 正确范式: PT 切全 RWX (已经在 line 981 做了) + arm MTF -> 让 guest
+            // 单步过那条指令 -> MTF exit 时再注 #DB. 这时 guest 已经在那条指令的
+            // 下一条 RIP, 注 #DB 触发 debugger break, continue 后从下一条指令继续,
+            // 不会再回头触发 violation.
+            //
+            // mtf->Reason = HV_VWATCH_MTF_HIT 让 MTF exit handler 知道单步完后要
+            // 注 #DB/#BP, 不是单纯恢复 trap mask.
+            mtf->Reason = HV_VWATCH_MTF_HIT;
+            mtf->HitType = hitEntry->Type;   // EXECUTE / WRITE / READWRITE
             InterlockedIncrement64(&g_VwatchManager.TrueHits);
-
-            if (hitEntry->Type == HV_VWATCH_TYPE_EXECUTE) {
-                HvVwatchpInjectBp();
-                InterlockedIncrement64(&g_VwatchManager.InjectedBpCount);
-            } else {
-                HvVwatchpInjectDb();
-                InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
-            }
-
-            // 立刻恢复 PT slot 到 trap mask, 这样:
-            // 1) #DB delivery 不会触发 MTF, 不需要后续 MTF exit handler
-            // 2) trap mask 保留 -> 下次 target 访问继续触发 violation -> 继续 watch
-            // 3) Active 清掉, 别的核能进来处理.
-            HvVwatchpWritePtSlot(slot, page->OriginalPfn, page->CombinedTrapMask);
-            EptInveptAllContexts();
-
-            mtf->PendingPage = NULL;
-            mtf->Reason = HV_VWATCH_MTF_NONE;
-            InterlockedExchange(&mtf->Active, 0);
-            return TRUE;
+            // 不立刻 inject, 等 MTF exit 再 inject.
         } else {
             // 是 target 但没 attach (PASS) 或 不是 target (WRONG_PROC) —— 都透传不注异常.
             mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
@@ -1050,9 +1033,9 @@ BOOLEAN HvVwatchHandleMtfExit(_Inout_ PGUEST_CONTEXT Ctx)
     PHV_VWATCH_PAGE page = (PHV_VWATCH_PAGE)mtf->PendingPage;
     mtf->PendingPage = NULL;
     LONG reason = mtf->Reason;
+    UCHAR hitType = mtf->HitType;
     mtf->Reason = HV_VWATCH_MTF_NONE;
-
-    UNREFERENCED_PARAMETER(reason);
+    mtf->HitType = 0;
 
     if (page) {
         PEPT_PTE_ENTRY slot = page->CloakedPte[cpu];
@@ -1063,6 +1046,21 @@ BOOLEAN HvVwatchHandleMtfExit(_Inout_ PGUEST_CONTEXT Ctx)
         }
     }
     HvVwatchpSetMtf(FALSE);
+
+    // 2026-06-26 v2 修复 (虚幻范式):
+    // MTF exit 时 guest 已经单步过那条访问 watch 字节的指令, RIP 在下一条指令.
+    // 现在注 #DB/#BP — debugger 看到 break, continue 后从下一条指令继续,
+    // 不会再回头触发 violation.
+    if (reason == HV_VWATCH_MTF_HIT) {
+        if (hitType == HV_VWATCH_TYPE_EXECUTE) {
+            HvVwatchpInjectBp();
+            InterlockedIncrement64(&g_VwatchManager.InjectedBpCount);
+        } else {
+            HvVwatchpInjectDb();
+            InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
+        }
+    }
+
     InterlockedIncrement64(&g_VwatchManager.MtfCompletions);
     return TRUE;
 }

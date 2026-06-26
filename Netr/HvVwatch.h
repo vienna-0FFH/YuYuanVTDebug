@@ -99,6 +99,8 @@ typedef struct _HV_VWATCH_MTF_CONTEXT {
     volatile PHV_VWATCH_PAGE PendingPage;
     volatile LONG            Active;       // 0=空闲 1=已 arm
     LONG                     Reason;       // HV_VWATCH_MTF_REASON
+    // 2026-06-26 v2: HIT 时记下 hit type 给 MTF exit 决定注 #BP 还是 #DB
+    UCHAR                    HitType;      // HV_VWATCH_TYPE_*
 } HV_VWATCH_MTF_CONTEXT, *PHV_VWATCH_MTF_CONTEXT;
 
 // ============================================================
