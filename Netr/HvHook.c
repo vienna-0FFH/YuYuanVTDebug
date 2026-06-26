@@ -3439,7 +3439,12 @@ static NTSTATUS NTAPI HookedNtSetContextThread(
         }
         UCHAR* base = (UCHAR*)ThreadContext;
         flags = *(ULONG*)(base + HV_CTX_OFF_FLAGS);
-        hasDr = (flags & HV_CONTEXT_DEBUG_REGISTERS) == HV_CONTEXT_DEBUG_REGISTERS;
+        // 2026-06-26 修: 原判定要求 (flags & 0x00100010) == 0x00100010 即同时含
+        // CONTEXT_AMD64 (0x00100000) + DEBUG_REGISTERS sub (0x10), 但很多调试器
+        // (CE 包括) ContextFlags 只设 0x10 没设 marker 位 -> 旧判定 hasDr=FALSE
+        // -> 直接放行 Original 真写 DR -> target 命中 #DB 无人接闪退.
+        // 改为单查 DEBUG_REGISTERS sub-flag bit (0x10) 即可拦截.
+        hasDr = (flags & 0x10) != 0;
         if (hasDr) {
             dr0 = *(UINT64*)(base + HV_CTX_OFF_DR0);
             dr1 = *(UINT64*)(base + HV_CTX_OFF_DR1);
@@ -3447,6 +3452,8 @@ static NTSTATUS NTAPI HookedNtSetContextThread(
             dr3 = *(UINT64*)(base + HV_CTX_OFF_DR3);
             dr7 = *(UINT64*)(base + HV_CTX_OFF_DR7);
         }
+        DbgPrint("[HvHook] NtSetCtx debugger-caller flags=0x%X hasDr=%u dr7=0x%llX\n",
+                 flags, hasDr, dr7);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return Original(ThreadHandle, ThreadContext);
     }
@@ -3524,16 +3531,20 @@ static NTSTATUS NTAPI HookedNtSetContextThread(
         // 失败也继续 — 别的 slot 可能成功
     }
 
-    // 抹掉 ContextFlags 的 DEBUG_REGISTERS bit, 让 Original 不真写 DR
+    // 抹掉 ContextFlags 的 DEBUG_REGISTERS bit (0x10), 让 Original 不真写 DR.
+    // 2026-06-26 修: 只清 0x10 那一位, 不要把 marker (0x100000) 一起清, 否则
+    // Windows kernel 看到 ContextFlags=0 可能 fail with INVALID_PARAMETER.
     __try {
         if (prevMode == UserMode) {
             ProbeForWrite(ThreadContext, HV_CTX_OFF_FLAGS + sizeof(ULONG), sizeof(ULONG));
         }
         UCHAR* base = (UCHAR*)ThreadContext;
-        ULONG newFlags = flags & ~HV_CONTEXT_DEBUG_REGISTERS;
+        ULONG newFlags = flags & ~0x10UL;   // 只清 DEBUG_REGISTERS sub-flag
         *(ULONG*)(base + HV_CTX_OFF_FLAGS) = newFlags;
+        DbgPrint("[HvHook] NtSetCtx erased DR flag: 0x%X -> 0x%X\n", flags, newFlags);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         // 改不了就让 Original 真写 — 退化到旧行为 (反作弊可能 detect, 但不蓝屏)
+        DbgPrint("[HvHook] NtSetCtx erase DR flag FAILED\n");
     }
 
     UNREFERENCED_PARAMETER(anyRegistered);
