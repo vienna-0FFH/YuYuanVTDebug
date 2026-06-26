@@ -982,31 +982,19 @@ BOOLEAN HvVwatchHandleEptViolation(
     EptInveptAllContexts();
 
     if (hitEntry) {
-        // 字节范围 + 方向匹配. 还要过 "方案 B 闪退修复 gate" 决定是否注异常.
-        // gate 三态:
-        //   INJECT      — 是 target + 已 attach,注异常给 KiDispatchException
-        //   PASS        — 是 target 但没 attach,不注异常 (避免目标闪退)
-        //   WRONG_PROC  — 不是 target (同页共享 dll 触发),透传 不跨进程伤人
-        HV_VWATCH_GATE gate = HvVwatchpGateForCurrentGuest(hitEntry->TargetPid);
-        if (gate == HV_VWATCH_GATE_INJECT) {
-            mtf->Reason = HV_VWATCH_MTF_HIT;
-            InterlockedIncrement64(&g_VwatchManager.TrueHits);
-
-            if (hitEntry->Type == HV_VWATCH_TYPE_EXECUTE) {
-                HvVwatchpInjectBp();
-                InterlockedIncrement64(&g_VwatchManager.InjectedBpCount);
-            } else {
-                HvVwatchpInjectDb();
-                InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
-            }
-        } else {
-            // 是 target 但没 attach (PASS) 或 不是 target (WRONG_PROC) —— 都透传不注异常.
-            // 这是方案 B 的核心: 没 attach 的 target 不会因为命中而崩;
-            // CE 这种 attach 后的 target 走 INJECT 分支, KiDispatchException ->
-            // DbgkForwardException 把事件 forward 给 CE, 完全原生 Windows debug 路径.
-            mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
-            InterlockedIncrement64(&g_VwatchManager.PassthroughHits);
-        }
+        // 诊断模式 (2026-06-26): 永远不注 #BP/#DB, 全部透传.
+        // 用来验证 "vwatch 注异常是不是 target 闪退根因".
+        //
+        // 如果此版本下 CE attach + 下硬断 target 仍然闪退 → 不是 vwatch 注异常
+        // 的问题, 是 DR 真被写进 KTHREAD 了 (NtSetContextThread hook 没拦截 CE).
+        // 如果此版本下 target 不再闪退 → 确认是 vwatch 注异常给没 VEH 的 target
+        // 导致崩, 需要走自建调试体系 (DebugObject 投事件或 stub.dll 注入).
+        //
+        // 命中事件仍记到 dbgevt ring 让 Netr GUI 能看到 (但 CE 看不到 break).
+        UNREFERENCED_PARAMETER(hitEntry);
+        mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
+        InterlockedIncrement64(&g_VwatchManager.PassthroughHits);
+        InterlockedIncrement64(&g_VwatchManager.TrueHits);   // 诊断: 仍计真命中
     } else {
         // 同页非 watch 字节访问 → 透传单步, 不注异常
         mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
