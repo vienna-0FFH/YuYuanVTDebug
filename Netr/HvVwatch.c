@@ -801,6 +801,91 @@ static VOID HvVwatchpInjectBp(VOID)
 }
 
 /*
+ * 方案 B (CE 硬断闪退修复, 2026-06-26): vwatch 命中后注异常前的三态门控.
+ *
+ * 根因: vwatch 命中后无条件注 #BP/#DB 给当前 guest. 但:
+ *   - 当前 guest 不是 target (同物理页共享 dll/PE 头被别人访问) -> 误注异常
+ *     给别的进程 -> 那个进程闪退
+ *   - target 没人 attach (CE 没 attach, 没 vectored handler) -> 没人接异常
+ *     -> KiUserExceptionDispatcher -> unhandled -> target 闪退
+ *
+ * 方案 B 三态:
+ *   INJECT      curPid == TargetPid AND _EPROCESS.DebugPort != NULL
+ *               -> 注异常. KiDispatchException -> DbgkForwardException 把事件给
+ *               已 attach 的 CE (CE 用 'Tools->Debugger Options->Use Windows
+ *               debugger' + 'Attach to process' 后 DebugPort 非空).
+ *   PASS        curPid == TargetPid AND DebugPort == NULL
+ *               -> 透传, 不注异常. target 不崩, CE 也收不到 (反正没事件渠道).
+ *   WRONG_PROC  curPid != TargetPid
+ *               -> 透传, 不跨进程伤人.
+ *
+ * EPROCESS.DebugPort 偏移按 Win build number 选 (硬编码表).
+ * 虚幻调试器不靠 PDB, Netr 上次 PDB 路线卡死撤回, 改硬编码同样工作.
+ *
+ * 偏移参考 (来自 Windows debugger / Volatility profile 验证, Win 各版本):
+ *   Win10 1903-22H2 (build 18362-19045): 0x420
+ *   Win11 21H2-23H2 (build 22000-22631): 0x550
+ *   Win11 24H2+     (build 26100+):      0x568
+ * 不在表内的版本 (新版/老版): fallback 视为 attach (INJECT 路径), 维持闪退修复
+ * 之前的老行为 (但 PID 校验仍生效, 不跨进程伤人).
+ */
+typedef enum _HV_VWATCH_GATE {
+    HV_VWATCH_GATE_INJECT = 0,
+    HV_VWATCH_GATE_PASS,
+    HV_VWATCH_GATE_WRONG_PROC,
+} HV_VWATCH_GATE;
+
+static ULONG HvVwatchpGetDebugPortOffset(VOID)
+{
+    ULONG build = g_HvOsBuildNumber;
+    // Win11 24H2+
+    if (build >= 26100) return 0x568;
+    // Win11 21H2 - 23H2
+    if (build >= 22000) return 0x550;
+    // Win10 1903 - 22H2
+    if (build >= 18362) return 0x420;
+    // 老 Win10 / 未知 — 返 0 表 "不可用",caller fallback 视为 INJECT
+    return 0;
+}
+
+static HV_VWATCH_GATE
+HvVwatchpGateForCurrentGuest(_In_ HANDLE TargetPid)
+{
+    // 1) PID 校验 (vmexit handler 上下文 PsGetCurrentProcessId 可用)
+    HANDLE curPid = PsGetCurrentProcessId();
+    if (curPid != TargetPid) {
+        return HV_VWATCH_GATE_WRONG_PROC;
+    }
+
+    // 2) DebugPort 校验
+    PEPROCESS eproc = PsGetCurrentProcess();
+    if (!eproc) {
+        return HV_VWATCH_GATE_WRONG_PROC;
+    }
+
+    ULONG dpOff = HvVwatchpGetDebugPortOffset();
+    if (dpOff == 0) {
+        // 未知 Win 版本 — fallback 当 attach. 至少 PID 校验过了, 不会跨进程伤人.
+        return HV_VWATCH_GATE_INJECT;
+    }
+
+    PVOID dbgPort = NULL;
+    __try {
+        dbgPort = *(PVOID*)((PUCHAR)eproc + dpOff);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        return HV_VWATCH_GATE_WRONG_PROC;
+    }
+
+    if (dbgPort == NULL) {
+        // target 没被 attach -> 不注异常 (避免闪退)
+        return HV_VWATCH_GATE_PASS;
+    }
+
+    return HV_VWATCH_GATE_INJECT;
+}
+
+/*
  * 找 GpaPage 对应的 page (不加锁, 用 InUse 原子读).
  */
 static PHV_VWATCH_PAGE
@@ -897,16 +982,30 @@ BOOLEAN HvVwatchHandleEptViolation(
     EptInveptAllContexts();
 
     if (hitEntry) {
-        // 真命中
-        mtf->Reason = HV_VWATCH_MTF_HIT;
-        InterlockedIncrement64(&g_VwatchManager.TrueHits);
+        // 字节范围 + 方向匹配. 还要过 "方案 B 闪退修复 gate" 决定是否注异常.
+        // gate 三态:
+        //   INJECT      — 是 target + 已 attach,注异常给 KiDispatchException
+        //   PASS        — 是 target 但没 attach,不注异常 (避免目标闪退)
+        //   WRONG_PROC  — 不是 target (同页共享 dll 触发),透传 不跨进程伤人
+        HV_VWATCH_GATE gate = HvVwatchpGateForCurrentGuest(hitEntry->TargetPid);
+        if (gate == HV_VWATCH_GATE_INJECT) {
+            mtf->Reason = HV_VWATCH_MTF_HIT;
+            InterlockedIncrement64(&g_VwatchManager.TrueHits);
 
-        if (hitEntry->Type == HV_VWATCH_TYPE_EXECUTE) {
-            HvVwatchpInjectBp();
-            InterlockedIncrement64(&g_VwatchManager.InjectedBpCount);
+            if (hitEntry->Type == HV_VWATCH_TYPE_EXECUTE) {
+                HvVwatchpInjectBp();
+                InterlockedIncrement64(&g_VwatchManager.InjectedBpCount);
+            } else {
+                HvVwatchpInjectDb();
+                InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
+            }
         } else {
-            HvVwatchpInjectDb();
-            InterlockedIncrement64(&g_VwatchManager.InjectedDbCount);
+            // 是 target 但没 attach (PASS) 或 不是 target (WRONG_PROC) —— 都透传不注异常.
+            // 这是方案 B 的核心: 没 attach 的 target 不会因为命中而崩;
+            // CE 这种 attach 后的 target 走 INJECT 分支, KiDispatchException ->
+            // DbgkForwardException 把事件 forward 给 CE, 完全原生 Windows debug 路径.
+            mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
+            InterlockedIncrement64(&g_VwatchManager.PassthroughHits);
         }
     } else {
         // 同页非 watch 字节访问 → 透传单步, 不注异常
