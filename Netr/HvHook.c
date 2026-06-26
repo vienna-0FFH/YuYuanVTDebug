@@ -4353,9 +4353,49 @@ static VOID HvHookpPebCloakRegisterWorker(_In_ PVOID Context)
 
     // 短延迟 (50ms) 让 DbgkpSetProcessDebugObject 内部初始事件流完成 enqueue,
     // CE WaitForDebugEvent 至少抓到第一个 CREATE_PROCESS_DEBUG_EVENT,
-    // 之后再注册 cloak 安全 — 注册路径只动 EPT, 不动 target PEB 真页.
+    // 之后再做 PEB 操作.
     LARGE_INTEGER delay; delay.QuadPart = -(LONGLONG)(50LL * 10000LL);
     KeDelayExecutionThread(KernelMode, FALSE, &delay);
+
+    // 2026-06-26 P121 revival (cloak 关闭场景, ACE 兜底):
+    // KeStackAttachProcess + __try 直写 PEB.BeingDebugged=0 + NtGlobalFlag 清调试位.
+    // worker 在 PASSIVE, SEH 容忍 page guard / HWBP / 无权限.
+    PEPROCESS targetProc = NULL;
+    NTSTATUS lpStatus = PsLookupProcessByProcessId(targetPid, &targetProc);
+    if (NT_SUCCESS(lpStatus) && targetProc) {
+        HV_HOOK_APC_STATE apc;
+        KeStackAttachProcess((PRKPROCESS)targetProc, &apc);
+        PVOID pebVa = PsGetProcessPeb(targetProc);
+        if (pebVa) {
+            UCHAR oldDbg = 0xFF;
+            ULONG oldNgf = 0xFFFFFFFF;
+            __try {
+                ProbeForWrite(pebVa, 0x100, sizeof(ULONG));
+                UCHAR* p = (UCHAR*)pebVa;
+                oldDbg = p[HV_PEB_OFF_BEING_DEBUGGED];
+                p[HV_PEB_OFF_BEING_DEBUGGED] = 0;
+
+                ULONG* ngf = (ULONG*)(p + HV_PEB_OFF_NT_GLOBAL_FLAG);
+                oldNgf = *ngf;
+                *ngf = oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK;
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {
+                DbgPrint("[HvHook-AAD] PEB direct-write raised (target=%u pebVa=%p) — 容忍\n",
+                         (ULONG)(ULONG_PTR)targetPid, pebVa);
+            }
+            DbgPrint("[HvHook-AAD] PEB written: target=%u BeingDebugged %u->0 NtGlobalFlag 0x%X->0x%X\n",
+                     (ULONG)(ULONG_PTR)targetPid, oldDbg, oldNgf,
+                     oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK);
+        } else {
+            DbgPrint("[HvHook-AAD] PsGetProcessPeb(target=%u) returned NULL\n",
+                     (ULONG)(ULONG_PTR)targetPid);
+        }
+        KeUnstackDetachProcess(&apc);
+        ObDereferenceObject(targetProc);
+    } else {
+        DbgPrint("[HvHook-AAD] PsLookupProcessByProcessId(%u) failed 0x%X\n",
+                 (ULONG)(ULONG_PTR)targetPid, lpStatus);
+    }
 
     NTSTATUS s = HvPebCloakRegisterTarget(targetPid);
     if (!NT_SUCCESS(s)) {
@@ -4388,47 +4428,12 @@ static NTSTATUS NTAPI HookedNtDebugActiveProcess(
         ProcessHandle, 0, *PsProcessType, KernelMode, (PVOID*)&tmpProc, NULL);
     if (!NT_SUCCESS(lk) || !tmpProc) return s;
     HANDLE targetPid = PsGetProcessId(tmpProc);
-
-    // 2026-06-26: 重启 P121 直写 PEB 路径 (cloak 关闭, EPT 路径有 bug 让任何 attach 都崩).
-    // KeStackAttachProcess + __try 写 PEB.BeingDebugged=0 + NtGlobalFlag 清调试位.
-    // SEH 包 page guard / HWBP / 任何 trap, 写失败也无所谓 (Windows 内核会自动清 guard).
-    {
-        HV_HOOK_APC_STATE apc;
-        KeStackAttachProcess((PRKPROCESS)tmpProc, &apc);
-        PVOID pebVa = PsGetProcessPeb(tmpProc);
-        if (pebVa) {
-            UCHAR oldDbg = 0xFF;
-            ULONG oldNgf = 0xFFFFFFFF;
-            __try {
-                ProbeForWrite(pebVa, 0x100, sizeof(ULONG));
-                UCHAR* p = (UCHAR*)pebVa;
-                oldDbg = p[HV_PEB_OFF_BEING_DEBUGGED];
-                p[HV_PEB_OFF_BEING_DEBUGGED] = 0;
-
-                ULONG* ngf = (ULONG*)(p + HV_PEB_OFF_NT_GLOBAL_FLAG);
-                oldNgf = *ngf;
-                *ngf = oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK;
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                // page guard / HWBP / 无权限 — 容忍, log
-                DbgPrint("[HvHook-AAD] PEB direct-write raised (target=%u pebVa=%p) — 容忍\n",
-                         (ULONG)(ULONG_PTR)targetPid, pebVa);
-            }
-            DbgPrint("[HvHook-AAD] PEB written: target=%u BeingDebugged %u->0 NtGlobalFlag 0x%X->0x%X\n",
-                     (ULONG)(ULONG_PTR)targetPid, oldDbg, oldNgf,
-                     oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK);
-        } else {
-            DbgPrint("[HvHook-AAD] PsGetProcessPeb(target=%u) returned NULL\n",
-                     (ULONG)(ULONG_PTR)targetPid);
-        }
-        KeUnstackDetachProcess(&apc);
-    }
-
     ObDereferenceObject(tmpProc);
     if (!targetPid) return s;
 
-    // EPT cloak schedule (cloak 关闭 build 下走 no-op 路径, HvPebCloakRegisterTarget
-    // 自己看 HV_ENABLE_PEB_CLOAK).
+    // 异步注册: 走 work item, hook 体立即返回不阻塞 DbgkpSetProcessDebugObject
+    // 内部初始事件流 (否则 CE WaitForDebugEvent 卡死).
+    // worker 在 PASSIVE 上下文跑直写 PEB + cloak schedule.
     PHV_PEB_CLOAK_REG_CTX ctx = (PHV_PEB_CLOAK_REG_CTX)
         ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(HV_PEB_CLOAK_REG_CTX), 'HwAD');
     if (!ctx) return s;
@@ -4436,7 +4441,7 @@ static NTSTATUS NTAPI HookedNtDebugActiveProcess(
     ExInitializeWorkItem(&ctx->WorkItem, HvHookpPebCloakRegisterWorker, ctx);
     ExQueueWorkItem(&ctx->WorkItem, DelayedWorkQueue);
 
-    DbgPrint("[HvHook-AAD] NtDebugActiveProcess: target=%u caller=%u — PEB direct-write done\n",
+    DbgPrint("[HvHook-AAD] NtDebugActiveProcess: target=%u caller=%u — worker scheduled\n",
              (ULONG)(ULONG_PTR)targetPid,
              (ULONG)(ULONG_PTR)caller);
     return s;
