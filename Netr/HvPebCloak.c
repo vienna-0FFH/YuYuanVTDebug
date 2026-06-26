@@ -19,11 +19,9 @@
 
 // 2026-06-25: 全局开关. 让现场可以一次性灰度.
 #ifndef HV_ENABLE_PEB_CLOAK
-// 2026-06-26: 关闭过验证 -> 确认根因 = vwatch inject 后 mtf->Active 永远卡 1
-// 导致死循环 violation. 已在 HvVwatch.c::HvVwatchHandleEptViolation INJECT
-// 分支修复 (inject 后立刻清 Active + 恢复 trap mask, 不 arm MTF).
-// 重新打开 cloak.
-#define HV_ENABLE_PEB_CLOAK 1
+// 2026-06-26: 用户要求关 cloak. 之前打开 cloak 让 explorer/notepad/ACE
+// attach 下硬断都崩, 关掉后普通进程能调试, ACE 反作弊自检会自杀但跟 driver 无关.
+#define HV_ENABLE_PEB_CLOAK 0
 #endif
 
 // KeStackAttachProcess prototype (KAPC_STATE opaque)
