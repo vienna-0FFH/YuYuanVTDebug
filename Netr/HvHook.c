@@ -4351,57 +4351,11 @@ static VOID HvHookpPebCloakRegisterWorker(_In_ PVOID Context)
     if (!ctx) return;
     HANDLE targetPid = ctx->TargetPid;
 
-    // 短延迟 (50ms) 让 DbgkpSetProcessDebugObject 内部初始事件流完成 enqueue,
-    // CE WaitForDebugEvent 至少抓到第一个 CREATE_PROCESS_DEBUG_EVENT,
-    // 之后再做 PEB 操作.
-    LARGE_INTEGER delay; delay.QuadPart = -(LONGLONG)(50LL * 10000LL);
-    KeDelayExecutionThread(KernelMode, FALSE, &delay);
-
-    // 2026-06-26 P121 revival (cloak 关闭场景, ACE 兜底):
-    // KeStackAttachProcess + __try 直写 PEB.BeingDebugged=0 + NtGlobalFlag 清调试位.
-    // worker 在 PASSIVE, SEH 容忍 page guard / HWBP / 无权限.
-    PEPROCESS targetProc = NULL;
-    NTSTATUS lpStatus = PsLookupProcessByProcessId(targetPid, &targetProc);
-    if (NT_SUCCESS(lpStatus) && targetProc) {
-        HV_HOOK_APC_STATE apc;
-        KeStackAttachProcess((PRKPROCESS)targetProc, &apc);
-        PVOID pebVa = PsGetProcessPeb(targetProc);
-        if (pebVa) {
-            UCHAR oldDbg = 0xFF;
-            ULONG oldNgf = 0xFFFFFFFF;
-            __try {
-                ProbeForWrite(pebVa, 0x100, sizeof(ULONG));
-                UCHAR* p = (UCHAR*)pebVa;
-                oldDbg = p[HV_PEB_OFF_BEING_DEBUGGED];
-                p[HV_PEB_OFF_BEING_DEBUGGED] = 0;
-
-                ULONG* ngf = (ULONG*)(p + HV_PEB_OFF_NT_GLOBAL_FLAG);
-                oldNgf = *ngf;
-                *ngf = oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK;
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                DbgPrint("[HvHook-AAD] PEB direct-write raised (target=%u pebVa=%p) — 容忍\n",
-                         (ULONG)(ULONG_PTR)targetPid, pebVa);
-            }
-            DbgPrint("[HvHook-AAD] PEB written: target=%u BeingDebugged %u->0 NtGlobalFlag 0x%X->0x%X\n",
-                     (ULONG)(ULONG_PTR)targetPid, oldDbg, oldNgf,
-                     oldNgf & ~(ULONG)HV_NT_GLOBAL_FLAG_DBG_MASK);
-        } else {
-            DbgPrint("[HvHook-AAD] PsGetProcessPeb(target=%u) returned NULL\n",
-                     (ULONG)(ULONG_PTR)targetPid);
-        }
-        KeUnstackDetachProcess(&apc);
-        ObDereferenceObject(targetProc);
-    } else {
-        DbgPrint("[HvHook-AAD] PsLookupProcessByProcessId(%u) failed 0x%X\n",
-                 (ULONG)(ULONG_PTR)targetPid, lpStatus);
-    }
-
-    NTSTATUS s = HvPebCloakRegisterTarget(targetPid);
-    if (!NT_SUCCESS(s)) {
-        DbgPrint("[HvHook-AAD] PebCloak Register PID=%u failed 0x%X\n",
-                 (ULONG)(ULONG_PTR)targetPid, s);
-    }
+    // 2026-06-26 DIAG: worker 完全 no-op, 只 log. 看 CE 是否还弹 attach-wait 对话框.
+    // 之前怀疑 KeStackAttachProcess + 写 PEB 干扰 attach 时序, 但 worker 体本身
+    // 也可能跟 CE WaitForDebugEvent race. 先彻底 no-op 排除.
+    DbgPrint("[HvHook-AAD] worker NO-OP (diag): target=%u\n",
+             (ULONG)(ULONG_PTR)targetPid);
 
     ExFreePoolWithTag(ctx, 'HwAD');
 }
