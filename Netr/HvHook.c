@@ -4351,10 +4351,8 @@ static VOID HvHookpPebCloakRegisterWorker(_In_ PVOID Context)
     if (!ctx) return;
     HANDLE targetPid = ctx->TargetPid;
 
-    // 2026-06-26 DIAG: worker 完全 no-op, 只 log. 看 CE 是否还弹 attach-wait 对话框.
-    // 之前怀疑 KeStackAttachProcess + 写 PEB 干扰 attach 时序, 但 worker 体本身
-    // 也可能跟 CE WaitForDebugEvent race. 先彻底 no-op 排除.
-    DbgPrint("[HvHook-AAD] worker NO-OP (diag): target=%u\n",
+    // worker NO-OP (用户上次确认无 attach-wait 对话框)
+    DbgPrint("[HvHook-AAD] worker NO-OP: target=%u\n",
              (ULONG)(ULONG_PTR)targetPid);
 
     ExFreePoolWithTag(ctx, 'HwAD');

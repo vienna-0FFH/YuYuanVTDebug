@@ -283,9 +283,21 @@ static ULONG_PTR VrInvlpgSelfIpi(_In_ ULONG_PTR Ctx)
 // HvVtRootInitializeAll: 一次性建立 PT 岛 + 每 CPU 分片
 // ============================================================
 
+// 2026-06-26: 调试器物理直通开关. 关闭后 g_VtRootEnabled 保持 FALSE,
+// HvVtRoot* / HvPhysAccess 的所有 API 在 !g_VtRootEnabled 时走 STATUS_DEVICE_NOT_READY
+// 或 fallback 路径. 用户要求暂时关闭物理直通排查问题.
+#ifndef HV_ENABLE_VT_ROOT
+#define HV_ENABLE_VT_ROOT 0
+#endif
+
 NTSTATUS HvVtRootInitializeAll(VOID)
 {
     g_VtRootEnabled = FALSE;
+
+#if !HV_ENABLE_VT_ROOT
+    DbgPrint("[VtRoot V2] HV_ENABLE_VT_ROOT=0, init skipped\n");
+    return STATUS_SUCCESS;
+#endif
 
     ULONG total = g_HypervisorContext.ProcessorCount;
     if (!g_HypervisorContext.VcpuData || total == 0) {
