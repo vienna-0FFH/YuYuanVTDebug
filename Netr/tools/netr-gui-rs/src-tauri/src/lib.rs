@@ -70,9 +70,17 @@ pub fn run() {
             // debugger
             commands::debugger::debugger_add,
             commands::debugger::debugger_remove,
+            commands::antivmp::antivmp_get_status,
+            commands::antivmp::antivmp_apply,
+            commands::antivmp::antivmp_set_private_debug_object,
+            commands::debugger_ui::dbg_symbol_cache_get,
+            commands::debugger_ui::dbg_symbol_cache_set,
+            commands::debugger_bridge::debugger_bridge_launch,
+            commands::debugger_bridge::debugger_bridge_inject,
             // hwbp
             commands::hwbp::hwbp_set,
             commands::hwbp::hwbp_clear,
+            commands::hwbp::hwbp_list,
             // memory
             commands::memory::memory_read,
             commands::memory::memory_write,
@@ -97,7 +105,11 @@ pub fn run() {
             commands::debugger_ui::dbg_open_window,
             commands::debugger_ui::dbg_close_window,
             commands::debugger_ui::trace_open_window,
+            commands::debugger_ui::dbg_attach,
             commands::debugger_ui::dbg_detach,
+            commands::debugger_ui::dbg_launch_executable,
+            commands::debugger_ui::dbg_restart_process,
+            commands::debugger_ui::dbg_run_to_entry,
             commands::debugger_ui::dbg_read_memory,
             commands::debugger_ui::dbg_write_memory,
             commands::debugger_ui::dbg_disasm,
@@ -120,9 +132,11 @@ pub fn run() {
             commands::debugger_ui::dbg_self_pid,
             commands::debugger_ui::dbg_self_protected,
             commands::debugger_ui::dbg_set_self_protected,
-            commands::debugger_ui::dbg_step_into,
-            commands::debugger_ui::dbg_step_over,
-            commands::debugger_ui::dbg_step_out,
+              commands::debugger_ui::dbg_step_into,
+              commands::debugger_ui::dbg_step_over,
+              commands::debugger_ui::dbg_step_many,
+              commands::debugger_ui::dbg_step_out,
+              commands::debugger_ui::dbg_cancel_active_run,
             commands::debugger_ui::dbg_consume_transient_bp,
             commands::debugger_ui::dbg_freeze_set,
             commands::debugger_ui::dbg_freeze_clear,
@@ -164,6 +178,7 @@ pub fn run() {
             // P88 项目保存/加载
             commands::project_io::project_save,
             commands::project_io::project_load,
+            commands::project_io::project_new,
             commands::project_io::project_list_recent,
             commands::project_io::project_pick_save,
             commands::project_io::project_pick_open,
@@ -204,7 +219,15 @@ pub fn run() {
                 use tauri::Manager;
                 let handles = app.state::<Arc<DebuggerHandles>>().inner().clone();
                 let freeze = app.state::<Arc<FreezeStore>>().inner().clone();
-                commands::debugger_ui::spawn_freeze_writer(handles, freeze);
+                commands::debugger_ui::spawn_freeze_writer(
+                    app.handle().clone(),
+                    handles.clone(),
+                    freeze,
+                );
+                commands::debugger_ui::spawn_private_event_poller(
+                    app.handle().clone(),
+                    handles,
+                );
             }
 
             #[cfg(debug_assertions)]
@@ -225,6 +248,13 @@ pub fn run() {
             if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
                 use tauri::Manager;
                 let device = app.state::<DeviceState>();
+                let handles = app.state::<Arc<DebuggerHandles>>().inner().clone();
+                let freeze = app.state::<Arc<FreezeStore>>().inner().clone();
+                let _ = commands::debugger_ui::cleanup_all_builtin_targets(
+                    &handles,
+                    device.inner(),
+                    &freeze,
+                );
                 let pid = std::process::id();
                 let _ = commands::debugger::debugger_remove(device.clone(), pid);
                 device.close();

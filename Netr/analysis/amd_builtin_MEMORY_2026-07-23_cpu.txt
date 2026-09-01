@@ -1,0 +1,794 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-23_cpu.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             C:\ProgramData\Dbg\sym
+OK                                             E:\Symbols
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;C:\ProgramData\Dbg\sym;E:\Symbols
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff803`ee200000 PsLoadedModuleList = 0xfffff803`ef0f5350
+Debug session time: Thu Jul 23 23:07:14.205 2026 (UTC + 8:00)
+System Uptime: 0 days 0:01:53.937
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+....................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 0000002f`0e979018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+7: kd> .lines -e
+Line number information will be loaded
+7: kd> .reload /f nt
+7: kd> .reload /f GuardMetaCore.sys
+7: kd> .echo === BUGCHECK ===
+=== BUGCHECK ===
+7: kd> .bugcheck
+Bugcheck code 00000101
+Arguments 00000000`0000000c 00000000`00000000 ffff8080`b46b2180 00000000`00000006
+7: kd> .echo === ANALYZE ===
+=== ANALYZE ===
+7: kd> !analyze -v
+*******************************************************************************
+*                                                                             *
+*                        Bugcheck Analysis                                    *
+*                                                                             *
+*******************************************************************************
+
+CLOCK_WATCHDOG_TIMEOUT (101)
+An expected clock interrupt was not received on a secondary processor in an
+MP system within the allocated interval. This indicates that the specified
+processor is hung and not processing interrupts.
+Arguments:
+Arg1: 000000000000000c, Clock interrupt time out interval in nominal clock ticks.
+Arg2: 0000000000000000, 0.
+Arg3: ffff8080b46b2180, The PRCB address of the hung processor.
+Arg4: 0000000000000006, The index of the hung processor.
+
+Debugging Details:
+------------------
+
+
+KEY_VALUES_STRING: 1
+
+    Key  : Analysis.CPU.mSec
+    Value: 624
+
+    Key  : Analysis.Elapsed.mSec
+    Value: 4696
+
+    Key  : Analysis.IO.Other.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Read.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Write.Mb
+    Value: 0
+
+    Key  : Analysis.Init.CPU.mSec
+    Value: 30
+
+    Key  : Analysis.Init.Elapsed.mSec
+    Value: 599
+
+    Key  : Analysis.Memory.CommitPeak.Mb
+    Value: 96
+
+    Key  : Bugcheck.Code.KiBugCheckData
+    Value: 0x101
+
+    Key  : Bugcheck.Code.LegacyAPI
+    Value: 0x101
+
+    Key  : Dump.Attributes.AsUlong
+    Value: 21000
+
+    Key  : Dump.Attributes.DiagDataWrittenToHeader
+    Value: 1
+
+    Key  : Dump.Attributes.ErrorCode
+    Value: 0
+
+    Key  : Dump.Attributes.LastLine
+    Value: Dump completed successfully.
+
+    Key  : Dump.Attributes.ProgressPercentage
+    Value: 100
+
+    Key  : Failure.Bucket
+    Value: CLOCK_WATCHDOG_TIMEOUT_IDLE_THREAD_INTERRUPTS_DISABLED_nt!KiIdleLoop
+
+    Key  : Failure.Hash
+    Value: {c899d515-25dc-e1c8-629e-155791332b8c}
+
+    Key  : Hypervisor.Enlightenments.Value
+    Value: 0
+
+    Key  : Hypervisor.Enlightenments.ValueHex
+    Value: 0
+
+    Key  : Hypervisor.Flags.AnyHypervisorPresent
+    Value: 0
+
+    Key  : Hypervisor.Flags.ApicEnlightened
+    Value: 0
+
+    Key  : Hypervisor.Flags.ApicVirtualizationAvailable
+    Value: 1
+
+    Key  : Hypervisor.Flags.AsyncMemoryHint
+    Value: 0
+
+    Key  : Hypervisor.Flags.CoreSchedulerRequested
+    Value: 0
+
+    Key  : Hypervisor.Flags.CpuManager
+    Value: 0
+
+    Key  : Hypervisor.Flags.DeprecateAutoEoi
+    Value: 0
+
+    Key  : Hypervisor.Flags.DynamicCpuDisabled
+    Value: 0
+
+    Key  : Hypervisor.Flags.Epf
+    Value: 0
+
+    Key  : Hypervisor.Flags.ExtendedProcessorMasks
+    Value: 0
+
+    Key  : Hypervisor.Flags.HardwareMbecAvailable
+    Value: 1
+
+    Key  : Hypervisor.Flags.MaxBankNumber
+    Value: 0
+
+    Key  : Hypervisor.Flags.MemoryZeroingControl
+    Value: 0
+
+    Key  : Hypervisor.Flags.NoExtendedRangeFlush
+    Value: 0
+
+    Key  : Hypervisor.Flags.NoNonArchCoreSharing
+    Value: 0
+
+    Key  : Hypervisor.Flags.Phase0InitDone
+    Value: 0
+
+    Key  : Hypervisor.Flags.PowerSchedulerQos
+    Value: 0
+
+    Key  : Hypervisor.Flags.RootScheduler
+    Value: 0
+
+    Key  : Hypervisor.Flags.SynicAvailable
+    Value: 0
+
+    Key  : Hypervisor.Flags.UseQpcBias
+    Value: 0
+
+    Key  : Hypervisor.Flags.Value
+    Value: 16908288
+
+    Key  : Hypervisor.Flags.ValueHex
+    Value: 1020000
+
+    Key  : Hypervisor.Flags.VpAssistPage
+    Value: 0
+
+    Key  : Hypervisor.Flags.VsmAvailable
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.AccessStats
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.CrashdumpEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.CreateVirtualProcessor
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.DisableHyperthreading
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.HostTimelineSync
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.HypervisorDebuggingEnabled
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.IsHyperV
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.LivedumpEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.MapDeviceInterrupt
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.MceEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.Nested
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.StartLogicalProcessor
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.Value
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.ValueHex
+    Value: 0
+
+    Key  : SecureKernel.HalpHvciEnabled
+    Value: 0
+
+    Key  : WER.OS.Branch
+    Value: ge_release
+
+    Key  : WER.OS.Version
+    Value: 10.0.26100.1
+
+
+BUGCHECK_CODE:  101
+
+BUGCHECK_P1: c
+
+BUGCHECK_P2: 0
+
+BUGCHECK_P3: ffff8080b46b2180
+
+BUGCHECK_P4: 6
+
+FILE_IN_CAB:  MEMORY.DMP
+
+DUMP_FILE_ATTRIBUTES: 0x21000
+
+FAULTING_PROCESSOR: 6
+
+FAULTING_THREAD:  ffffd68700832280
+
+BLACKBOXBSD: 1 (!blackboxbsd)
+
+
+BLACKBOXNTFS: 1 (!blackboxntfs)
+
+
+BLACKBOXPNP: 1 (!blackboxpnp)
+
+
+BLACKBOXWINLOGON: 1
+
+PROCESS_NAME:  msedgewebview2.exe
+
+STACK_TEXT:  
+ffffec89`54aefc00 00000000`00000000     : ffffec89`54af0000 ffffec89`54ae9000 00000000`00000000 00000000`00000000 : nt!KiIdleLoop+0x54
+
+
+SYMBOL_NAME:  nt!KiIdleLoop+54
+
+MODULE_NAME: nt
+
+IMAGE_NAME:  ntkrnlmp.exe
+
+STACK_COMMAND:  .process /r /p 0xfffff803ef1cff00; .thread 0xffffd68700832280 ; kb
+
+BUCKET_ID_FUNC_OFFSET:  54
+
+FAILURE_BUCKET_ID:  CLOCK_WATCHDOG_TIMEOUT_IDLE_THREAD_INTERRUPTS_DISABLED_nt!KiIdleLoop
+
+OS_VERSION:  10.0.26100.1
+
+BUILDLAB_STR:  ge_release
+
+OSPLATFORM_TYPE:  x64
+
+OSNAME:  Windows 10
+
+FAILURE_ID_HASH:  {c899d515-25dc-e1c8-629e-155791332b8c}
+
+Followup:     MachineOwner
+---------
+
+7: kd> .echo === MODULE ===
+=== MODULE ===
+7: kd> lmvm GuardMetaCore
+Browse full module list
+start             end                 module name
+fffff803`c1d60000 fffff803`c2117000   GuardMetaCore   (private pdb symbols)  e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.pdb
+    Loaded symbol image file: GuardMetaCore.sys
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.sys
+    Image path: \??\C:\Users\1\Desktop\test-package\test-package\GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Thu Jul 23 22:40:13 2026 (6A6227CD)
+    CheckSum:         00078A5E
+    ImageSize:        003B7000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+7: kd> .echo === CPUINFO ===
+=== CPUINFO ===
+7: kd> !cpuinfo
+CP  F/M/S Manufacturer  MHz PRCB Signature    MSR 8B Signature Features ArchitectureClass
+ 0 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 1 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 2 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 3 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 4 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 5 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 6 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 7 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 8 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 9 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+10 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+11 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+12 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+13 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+14 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+15 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+                      Cached Update Signature 0000000000000000
+                     Initial Update Signature 000000000a404105
+7: kd> .echo === RUNNING ===
+=== RUNNING ===
+7: kd> !running -it
+
+System Processors:  (000000000000ffff)
+  Idle Processors:  (000000000000a704)
+
+       Prcbs             Current         (pri) Next            (pri) Idle
+  0    fffff8037c7db180  ffffd6871ecce080 ( 9) ffffd6871df18080 (14) fffff803ef1d25c0  ................
+
+0k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`588d6da0 fffff803`ee59e3bb     nt!KiIpiStallOnPacketTargetsPrcb+0x2c
+01 ffffec89`588d6dd0 fffff803`eecdc98f     nt!KeFlushProcessWriteBuffers+0x10f
+02 ffffec89`588d6e30 fffff803`eecde888     nt!ExpGetProcessInformation+0x35f
+03 ffffec89`588d7450 fffff803`eece2931     nt!ExpQuerySystemInformation+0xdb8
+04 ffffec89`588d79b0 fffff803`c1d8c126     nt!NtQuerySystemInformation+0x91
+05 ffffec89`588d79f0 fffff803`ee8bf258     GuardMetaCore!HookedNtQuerySystemInformation+0x92 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 1836] 
+06 ffffec89`588d7aa0 00007ffc`64340724     nt!KiSystemServiceCopyEnd+0x28
+07 00000005`7c8ff7d8 00000000`00000000     0x00007ffc`64340724
+
+  1    ffff8080b43c0180  ffffd6871ef570c0 (15)                       ffffd68700744040  ................
+
+1k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`5cfef000 fffff803`ee407efd     nt!MiCompareTbFlushTimeStamp+0x6d
+01 ffffec89`5cfef030 fffff803`ee407853     nt!MiFlushTbAsNeeded+0x31d
+02 ffffec89`5cfef190 fffff803`ee54c7f3     nt!MiLinkPoolCommitChain+0x63
+03 ffffec89`5cfef1f0 fffff803`ee54c2b5     nt!MiCommitPoolMemory+0x1a3
+04 ffffec89`5cfef240 fffff803`ee54afbf     nt!RtlpHpEnvAllocVA+0x225
+05 ffffec89`5cfef340 fffff803`ee55e864     nt!RtlpHpAllocVA+0xd7
+06 ffffec89`5cfef3d0 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x1d0
+07 ffffec89`5cfef4b0 fffff803`ee560ae4     nt!RtlpHpSegPageRangeCommit+0x268
+08 ffffec89`5cfef570 fffff803`ee56092c     nt!RtlpHpSegLfhVsCommit+0xd4
+09 ffffec89`5cfef5b0 fffff803`ee55f1c7     nt!RtlpHpLfhSubsegmentCommitBlock+0x1dc
+0a ffffec89`5cfef650 fffff803`ee5e9586     nt!RtlpHpLfhSlotAllocateSlow+0x3c7
+0b ffffec89`5cfef720 fffff803`ee4788cf     nt!RtlpHpAllocateHeap+0x1d6
+0c ffffec89`5cfef7d0 fffff803`ee477722     nt!ExAllocateHeapPool+0x113f
+0d ffffec89`5cfef930 fffff803`eed7417a     nt!ExpAllocatePoolWithTagFromNode+0x52
+0e ffffec89`5cfef970 fffff803`eea9d255     nt!ExAllocatePool2+0x8a
+0f ffffec89`5cfef9d0 fffff803`ee8bf258     nt!NtAlpcCreateSecurityContext+0x175
+10 ffffec89`5cfefaa0 00007ffc`64341074     nt!KiSystemServiceCopyEnd+0x28
+11 0000003f`87bfe498 00000000`00000000     0x00007ffc`64341074
+
+  2    ffff8080b4451180  ffffd6870074d280 ( 0)                       ffffd6870074d280  ................
+
+2k
+Unable to load image \SystemRoot\System32\drivers\amdppm.sys, Win32 error 0n2
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54a6f8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54a6f8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54a6f920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54a6f950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54a6f9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54a6fb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54a6fc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+  3    ffff8080b44e7180  ffffd6871859e040 ( 7) ffffd687214d0080 (12) ffffd687007e8280  ................
+
+3k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`5ac9ef80 fffff803`ee499c69     nt!MiLockLowestValidPageTableEx+0x830
+01 ffffec89`5ac9f030 fffff803`ee498433     nt!MiDecommitLockNewPageTable+0x2a9
+02 ffffec89`5ac9f150 fffff803`ee40c63b     nt!MiDecommitPages+0x533
+03 ffffec89`5ac9f2d0 fffff803`ee55e94a     nt!MmFreePoolMemory+0xfb
+04 ffffec89`5ac9f370 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x2b6
+05 ffffec89`5ac9f450 fffff803`ee5686c4     nt!RtlpHpSegPageRangeCommit+0x268
+06 ffffec89`5ac9f510 fffff803`ee5d8fbd     nt!RtlpHpSegLfhVsDecommit+0xc4
+07 ffffec89`5ac9f550 fffff803`ee632400     nt!RtlpHpLfhSubsegmentDecommitPages+0x1dd
+08 ffffec89`5ac9f5d0 fffff803`ee6324ba     nt!RtlpHpLfhOwnerCompact+0x140
+09 ffffec89`5ac9f750 fffff803`ee6321bf     nt!RtlpHpLfhOwnerCompact+0x1fa
+0a ffffec89`5ac9f8d0 fffff803`ee55cb55     nt!RtlpHpLfhContextCompact+0xbf
+0b ffffec89`5ac9f910 fffff803`ee55caf3     nt!RtlpHpHeapCompact+0x21
+0c ffffec89`5ac9f940 fffff803`ee681085     nt!ExpHpCompactHeapCallback+0x23
+0d ffffec89`5ac9f970 fffff803`ee680fe5     nt!ExpHpEnumerateHeaps+0x71
+0e ffffec89`5ac9f9d0 fffff803`ee52f75b     nt!ExpHpCompactionRoutine+0x15
+0f ffffec89`5ac9fa00 fffff803`ee68212a     nt!ExpWorkerThread+0x4bb
+10 ffffec89`5ac9fbb0 fffff803`ee8acd94     nt!PspSystemThreadStartup+0x5a
+11 ffffec89`5ac9fc00 00000000`00000000     nt!KiStartSystemThread+0x34
+
+  4    ffff8080b4581180  ffffd687008ea040 (17)                       ffffd68700811280  ................
+
+4k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54cd2090 fffff803`ee59f083     nt!KiIpiWaitForRequestBarrier+0x32
+01 ffffec89`54cd20c0 fffff803`ee59ec0b     nt!KxFlushEntireTb+0xcf
+02 ffffec89`54cd2110 fffff803`ee4a1e99     nt!KeFlushTb+0x60b
+03 ffffec89`54cd21c0 fffff803`ee40ba26     nt!MiFlushTbList+0xb69
+04 ffffec89`54cd23d0 fffff803`ee43eee6     nt!MiAgeTrimListsTail+0x76
+05 ffffec89`54cd2410 fffff803`ee43f306     nt!MiWalkPageTablesRecursively+0x11d6
+06 ffffec89`54cd24e0 fffff803`ee43f306     nt!MiWalkPageTablesRecursively+0x15f6
+07 ffffec89`54cd25b0 fffff803`ee43f306     nt!MiWalkPageTablesRecursively+0x15f6
+08 ffffec89`54cd2680 fffff803`ee40fa83     nt!MiWalkPageTablesRecursively+0x15f6
+09 ffffec89`54cd2750 fffff803`ee40f438     nt!MiWalkPageTables+0x2b3
+0a ffffec89`54cd2810 fffff803`ee4f392e     nt!MiAgeWorkingSet+0x198
+0b ffffec89`54cd2970 fffff803`ee4f2ed1     nt!MiTrimOrAgeWorkingSet+0x37e
+0c ffffec89`54cd2a00 fffff803`ee555105     nt!MiProcessWorkingSets+0x1c1
+0d ffffec89`54cd2a70 fffff803`ee7c1dc9     nt!MiWorkingSetManager+0x165
+0e ffffec89`54cd2b40 fffff803`ee68212a     nt!KeBalanceSetManager+0x1e9
+0f ffffec89`54cd2bb0 fffff803`ee8acd94     nt!PspSystemThreadStartup+0x5a
+10 ffffec89`54cd2c00 00000000`00000000     nt!KiStartSystemThread+0x34
+
+  5    ffff8080b45c6180  ffffd6870c6f1080 (11)                       ffffd68700820280  ................
+
+5k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`5f1d5cc0 fffff803`ee407efd     nt!MiCompareTbFlushTimeStamp+0x6d
+01 ffffec89`5f1d5cf0 fffff803`ee407853     nt!MiFlushTbAsNeeded+0x31d
+02 ffffec89`5f1d5e50 fffff803`ee54c7f3     nt!MiLinkPoolCommitChain+0x63
+03 ffffec89`5f1d5eb0 fffff803`ee54c2b5     nt!MiCommitPoolMemory+0x1a3
+04 ffffec89`5f1d5f00 fffff803`ee54afbf     nt!RtlpHpEnvAllocVA+0x225
+05 ffffec89`5f1d6000 fffff803`ee55e864     nt!RtlpHpAllocVA+0xd7
+06 ffffec89`5f1d6090 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x1d0
+07 ffffec89`5f1d6170 fffff803`ee560ae4     nt!RtlpHpSegPageRangeCommit+0x268
+08 ffffec89`5f1d6230 fffff803`ee56092c     nt!RtlpHpSegLfhVsCommit+0xd4
+09 ffffec89`5f1d6270 fffff803`ee55f1c7     nt!RtlpHpLfhSubsegmentCommitBlock+0x1dc
+0a ffffec89`5f1d6310 fffff803`ee5e9586     nt!RtlpHpLfhSlotAllocateSlow+0x3c7
+0b ffffec89`5f1d63e0 fffff803`ee4788cf     nt!RtlpHpAllocateHeap+0x1d6
+0c ffffec89`5f1d6490 fffff803`ee477722     nt!ExAllocateHeapPool+0x113f
+0d ffffec89`5f1d65f0 fffff803`eed7417a     nt!ExpAllocatePoolWithTagFromNode+0x52
+0e ffffec89`5f1d6630 fffff803`eeb0f1a8     nt!ExAllocatePool2+0x8a
+0f ffffec89`5f1d6690 fffff803`ee624b4a     nt!RtlpNewSecurityObject+0x14b8
+10 ffffec89`5f1d69d0 fffff803`eea53c1a     nt!SeAssignSecurityEx2+0x6a
+11 ffffec89`5f1d6a30 fffff803`eeafc378     nt!ObInsertObjectEx+0x32a
+12 ffffec89`5f1d6d00 fffff803`eeafabca     nt!PspInsertThread+0x3b4
+13 ffffec89`5f1d6dd0 fffff803`eeaf91c2     nt!PspCreateThread+0x2ea
+14 ffffec89`5f1d7080 fffff803`c1d8970f     nt!NtCreateThreadEx+0x2d2
+15 ffffec89`5f1d79a0 fffff803`ee8bf258     GuardMetaCore!HookedNtCreateThreadEx+0x1c7 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6566] 
+16 ffffec89`5f1d7a30 00007ffc`64341974     nt!KiSystemServiceCopyEnd+0x28
+17 0000002f`1d2fef78 00000000`00000000     0x00007ffc`64341974
+
+  6    ffff8080b46b2180  ffffd68700832280 ( 0) ffffd6871ec21080 (15) ffffd68700832280  ................
+
+6k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54aef8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54aef8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54aef920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54aef950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54aef9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54aefb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54aefc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+  7    ffff8080b4748180  ffffd68721757080 (11)                       ffffd68700841280  ................
+
+7k
+ # Child-SP          RetAddr               Call Site
+00 ffff8080`b4764998 fffff803`ee4ab59b     nt!KeBugCheckEx
+01 ffff8080`b47649a0 fffff803`ee4aa97b     nt!KeAccumulateTicks+0x6eb
+02 ffff8080`b4764a10 fffff803`ee4aa630     nt!KiUpdateRunTime+0x9b
+03 ffff8080`b4764bd0 fffff803`ee519d4a     nt!KiUpdateTime+0x380
+04 ffff8080`b4764e40 fffff803`ee51a8ac     nt!KeClockInterruptNotify+0x28a
+05 ffff8080`b4764f40 fffff803`ee8addde     nt!KiCallInterruptServiceRoutine+0x32c
+06 ffff8080`b4764fb0 fffff803`ee8ae5ec     nt!KiInterruptSubDispatchNoLockNoEtw+0x4e
+07 ffffec89`5f19db30 fffff803`ee64d9c9     nt!KiInterruptDispatchNoLockNoEtw+0x3c
+08 ffffec89`5f19dcc0 fffff803`ee407efd     nt!MiCompareTbFlushTimeStamp+0x6d
+09 ffffec89`5f19dcf0 fffff803`ee407853     nt!MiFlushTbAsNeeded+0x31d
+0a ffffec89`5f19de50 fffff803`ee54c7f3     nt!MiLinkPoolCommitChain+0x63
+0b ffffec89`5f19deb0 fffff803`ee54c2b5     nt!MiCommitPoolMemory+0x1a3
+0c ffffec89`5f19df00 fffff803`ee54afbf     nt!RtlpHpEnvAllocVA+0x225
+0d ffffec89`5f19e000 fffff803`ee55e864     nt!RtlpHpAllocVA+0xd7
+0e ffffec89`5f19e090 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x1d0
+0f ffffec89`5f19e170 fffff803`ee560ae4     nt!RtlpHpSegPageRangeCommit+0x268
+10 ffffec89`5f19e230 fffff803`ee56092c     nt!RtlpHpSegLfhVsCommit+0xd4
+11 ffffec89`5f19e270 fffff803`ee55f1c7     nt!RtlpHpLfhSubsegmentCommitBlock+0x1dc
+12 ffffec89`5f19e310 fffff803`ee5e9586     nt!RtlpHpLfhSlotAllocateSlow+0x3c7
+13 ffffec89`5f19e3e0 fffff803`ee4788cf     nt!RtlpHpAllocateHeap+0x1d6
+14 ffffec89`5f19e490 fffff803`ee477722     nt!ExAllocateHeapPool+0x113f
+15 ffffec89`5f19e5f0 fffff803`eed7417a     nt!ExpAllocatePoolWithTagFromNode+0x52
+16 ffffec89`5f19e630 fffff803`eeb0f1a8     nt!ExAllocatePool2+0x8a
+17 ffffec89`5f19e690 fffff803`ee624b4a     nt!RtlpNewSecurityObject+0x14b8
+18 ffffec89`5f19e9d0 fffff803`eea53c1a     nt!SeAssignSecurityEx2+0x6a
+19 ffffec89`5f19ea30 fffff803`eeafc378     nt!ObInsertObjectEx+0x32a
+1a ffffec89`5f19ed00 fffff803`eeafabca     nt!PspInsertThread+0x3b4
+1b ffffec89`5f19edd0 fffff803`eeaf91c2     nt!PspCreateThread+0x2ea
+1c ffffec89`5f19f080 fffff803`c1d8970f     nt!NtCreateThreadEx+0x2d2
+1d ffffec89`5f19f9a0 fffff803`ee8bf258     GuardMetaCore!HookedNtCreateThreadEx+0x1c7 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6566] 
+1e ffffec89`5f19fa30 00007ffc`64341974     nt!KiSystemServiceCopyEnd+0x28
+1f 0000002f`162fe1b8 00000000`00000000     0x00007ffc`64341974
+
+  8    ffff8080b478e180  ffffd68700853280 ( 0)                       ffffd68700853280  ................
+
+8k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54b2f8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54b2f8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54b2f920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54b2f950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54b2f9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54b2fb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54b2fc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+  9    ffff8080b48a2180  ffffd68700862280 ( 0)                       ffffd68700862280  ................
+
+9k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54b4f8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54b4f8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54b4f920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54b4f950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54b4f9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54b4fb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54b4fc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+ 10    ffff8080b4938180  ffffd68700874280 ( 0)                       ffffd68700874280  ................
+
+10k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54b6f8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54b6f8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54b6f920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54b6f950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54b6f9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54b6fb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54b6fc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+ 11    ffff8080b49d1180  ffffd68715d2d080 (16)                       ffffd68700884280  ................
+
+11k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`566f6bd0 fffff803`ee407efd     nt!MiCompareTbFlushTimeStamp+0x75
+01 ffffec89`566f6c00 fffff803`ee407853     nt!MiFlushTbAsNeeded+0x31d
+02 ffffec89`566f6d60 fffff803`ee54c7f3     nt!MiLinkPoolCommitChain+0x63
+03 ffffec89`566f6dc0 fffff803`ee54c2b5     nt!MiCommitPoolMemory+0x1a3
+04 ffffec89`566f6e10 fffff803`ee54afbf     nt!RtlpHpEnvAllocVA+0x225
+05 ffffec89`566f6f10 fffff803`ee55e864     nt!RtlpHpAllocVA+0xd7
+06 ffffec89`566f6fa0 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x1d0
+07 ffffec89`566f7080 fffff803`ee560ae4     nt!RtlpHpSegPageRangeCommit+0x268
+08 ffffec89`566f7140 fffff803`ee56092c     nt!RtlpHpSegLfhVsCommit+0xd4
+09 ffffec89`566f7180 fffff803`ee5e98d6     nt!RtlpHpLfhSubsegmentCommitBlock+0x1dc
+0a ffffec89`566f7220 fffff803`ee4788cf     nt!RtlpHpAllocateHeap+0x526
+0b ffffec89`566f72d0 fffff803`ee477722     nt!ExAllocateHeapPool+0x113f
+0c ffffec89`566f7430 fffff803`eed7417a     nt!ExpAllocatePoolWithTagFromNode+0x52
+Unable to load image \SystemRoot\System32\drivers\dxgmms2.sys, Win32 error 0n2
+0d ffffec89`566f7470 fffff803`bfd549b9     nt!ExAllocatePool2+0x8a
+0e ffffec89`566f74d0 fffff803`bfdde7ce     dxgmms2+0x349b9
+0f ffffec89`566f7500 fffff803`bfddddac     dxgmms2!VidMmInterface+0x66bde
+10 ffffec89`566f7530 fffff803`bfdba263     dxgmms2!VidMmInterface+0x661bc
+11 ffffec89`566f7600 fffff803`bfe13d18     dxgmms2!VidMmInterface+0x42673
+12 ffffec89`566f76d0 fffff803`bfe13983     dxgmms2!VidMmInterface+0x9c128
+13 ffffec89`566f77b0 fffff803`bfd57b89     dxgmms2!VidMmInterface+0x9bd93
+Unable to load image \SystemRoot\System32\drivers\dxgkrnl.sys, Win32 error 0n2
+14 ffffec89`566f7820 fffff803`803a4cf0     dxgmms2+0x37b89
+15 ffffec89`566f7860 fffff803`ee8bf258     dxgkrnl!NtGdiDdDDIMapGpuVirtualAddress+0x450
+16 ffffec89`566f7aa0 00007ffc`61a15424     nt!KiSystemServiceCopyEnd+0x28
+17 0000008c`84ffcb98 00000000`00000000     0x00007ffc`61a15424
+
+ 12    ffff8080b47e8180  ffffd687219650c0 ( 9) ffffd6872174f080 (12) ffffd68700896280  ................
+
+12k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`5f186da0 fffff803`ee59e3bb     nt!KiIpiStallOnPacketTargetsPrcb+0x32
+01 ffffec89`5f186dd0 fffff803`eecdc98f     nt!KeFlushProcessWriteBuffers+0x10f
+02 ffffec89`5f186e30 fffff803`eecde888     nt!ExpGetProcessInformation+0x35f
+03 ffffec89`5f187450 fffff803`eece2931     nt!ExpQuerySystemInformation+0xdb8
+04 ffffec89`5f1879b0 fffff803`c1d8c126     nt!NtQuerySystemInformation+0x91
+05 ffffec89`5f1879f0 fffff803`ee8bf258     GuardMetaCore!HookedNtQuerySystemInformation+0x92 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 1836] 
+06 ffffec89`5f187aa0 00007ffc`64340724     nt!KiSystemServiceCopyEnd+0x28
+07 00000005`7c6ff808 00000000`00000000     0x00007ffc`64340724
+
+ 13    ffff8080b4ad2180  ffffd687007f2280 ( 0)                       ffffd687007f2280  ................
+
+13k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54bcf8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54bcf8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54bcf920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54bcf950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54bcf9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54bcfb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54bcfc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+ 14    ffff8080b4b18180  ffffd68720ef3080 ( 9) ffffd68716bec080 (10) ffffd687008ab280  ................
+
+14k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`5d37eb70 fffff803`ee407efd     nt!MiCompareTbFlushTimeStamp+0x6d
+01 ffffec89`5d37eba0 fffff803`ee407853     nt!MiFlushTbAsNeeded+0x31d
+02 ffffec89`5d37ed00 fffff803`ee54c7f3     nt!MiLinkPoolCommitChain+0x63
+03 ffffec89`5d37ed60 fffff803`ee54c2b5     nt!MiCommitPoolMemory+0x1a3
+04 ffffec89`5d37edb0 fffff803`ee54afbf     nt!RtlpHpEnvAllocVA+0x225
+05 ffffec89`5d37eeb0 fffff803`ee55e864     nt!RtlpHpAllocVA+0xd7
+06 ffffec89`5d37ef40 fffff803`ee55f958     nt!RtlpHpSegMgrCommit+0x1d0
+07 ffffec89`5d37f020 fffff803`ee55dd89     nt!RtlpHpSegPageRangeCommit+0x268
+08 ffffec89`5d37f0e0 fffff803`ee55dcbd     nt!RtlpHpSegAlloc+0xbd
+09 ffffec89`5d37f140 fffff803`ee477d70     nt!RtlpHpAllocateHeapBackend+0x2d
+0a ffffec89`5d37f180 fffff803`ee477722     nt!ExAllocateHeapPool+0x5e0
+0b ffffec89`5d37f2e0 fffff803`ee4774e2     nt!ExpAllocatePoolWithTagFromNode+0x52
+0c ffffec89`5d37f320 fffff803`ee4751fb     nt!MiAllocatePool+0x92
+0d ffffec89`5d37f380 fffff803`ee5371e2     nt!MiCreatePrototypePtes+0x57
+0e ffffec89`5d37f420 fffff803`eeb1753a     nt!MiAddViewsForSection+0x412
+0f ffffec89`5d37f4e0 fffff803`eeaa2b0e     nt!MiMapViewOfDataSection+0x17a
+10 ffffec89`5d37f610 fffff803`eeaa224d     nt!MiMapViewOfSection+0x2de
+11 ffffec89`5d37f700 fffff803`c1d8abb1     nt!NtMapViewOfSection+0x24d
+12 ffffec89`5d37f9b0 fffff803`ee8bf258     GuardMetaCore!HookedNtMapViewOfSection+0x2a5 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6414] 
+13 ffffec89`5d37fa30 00007ffc`64340564     nt!KiSystemServiceCopyEnd+0x28
+14 00000099`4c479878 00000000`00000000     0x00007ffc`64340564
+
+ 15    ffff8080b4bb1180  ffffd687008bc280 ( 0)                       ffffd687008bc280  ................
+
+15k
+ # Child-SP          RetAddr               Call Site
+00 ffffec89`54c0f8e8 fffff803`b900299b     amdppm+0x2a13
+01 ffffec89`54c0f8f0 fffff803`b900612b     amdppm+0x299b
+02 ffffec89`54c0f920 fffff803`b900e1a1     amdppm+0x612b
+03 ffffec89`54c0f950 fffff803`ee8dcb7c     amdppm+0xe1a1
+04 ffffec89`54c0f9a0 fffff803`ee641930     nt!PpmIdleExecuteTransition+0x36bb4c
+05 ffffec89`54c0fb30 fffff803`ee8acc24     nt!PoIdle+0x1c0
+06 ffffec89`54c0fc00 00000000`00000000     nt!KiIdleLoop+0x54
+
+7: kd> .echo === ALL_CPUS ===
+=== ALL_CPUS ===
+7: kd> ~*
+       ^ Syntax error in '~*'
+7: kd> ~*kP 80
+       ^ Syntax error in '~*kP 80'
+7: kd> .echo === CPU14 ===
+=== CPU14 ===
+7: kd> ~14s
+14: kd> r
+rax=0000000000000000 rbx=00000000241bd1e2 rcx=000000000000175b
+rdx=000000000000175b rsi=0000000000000000 rdi=0000000000000001
+rip=fffff803ee64d9c9 rsp=ffffec895d37eb70 rbp=0000000000000008
+ r8=ffffa40000000000  r9=ffffa47fffffffff r10=2000000000000000
+r11=ffffec895d37ed40 r12=ffffd687008ac180 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000001
+iopl=0         nv up ei pl nz na po nc
+cs=0010  ss=0018  ds=0000  es=0000  fs=0000  gs=0000             efl=00040206
+nt!MiCompareTbFlushTimeStamp+0x6d:
+fffff803`ee64d9c9 0fba25af16b80000 bt      dword ptr [nt!KiTbFlushTimeStamp (fffff803`ef1cf080)],0 ds:fffff803`ef1cf080=0000175b
+14: kd> kv 100
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 ffffec89`5d37eb70 fffff803`ee407efd     : 00000000`0000175b ffffec89`00000001 00000000`00000000 fffff803`c1dcb860 : nt!MiCompareTbFlushTimeStamp+0x6d
+01 ffffec89`5d37eba0 fffff803`ee407853     : 00000000`00000000 fffff803`00000000 ffffec89`5d37f460 00000000`00000000 : nt!MiFlushTbAsNeeded+0x31d
+02 ffffec89`5d37ed00 fffff803`ee54c7f3     : ffffa45b`454e1fa8 00000000`00000000 00000000`00000000 ffffa45b`454e1fa8 : nt!MiLinkPoolCommitChain+0x63
+03 ffffec89`5d37ed60 fffff803`ee54c2b5     : 00000000`00000000 ffffec89`5d37ee69 00000000`00001000 00000000`00000000 : nt!MiCommitPoolMemory+0x1a3
+04 ffffec89`5d37edb0 fffff803`ee54afbf     : ffffec89`5d37ef78 ffffec89`5d37ef68 ffffb68a`9c3f5000 00000000`00008000 : nt!RtlpHpEnvAllocVA+0x225
+05 ffffec89`5d37eeb0 fffff803`ee55e864     : 00000000`00008000 ffffb68a`89000140 00000000`00001000 00000000`00000000 : nt!RtlpHpAllocVA+0xd7
+06 ffffec89`5d37ef40 fffff803`ee55f958     : 00000000`00001000 00000000`00000008 ffffb68a`9c301fa0 00000000`00000008 : nt!RtlpHpSegMgrCommit+0x1d0
+07 ffffec89`5d37f020 fffff803`ee55dd89     : ffffb68a`89000140 ffffb68a`9c301ea0 00000000`00000000 00000000`00000001 : nt!RtlpHpSegPageRangeCommit+0x268
+08 ffffec89`5d37f0e0 fffff803`ee55dcbd     : 00000000`00000112 00000000`00008000 00000000`00000000 ffffb68a`9c301ea0 : nt!RtlpHpSegAlloc+0xbd
+09 ffffec89`5d37f140 fffff803`ee477d70     : 00000000`00000000 7fffffff`fffffffc 00000000`00000000 ffffd687`008e4230 : nt!RtlpHpAllocateHeapBackend+0x2d
+0a ffffec89`5d37f180 fffff803`ee477722     : fffff803`c210e008 00000000`00008000 fffff803`74536d4d ffffec89`00000000 : nt!ExAllocateHeapPool+0x5e0
+0b ffffec89`5d37f2e0 fffff803`ee4774e2     : 00000000`00000112 00000000`00000000 ffffec89`5d37f7b0 ffffb68a`9e45be00 : nt!ExpAllocatePoolWithTagFromNode+0x52
+0c ffffec89`5d37f320 fffff803`ee4751fb     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!MiAllocatePool+0x92
+0d ffffec89`5d37f380 fffff803`ee5371e2     : ffffffff`ffffffff ffffffff`ffffffff ffffec89`00001000 00000000`00000000 : nt!MiCreatePrototypePtes+0x57
+0e ffffec89`5d37f420 fffff803`eeb1753a     : ffffd687`1f9a16a0 00000000`00001000 ffffd687`00001000 ffffec89`00000000 : nt!MiAddViewsForSection+0x412
+0f ffffec89`5d37f4e0 fffff803`eeaa2b0e     : ffffec89`5d37f758 00000201`e355ae68 ffffec89`5d37f758 ffffec89`5d37f768 : nt!MiMapViewOfDataSection+0x17a
+10 ffffec89`5d37f610 fffff803`eeaa224d     : 00000000`00000000 00000000`00000004 00000000`00000000 00000000`00000000 : nt!MiMapViewOfSection+0x2de
+11 ffffec89`5d37f700 fffff803`c1d8abb1     : ffffffff`ffffffff ffffffff`ffffffff ffffec89`5d37fb20 fffff803`c1d8951f : nt!NtMapViewOfSection+0x24d
+12 ffffec89`5d37f9b0 fffff803`ee8bf258     : ffffd687`20ef3080 00000099`4c479898 ffffec89`5d37fa48 00000000`00000000 : GuardMetaCore!HookedNtMapViewOfSection+0x2a5 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6414] 
+13 ffffec89`5d37fa30 00007ffc`64340564     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiSystemServiceCopyEnd+0x28 (TrapFrame @ ffffec89`5d37faa0)
+14 00000099`4c479878 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : 0x00007ffc`64340564
+14: kd> !irql
+Debugger saved IRQL for processor 0xe -- 0 (LOW_LEVEL)
+14: kd> !prcb 14
+Unable to read PRCB
+14: kd> !thread
+THREAD ffffd68720ef3080  Cid 3fd0.420c  Teb: 000000994be6b000 Win32Thread: ffffd6871878bb70 RUNNING on processor e
+Not impersonating
+DeviceMap                 ffffb68a91c7f990
+Owning Process            ffffd687207bd0c0       Image:         RuntimeBroker.exe
+Attached Process          N/A            Image:         N/A
+Wait Start TickCount      6686           Ticks: 606 (0:00:00:09.468)
+Context Switch Count      3081           IdealProcessor: 5             
+UserTime                  00:00:02.546
+KernelTime                00:00:10.625
+Win32 Start Address 0x00007ffc642302d0
+Stack Init ffffec895d37fc30 Current ffffec895d37e6a0
+Base ffffec895d380000 Limit ffffec895d379000 Call 0000000000000000
+Priority 9  BasePriority 8  Priority Floor 9  IoPriority 2  PagePriority 5
+Child-SP          RetAddr               : Args to Child                                                           : Call Site
+ffffec89`5d37eb70 fffff803`ee407efd     : 00000000`0000175b ffffec89`00000001 00000000`00000000 fffff803`c1dcb860 : nt!MiCompareTbFlushTimeStamp+0x6d
+ffffec89`5d37eba0 fffff803`ee407853     : 00000000`00000000 fffff803`00000000 ffffec89`5d37f460 00000000`00000000 : nt!MiFlushTbAsNeeded+0x31d
+ffffec89`5d37ed00 fffff803`ee54c7f3     : ffffa45b`454e1fa8 00000000`00000000 00000000`00000000 ffffa45b`454e1fa8 : nt!MiLinkPoolCommitChain+0x63
+ffffec89`5d37ed60 fffff803`ee54c2b5     : 00000000`00000000 ffffec89`5d37ee69 00000000`00001000 00000000`00000000 : nt!MiCommitPoolMemory+0x1a3
+ffffec89`5d37edb0 fffff803`ee54afbf     : ffffec89`5d37ef78 ffffec89`5d37ef68 ffffb68a`9c3f5000 00000000`00008000 : nt!RtlpHpEnvAllocVA+0x225
+ffffec89`5d37eeb0 fffff803`ee55e864     : 00000000`00008000 ffffb68a`89000140 00000000`00001000 00000000`00000000 : nt!RtlpHpAllocVA+0xd7
+ffffec89`5d37ef40 fffff803`ee55f958     : 00000000`00001000 00000000`00000008 ffffb68a`9c301fa0 00000000`00000008 : nt!RtlpHpSegMgrCommit+0x1d0
+ffffec89`5d37f020 fffff803`ee55dd89     : ffffb68a`89000140 ffffb68a`9c301ea0 00000000`00000000 00000000`00000001 : nt!RtlpHpSegPageRangeCommit+0x268
+ffffec89`5d37f0e0 fffff803`ee55dcbd     : 00000000`00000112 00000000`00008000 00000000`00000000 ffffb68a`9c301ea0 : nt!RtlpHpSegAlloc+0xbd
+ffffec89`5d37f140 fffff803`ee477d70     : 00000000`00000000 7fffffff`fffffffc 00000000`00000000 ffffd687`008e4230 : nt!RtlpHpAllocateHeapBackend+0x2d
+ffffec89`5d37f180 fffff803`ee477722     : fffff803`c210e008 00000000`00008000 fffff803`74536d4d ffffec89`00000000 : nt!ExAllocateHeapPool+0x5e0
+ffffec89`5d37f2e0 fffff803`ee4774e2     : 00000000`00000112 00000000`00000000 ffffec89`5d37f7b0 ffffb68a`9e45be00 : nt!ExpAllocatePoolWithTagFromNode+0x52
+ffffec89`5d37f320 fffff803`ee4751fb     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!MiAllocatePool+0x92
+ffffec89`5d37f380 fffff803`ee5371e2     : ffffffff`ffffffff ffffffff`ffffffff ffffec89`00001000 00000000`00000000 : nt!MiCreatePrototypePtes+0x57
+ffffec89`5d37f420 fffff803`eeb1753a     : ffffd687`1f9a16a0 00000000`00001000 ffffd687`00001000 ffffec89`00000000 : nt!MiAddViewsForSection+0x412
+ffffec89`5d37f4e0 fffff803`eeaa2b0e     : ffffec89`5d37f758 00000201`e355ae68 ffffec89`5d37f758 ffffec89`5d37f768 : nt!MiMapViewOfDataSection+0x17a
+ffffec89`5d37f610 fffff803`eeaa224d     : 00000000`00000000 00000000`00000004 00000000`00000000 00000000`00000000 : nt!MiMapViewOfSection+0x2de
+ffffec89`5d37f700 fffff803`c1d8abb1     : ffffffff`ffffffff ffffffff`ffffffff ffffec89`5d37fb20 fffff803`c1d8951f : nt!NtMapViewOfSection+0x24d
+ffffec89`5d37f9b0 fffff803`ee8bf258     : ffffd687`20ef3080 00000099`4c479898 ffffec89`5d37fa48 00000000`00000000 : GuardMetaCore!HookedNtMapViewOfSection+0x2a5 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6414] 
+ffffec89`5d37fa30 00007ffc`64340564     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiSystemServiceCopyEnd+0x28 (TrapFrame @ ffffec89`5d37faa0)
+00000099`4c479878 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : 0x00007ffc`64340564
+
+14: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

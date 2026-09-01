@@ -1,0 +1,300 @@
+*** Begin Patch
+*** Update File: Netr/tools/netr-gui-rs/src-tauri/src/commands/driver.rs
+@@
+ //! Driver 管理 commands。
+ 
+-use std::fs;
+-use std::fmt::Write as _;
+-use std::path::PathBuf;
+ use tauri::State;
+ use std::sync::Arc;
+ use std::time::Duration;
+ 
+ use crate::commands::debugger_ui::{DebuggerHandles, FreezeStore};
+-use crate::ioctl::codes::{IOCTL_HV_GET_INACTIVE_DIAGNOSTICS, IOCTL_HV_GET_STATUS};
++use crate::ioctl::codes::IOCTL_HV_GET_STATUS;
+ use crate::ioctl::service::{self, ServiceInfo};
+ use crate::ioctl::DeviceState;
+ use crate::util::error::AppResult;
+ use crate::license::AuthState;
+ 
+@@
+ #[inline]
+ fn rd_bool(buf: &[u8], off: usize) -> bool {
+     buf[off] != 0
+ }
+ 
+-#[inline]
+-fn rd_u64(buf: &[u8], off: usize) -> u64 {
+-    u64::from_le_bytes(buf[off..off + 8].try_into().unwrap())
+-}
+-
+-fn inactive_diagnostic_path() -> PathBuf {
+-    if let Ok(executable) = std::env::current_exe() {
+-        if let Some(parent) = executable.parent() {
+-            return parent.join("logs").join("hv-inactive.log");
+-        }
+-    }
+-    std::env::temp_dir()
+-        .join("YuYuanVTDebug")
+-        .join("logs")
+-        .join("hv-inactive.log")
+-}
+-
+-fn svm_phase_name(phase: u32) -> &'static str {
+-    match phase {
+-        0 => "none",
+-        1 => "affinity-requested",
+-        2 => "affinity-bound",
+-        3 => "affinity-mismatch",
+-        4 => "entered",
+-        5 => "svm-enable-begin",
+-        6 => "svme-enabled",
+-        7 => "host-save-allocated",
+-        8 => "vmcb-allocated",
+-        9 => "msrpm-allocated",
+-        10 => "exit-stack-allocated",
+-        11 => "npt-begin",
+-        12 => "npt-ready",
+-        13 => "npt-bypassed",
+-        14 => "vmcb-control-ready",
+-        15 => "vmcb-state-ready",
+-        16 => "msrpm-configured",
+-        17 => "vmcb-ready",
+-        18 => "launch-validation",
+-        19 => "vmrun-entered",
+-        20 => "guest-returned",
+-        21 => "virtualized",
+-        22 => "launch-failed",
+-        23 => "exception",
+-        24 => "cleanup",
+-        25 => "skipped",
+-        _ => "unknown",
+-    }
+-}
+-
+-fn svm_validation_text(mask: u32) -> String {
+-    const ITEMS: &[(u32, &str)] = &[
+-        (0x00000001, "vmcb"),
+-        (0x00000002, "host-save"),
+-        (0x00000004, "msrpm"),
+-        (0x00000008, "exit-stack"),
+-        (0x00000010, "physical"),
+-        (0x00000020, "alignment"),
+-        (0x00000040, "asid"),
+-        (0x00000080, "intercept1"),
+-        (0x00000100, "intercept2"),
+-        (0x00000200, "intercept3"),
+-        (0x00000400, "vintr"),
+-        (0x00000800, "cs"),
+-        (0x00001000, "ss"),
+-        (0x00002000, "tr"),
+-        (0x00004000, "npt"),
+-    ];
+-    let mut names = Vec::new();
+-    for (bit, name) in ITEMS {
+-        if mask & bit != 0 {
+-            names.push(*name);
+-        }
+-    }
+-    if names.is_empty() {
+-        "none".to_string()
+-    } else {
+-        names.join(",")
+-    }
+-}
+-
+-fn write_inactive_diagnostic(device: &DeviceState) {
+-    const SIZE: usize = 7840;
+-    let mut out = vec![0u8; SIZE];
+-    if device
+-        .ioctl(IOCTL_HV_GET_INACTIVE_DIAGNOSTICS, &[], &mut out)
+-        .is_err()
+-    {
+-        return;
+-    }
+-
+-    let vendor = match rd_u32(&out, 28) {
+-        1 => "Intel",
+-        2 => "AMD",
+-        _ => "Unknown",
+-    };
+-    let reason = match rd_u32(&out, 12) {
+-        0 => "not-run",
+-        1 => "power-offline",
+-        2 => "current-cpu-not-virtualized",
+-        3 => "unsupported-vendor",
+-        4 => "unexpected-vmmcall-result",
+-        5 => "vmmcall-exception",
+-        6 => "healthy",
+-        _ => "unknown",
+-    };
+-    let mut text = format!(
+-        "# YuYuanVTDebug hypervisor inactive diagnostics\n\
+-version={} size={} status=0x{:08X}\n\
+-vendor={}({}) global_active={} power_offline={} current_cpu={} current_virtualized={} virtualized={}/{}\n\
+-health_probe_reason={}({}) result=0x{:016X} exception=0x{:08X}\n\
+-cpuid_1_ecx=0x{:08X} hypervisor_present={} max_extended_leaf=0x{:08X}\n\
+-svm_features_ecx=0x{:08X} svm_revision=0x{:08X} svm_max_asid={} svm_features_edx=0x{:08X}\n\
+-efer=0x{:016X} svme={} vm_cr=0x{:016X} vm_cr_lock={} vm_cr_svmdis={} hsave_pa=0x{:016X} amd_msr_status=0x{:08X}\n\
+-svm_debug_flag=0x{:016X} svm_exit_count={} svm_last_exit=0x{:016X}\n",
+-        rd_u32(&out, 0),
+-        rd_u32(&out, 4),
+-        rd_u32(&out, 8),
+-        vendor,
+-        rd_u32(&out, 28),
+-        rd_bool(&out, 44),
+-        rd_bool(&out, 45),
+-        rd_u32(&out, 32),
+-        rd_bool(&out, 46),
+-        rd_u32(&out, 40),
+-        rd_u32(&out, 36),
+-        reason,
+-        rd_u32(&out, 12),
+-        rd_u64(&out, 16),
+-        rd_u32(&out, 24),
+-        rd_u32(&out, 48),
+-        rd_bool(&out, 47),
+-        rd_u32(&out, 52),
+-        rd_u32(&out, 56),
+-        rd_u32(&out, 60),
+-        rd_u32(&out, 64),
+-        rd_u32(&out, 68),
+-        rd_u64(&out, 72),
+-        (rd_u64(&out, 72) & (1u64 << 12)) != 0,
+-        rd_u64(&out, 80),
+-        (rd_u64(&out, 80) & (1u64 << 3)) != 0,
+-        (rd_u64(&out, 80) & (1u64 << 4)) != 0,
+-        rd_u64(&out, 88),
+-        rd_u32(&out, 96),
+-        rd_u64(&out, 104),
+-        rd_u64(&out, 112),
+-        rd_u64(&out, 120),
+-    );
+-
+-    let reported_size = rd_u32(&out, 4) as usize;
+-    if reported_size >= 160 && reported_size <= out.len() {
+-        let record_count = rd_u32(&out, 128).min(64);
+-        let attempted = rd_u32(&out, 132);
+-        let ready = rd_u32(&out, 136);
+-        let first_cpu = rd_u32(&out, 140);
+-        let first_phase = rd_u32(&out, 144);
+-        let first_status = rd_u32(&out, 148);
+-        let first_exception = rd_u32(&out, 152);
+-        let _ = writeln!(
+-            text,
+-            "svm_startup_records={} attempted={} ready={} first_failure_cpu={} first_failure_phase={}({}) first_failure_status=0x{:08X} first_failure_exception=0x{:08X}",
+-            record_count,
+-            attempted,
+-            ready,
+-            if first_cpu == u32::MAX { "none".to_string() } else { first_cpu.to_string() },
+-            first_phase,
+-            svm_phase_name(first_phase),
+-            first_status,
+-            first_exception,
+-        );
+-
+-        const LEGACY_RECORD_SIZE: usize = 104;
+-        const RECORD_SIZE: usize = 120;
+-        const RECORD_BASE: usize = 160;
+-        let record_size = if rd_u32(&out, 0) >= 3 && reported_size >= SIZE {
+-            RECORD_SIZE
+-        } else {
+-            LEGACY_RECORD_SIZE
+-        };
+-        for cpu in 0..record_count as usize {
+-            let off = RECORD_BASE + cpu * record_size;
+-            if off + record_size > reported_size || off + record_size > out.len() {
+-                break;
+-            }
+-            let requested = rd_u32(&out, off);
+-            let actual = rd_u32(&out, off + 4);
+-            let last_phase = rd_u32(&out, off + 8);
+-            let last_status = rd_u32(&out, off + 12);
+-            let failure_phase = rd_u32(&out, off + 16);
+-            let failure_status = rd_u32(&out, off + 20);
+-            let exception = rd_u32(&out, off + 24);
+-            let flags = rd_u32(&out, off + 28);
+-            let validation = rd_u32(&out, off + 32);
+-            let efer = rd_u64(&out, off + 40);
+-            let vm_cr = rd_u64(&out, off + 48);
+-            let host_save = rd_u64(&out, off + 56);
+-            let vmcb = rd_u64(&out, off + 64);
+-            let msrpm = rd_u64(&out, off + 72);
+-            let ncr3 = rd_u64(&out, off + 80);
+-            let exit_code = rd_u64(&out, off + 88);
+-            let asm_flag = rd_u64(&out, off + 96);
+-            let ss_diagnostic = if record_size >= RECORD_SIZE {
+-                let ss_flags = rd_u32(&out, off + 116);
+-                format!(
+-                    " ss_selector=0x{:04X} ss_access=0x{:05X} ss_vmcb_attributes=0x{:04X} ss_flags=0x{:08X} ss_long_mode={} ss_null={} ss_source_unusable={} ss_vmcb_present={} ss_long_mode_allowed={}",
+-                    rd_u32(&out, off + 104),
+-                    rd_u32(&out, off + 108),
+-                    rd_u32(&out, off + 112),
+-                    ss_flags,
+-                    ss_flags & 0x01 != 0,
+-                    ss_flags & 0x02 != 0,
+-                    ss_flags & 0x04 != 0,
+-                    ss_flags & 0x08 != 0,
+-                    ss_flags & 0x10 != 0,
+-                )
+-            } else {
+-                String::new()
+-            };
+-            let _ = writeln!(
+-                text,
+-                "svm_cpu requested={} actual={} last_phase={}({}) last_status=0x{:08X} failure_phase={}({}) failure_status=0x{:08X} exception=0x{:08X} flags=0x{:08X} validation=0x{:08X}({}) efer=0x{:016X} vm_cr=0x{:016X} host_save_pa=0x{:016X} vmcb_pa=0x{:016X} msrpm_pa=0x{:016X} ncr3=0x{:016X} vmcb_exit=0x{:016X} asm_flag=0x{:016X}{}",
+-                requested,
+-                if actual == u32::MAX { "unknown".to_string() } else { actual.to_string() },
+-                last_phase,
+-                svm_phase_name(last_phase),
+-                last_status,
+-                failure_phase,
+-                svm_phase_name(failure_phase),
+-                failure_status,
+-                exception,
+-                flags,
+-                validation,
+-                svm_validation_text(validation),
+-                efer,
+-                vm_cr,
+-                host_save,
+-                vmcb,
+-                msrpm,
+-                ncr3,
+-                exit_code,
+-                asm_flag,
+-                ss_diagnostic,
+-            );
+-        }
+-    }
+-
+-    let path = inactive_diagnostic_path();
+-    if let Some(parent) = path.parent() {
+-        if fs::create_dir_all(parent).is_err() {
+-            return;
+-        }
+-    }
+-    if fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
+-        let _ = fs::write(path, text);
+-    }
+-}
+-
+ #[tauri::command]
+ pub fn driver_get_status(device: State<'_, DeviceState>) -> AppResult<DriverStatusView> {
+     let mut out = vec![0u8; HV_STATUS_INFO_SIZE];
+     device.ioctl(IOCTL_HV_GET_STATUS, &[], &mut out)?;
+-    let hypervisor_active = rd_bool(&out, 4);
+-    if !hypervisor_active {
+-        write_inactive_diagnostic(&device);
+-    }
+     let raw_cpu_count = rd_u32(&out, 28);
+     Ok(DriverStatusView {
+-        hypervisor_active,
++        hypervisor_active: rd_bool(&out, 4),
+         hook_initialized:  rd_bool(&out, 5),
+         dse_disabled:      rd_bool(&out, 6),
+         anti_anti_debug:   rd_bool(&out, 7),
+         debuggers:                rd_u32(&out, 16),
+         protected_processes:      rd_u32(&out, 20),
+*** End Patch

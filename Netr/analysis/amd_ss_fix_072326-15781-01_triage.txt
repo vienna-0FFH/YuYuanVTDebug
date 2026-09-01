@@ -1,0 +1,302 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_ss_fix_072326-15781-01_triage.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.015 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072326-15781-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             E:\Symbols
+OK                                             C:\ProgramData\dbg\sym
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;E:\Symbols;C:\ProgramData\dbg\sym
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff802`df200000 PsLoadedModuleList = 0xfffff802`e00f5350
+Debug session time: Thu Jul 23 19:53:40.039 2026 (UTC + 8:00)
+System Uptime: 0 days 4:45:14.772
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+............................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 00000087`864e9018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+..................
+For analysis of this file, run !analyze -v
+4: kd> .echo === ANALYZE ===; !analyze -v; .echo === BUGCHECK ===; .bugcheck; .echo === MODULE ===; lmvm GuardMetaCore; .echo === CONTEXT ===; .ecxr; r; kv; .echo === THREAD ===; !thread; .echo === PROCESS ===; !process 0 1; .echo === ALL_CPUS ===; ~*kP; q
+=== ANALYZE ===
+*******************************************************************************
+*                                                                             *
+*                        Bugcheck Analysis                                    *
+*                                                                             *
+*******************************************************************************
+
+SYSTEM_SERVICE_EXCEPTION (3b)
+An exception happened while executing a system service routine.
+Arguments:
+Arg1: 0000000080000004, Exception code that caused the BugCheck
+Arg2: fffff80272cece57, Address of the instruction which caused the BugCheck
+Arg3: ffffa804045e67e0, Address of the context record for the exception that caused the BugCheck
+Arg4: 0000000000000000, zero.
+
+Debugging Details:
+------------------
+
+*** WARNING: Unable to verify timestamp for NETIO.SYS
+Unable to load image ndis.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ndis.sys
+
+KEY_VALUES_STRING: 1
+
+    Key  : Analysis.CPU.mSec
+    Value: 468
+
+    Key  : Analysis.Elapsed.mSec
+    Value: 2382
+
+    Key  : Analysis.IO.Other.Mb
+    Value: 3
+
+    Key  : Analysis.IO.Read.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Write.Mb
+    Value: 0
+
+    Key  : Analysis.Init.CPU.mSec
+    Value: 61
+
+    Key  : Analysis.Init.Elapsed.mSec
+    Value: 711
+
+    Key  : Analysis.Memory.CommitPeak.Mb
+    Value: 87
+
+    Key  : Bugcheck.Code.LegacyAPI
+    Value: 0x3b
+
+    Key  : Dump.Attributes.AsUlong
+    Value: 21008
+
+    Key  : Dump.Attributes.DiagDataWrittenToHeader
+    Value: 1
+
+    Key  : Dump.Attributes.ErrorCode
+    Value: 0
+
+    Key  : Dump.Attributes.KernelGeneratedTriageDump
+    Value: 1
+
+    Key  : Dump.Attributes.LastLine
+    Value: Dump completed successfully.
+
+    Key  : Dump.Attributes.ProgressPercentage
+    Value: 0
+
+    Key  : Failure.Bucket
+    Value: 0x3B_80000004_NETIO!unknown_function
+
+    Key  : Failure.Hash
+    Value: {0ccf3a57-42ce-04e9-3375-1d1f5c2b30c4}
+
+
+BUGCHECK_CODE:  3b
+
+BUGCHECK_P1: 80000004
+
+BUGCHECK_P2: fffff80272cece57
+
+BUGCHECK_P3: ffffa804045e67e0
+
+BUGCHECK_P4: 0
+
+FILE_IN_CAB:  072326-15781-01.dmp
+
+DUMP_FILE_ATTRIBUTES: 0x21008
+  Kernel Generated Triage Dump
+
+CONTEXT:  ffffa804045e67e0 -- (.cxr 0xffffa804045e67e0)
+.cxr 0xffffa804045e67e0
+rax=0000000000000180 rbx=0000000000000000 rcx=0000000000000010
+rdx=ffffbf88ad884a68 rsi=0000000000000006 rdi=ffffbf889f781dd0
+rip=fffff80272cece57 rsp=ffffa804045e7210 rbp=ffffa804045e7310
+ r8=0000000000000180  r9=0000000000000010 r10=ffffbf889f781dc0
+r11=01dd1a725e118a2e r12=0000000000000008 r13=ffffbf88ad884bb8
+r14=ffffbf88ad884b28 r15=0000000000000008
+iopl=0         nv up ei ng nz na pe nc
+cs=0010  ss=0018  ds=002b  es=002b  fs=0053  gs=002b             efl=00040282
+NETIO+0x2ce57:
+fffff802`72cece57 4d8bc1          mov     r8,r9
+.cxr
+Resetting default scope
+
+BLACKBOXBSD: 1 (!blackboxbsd)
+
+
+BLACKBOXNTFS: 1 (!blackboxntfs)
+
+
+BLACKBOXPNP: 1 (!blackboxpnp)
+
+
+BLACKBOXWINLOGON: 1
+
+CUSTOMER_CRASH_COUNT:  1
+
+PROCESS_NAME:  vivoesService_
+
+STACK_TEXT:  
+ffffa804`045e7210 00000000`00000000     : 00000000`00000000 ffffa804`045e7310 00000000`00000001 00000000`00000000 : NETIO+0x2ce57
+
+
+SYMBOL_NAME:  NETIO+2ce57
+
+MODULE_NAME: NETIO
+
+IMAGE_NAME:  NETIO.SYS
+
+STACK_COMMAND:  .cxr 0xffffa804045e67e0 ; kb
+
+BUCKET_ID_FUNC_OFFSET:  2ce57
+
+FAILURE_BUCKET_ID:  0x3B_80000004_NETIO!unknown_function
+
+OSPLATFORM_TYPE:  x64
+
+OSNAME:  Windows 10
+
+FAILURE_ID_HASH:  {0ccf3a57-42ce-04e9-3375-1d1f5c2b30c4}
+
+Followup:     MachineOwner
+---------
+
+=== BUGCHECK ===
+Bugcheck code 0000003B
+Arguments 00000000`80000004 fffff802`72cece57 ffffa804`045e67e0 00000000`00000000
+=== MODULE ===
+Browse full module list
+start             end                 module name
+fffff802`b2d50000 fffff802`b3107000   GuardMetaCore   (deferred)             
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.sys
+    Image path: GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Thu Jul 23 19:33:36 2026 (6A61FC10)
+    CheckSum:         0007958B
+    ImageSize:        003B7000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+=== CONTEXT ===
+Can't switch processors on a single processor kernel triage dump
+Unable to get exception context, HRESULT 0x8000FFFF
+rax=ffffa804045e5fa0 rbx=ffffa804045e6fd8 rcx=000000000000003b
+rdx=0000000080000004 rsi=0000000000000000 rdi=ffffa804045e60b0
+rip=fffff802df6f9250 rsp=ffffa804045e5e98 rbp=ffffa804045e65b0
+ r8=fffff80272cece57  r9=ffffa804045e67e0 r10=0000000000000000
+r11=ffff847d5ee00000 r12=0000000000000000 r13=ffffa804045e67e0
+r14=0000000000000000 r15=fffff802df8bf258
+iopl=0         nv up ei ng nz na po nc
+cs=0010  ss=0018  ds=002b  es=002b  fs=0053  gs=002b             efl=00040286
+nt!KeBugCheckEx:
+fffff802`df6f9250 48894c2408      mov     qword ptr [rsp+8],rcx ss:0018:ffffa804`045e5ea0=000000000000003b
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 ffffa804`045e5e98 fffff802`df8bfbe9     : 00000000`0000003b 00000000`80000004 fffff802`72cece57 ffffa804`045e67e0 : nt!KeBugCheckEx
+01 ffffa804`045e5ea0 fffff802`df8bec3c     : ffffa804`00000001 fffff802`00000001 fffff802`df281738 fffff802`df8bebc0 : nt!KiBugCheckDispatch+0x69
+02 ffffa804`045e5fe0 fffff802`df8b5272     : ffffa804`045e67e0 00000000`00000000 ffffa804`045e60b0 00000000`00000000 : nt!KiSystemServiceHandler+0x7c
+03 ffffa804`045e6020 fffff802`df431a22     : ffffa804`045e60b0 fffff802`df200000 fffff802`df8bf258 fffff802`df317598 : nt!RtlpExecuteHandlerForException+0x12
+04 ffffa804`045e6050 fffff802`df5d620f     : ffffa804`045e67e0 ffffa804`045e6ce0 ffffa804`045e67e0 ffffa804`045e6ea0 : nt!RtlDispatchException+0x2d2
+05 ffffa804`045e67b0 fffff802`df8bfd45     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiDispatchException+0x35f
+06 ffffa804`045e6ea0 fffff802`df8b7685     : 00000027`d96f60c6 ffffa804`045e7100 00000027`d96f60db 00003029`6402dbe1 : nt!KiExceptionDispatch+0x145
+07 ffffa804`045e7080 fffff802`72cece57     : 00000000`00000000 00000000`00000000 ffffa804`045e7310 00000000`00000001 : nt!KxDebugTrapOrFault+0x445 (TrapFrame @ ffffa804`045e7080)
+08 ffffa804`045e7210 00000000`00000000     : 00000000`00000000 ffffa804`045e7310 00000000`00000001 00000000`00000000 : NETIO+0x2ce57
+=== THREAD ===
+THREAD ffffbf88982a3080  Cid 1448.1a1c  Teb: 00000087864fa000 Win32Thread: ffffbf8897497040 RUNNING on processor 4
+IRP List:
+    Unable to read nt!_IRP @ ffffbf88a806dae0
+Not impersonating
+GetUlongFromAddress: unable to read from fffff802e000b3b4
+Owning Process            ffffbf88982b60c0       Image:         vivoesService_
+Attached Process          N/A            Image:         N/A
+Wait Start TickCount      1095345        Ticks: 0
+Context Switch Count      232606         IdealProcessor: 3             
+ReadMemory error: Cannot get nt!KeMaximumIncrement value.
+UserTime                  00:00:00.000
+KernelTime                00:00:00.000
+Win32 Start Address 0x00007ffca53b6940
+Stack Init ffffa804045e7c30 Current ffffa804045e6d80
+Base ffffa804045e8000 Limit ffffa804045e1000 Call 0000000000000000
+Priority 9  BasePriority 8  Decay Boost 1  IoPriority 2  PagePriority 5
+Scheduling Group: ffffbf8898705080 <Cannot find Rank field of nt!_KSCB> KSCB: ffffbf88987057e0 rank 0
+Child-SP          RetAddr               : Args to Child                                                           : Call Site
+ffffa804`045e5e98 fffff802`df8bfbe9     : 00000000`0000003b 00000000`80000004 fffff802`72cece57 ffffa804`045e67e0 : nt!KeBugCheckEx
+ffffa804`045e5ea0 fffff802`df8bec3c     : ffffa804`00000001 fffff802`00000001 fffff802`df281738 fffff802`df8bebc0 : nt!KiBugCheckDispatch+0x69
+ffffa804`045e5fe0 fffff802`df8b5272     : ffffa804`045e67e0 00000000`00000000 ffffa804`045e60b0 00000000`00000000 : nt!KiSystemServiceHandler+0x7c
+ffffa804`045e6020 fffff802`df431a22     : ffffa804`045e60b0 fffff802`df200000 fffff802`df8bf258 fffff802`df317598 : nt!RtlpExecuteHandlerForException+0x12
+ffffa804`045e6050 fffff802`df5d620f     : ffffa804`045e67e0 ffffa804`045e6ce0 ffffa804`045e67e0 ffffa804`045e6ea0 : nt!RtlDispatchException+0x2d2
+ffffa804`045e67b0 fffff802`df8bfd45     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiDispatchException+0x35f
+ffffa804`045e6ea0 fffff802`df8b7685     : 00000027`d96f60c6 ffffa804`045e7100 00000027`d96f60db 00003029`6402dbe1 : nt!KiExceptionDispatch+0x145
+ffffa804`045e7080 fffff802`72cece57     : 00000000`00000000 00000000`00000000 ffffa804`045e7310 00000000`00000001 : nt!KxDebugTrapOrFault+0x445 (TrapFrame @ ffffa804`045e7080)
+ffffa804`045e7210 00000000`00000000     : 00000000`00000000 ffffa804`045e7310 00000000`00000001 00000000`00000000 : NETIO+0x2ce57
+
+=== PROCESS ===
+**** NT ACTIVE PROCESS DUMP ****
+Unable to read _LIST_ENTRY @ fffff802e0105bf0 
+=== ALL_CPUS ===
+                                                                                                                                                                                                                                                         ^ Syntax error in '.echo === ANALYZE ===; !analyze -v; .echo === BUGCHECK ===; .bugcheck; .echo === MODULE ===; lmvm GuardMetaCore; .echo === CONTEXT ===; .ecxr; r; kv; .echo === THREAD ===; !thread; .echo === PROCESS ===; !process 0 1; .echo === ALL_CPUS ===; ~*kP; q'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

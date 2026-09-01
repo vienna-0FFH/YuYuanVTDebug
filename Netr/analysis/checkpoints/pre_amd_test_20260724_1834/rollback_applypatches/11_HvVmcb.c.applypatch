@@ -1,0 +1,632 @@
+*** Begin Patch
+*** Update File: Netr/HvVmcb.c
+@@
+ 
+ #include "HvVmcb.h"
+ #include "HvNpt.h"
+ #include "HvCompat.h"
+ #include "HvCpu.h"
+-#include "HvCore.h"
+-
+-#define SVM_V_INTR_MASKING_MASK (1ULL << 24)
+-
+-C_ASSERT(FIELD_OFFSET(VCPU_DATA, VmExitStack) == 0x08);
+-C_ASSERT(FIELD_OFFSET(VCPU_DATA, Vmcb) == 0x88);
+-C_ASSERT(FIELD_OFFSET(VCPU_DATA, VmcbPhysical) == 0x90);
+-C_ASSERT(FIELD_OFFSET(VCPU_DATA, HostSaveAreaPhysical) == 0xA0);
+-C_ASSERT(FIELD_OFFSET(VCPU_DATA, SvmSingleStepBlockInterrupts) == 0x940);
+-C_ASSERT(sizeof(SVM_SEGMENT_REGISTER) == 0x10);
+-C_ASSERT(FIELD_OFFSET(SVM_SEGMENT_REGISTER, Selector) == 0x00);
+-C_ASSERT(FIELD_OFFSET(SVM_SEGMENT_REGISTER, Attributes) == 0x02);
+-C_ASSERT(FIELD_OFFSET(SVM_SEGMENT_REGISTER, Limit) == 0x04);
+-C_ASSERT(FIELD_OFFSET(SVM_SEGMENT_REGISTER, Base) == 0x08);
+-C_ASSERT(sizeof(VMCB_CONTROL_AREA) == 0x400);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptCrRead) == 0x00);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptCrWrite) == 0x02);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptDrRead) == 0x04);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptDrWrite) == 0x06);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptExceptions) == 0x08);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc1) == 0x0C);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc2) == 0x10);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc3) == 0x14);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, PauseFilterThreshold) == 0x3C);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, PauseFilterCount) == 0x3E);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, IopmBasePa) == 0x40);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, MsrpmBasePa) == 0x48);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, TscOffset) == 0x50);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, GuestAsid) == 0x58);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, TlbControl) == 0x5C);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, VIntr) == 0x60);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, InterruptShadow) == 0x68);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, ExitCode) == 0x70);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, ExitInfo1) == 0x78);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, ExitInfo2) == 0x80);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, ExitIntInfo) == 0x88);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, NpEnable) == 0x90);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, AvicApicBar) == 0x98);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, GhcbPa) == 0xA0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, EventInj) == 0xA8);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, NCr3) == 0xB0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, LbrVirtualizationEnable) == 0xB8);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, VmcbCleanBits) == 0xC0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, NRip) == 0xC8);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, NumOfBytesFetched) == 0xD0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, GuestInstructionBytes) == 0xD1);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, AvicApicBackingPagePtr) == 0xE0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, AvicLogicalTablePtr) == 0xF0);
+-C_ASSERT(FIELD_OFFSET(VMCB_CONTROL_AREA, AvicPhysicalTablePtr) == 0xF8);
+-C_ASSERT(FIELD_OFFSET(VMCB, StateSaveArea) == 0x400);
+-C_ASSERT(sizeof(VMCB_STATE_SAVE_AREA) == 0xC00);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Es) == 0x000);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cs) == 0x010);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ss) == 0x020);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ds) == 0x030);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Fs) == 0x040);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Gs) == 0x050);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Gdtr) == 0x060);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ldtr) == 0x070);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Idtr) == 0x080);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Tr) == 0x090);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cpl) == 0x0CB);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Efer) == 0x0D0);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr4) == 0x148);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr3) == 0x150);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr0) == 0x158);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Dr7) == 0x160);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Dr6) == 0x168);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rflags) == 0x170);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rip) == 0x178);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rsp) == 0x1D8);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SCet) == 0x1E0);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ssp) == 0x1E8);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, IsstAddr) == 0x1F0);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rax) == 0x1F8);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Star) == 0x200);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, LStar) == 0x208);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, CStar) == 0x210);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SfMask) == 0x218);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, KernelGsBase) == 0x220);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterCs) == 0x228);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterEsp) == 0x230);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterEip) == 0x238);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr2) == 0x240);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, GPat) == 0x268);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, DbgCtl) == 0x270);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, BrFrom) == 0x278);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, BrTo) == 0x280);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, LastExcepFrom) == 0x288);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, LastExcepTo) == 0x290);
+-C_ASSERT(sizeof(VMCB) == PAGE_SIZE);
+-
+-static USHORT SvmSegmentAttributes(ULONG AccessRights)
+-{
+-    if ((AccessRights & 0x10000u) != 0) {
+-        return 0;
+-    }
+-
+-    return (USHORT)((AccessRights & 0xFFu) | ((AccessRights >> 4) & 0xF00u));
+-}
+-
+-static VOID SvmSetSegment(
+-    PSVM_SEGMENT_REGISTER Destination,
+-    const SEGMENT_SELECTOR* Source,
+-    ULONG64 Base)
+-{
+-    Destination->Selector = Source->Selector;
+-    Destination->Attributes = SvmSegmentAttributes(Source->AccessRights);
+-    Destination->Limit = Source->Limit;
+-    Destination->Base = Base;
+-}
+-
+-VOID SvmDisableOnCpu(VOID)
+-{
+-    ULONG64 efer;
+-
+-    __try {
+-        efer = __readmsr(MSR_IA32_EFER);
+-        if ((efer & EFER_SVME) != 0) {
+-            AsmStgi();
+-            __writemsr(MSR_AMD_VM_HSAVE_PA, 0);
+-            __writemsr(MSR_IA32_EFER, efer & ~EFER_SVME);
+-        }
+-    }
+-    __except (EXCEPTION_EXECUTE_HANDLER) {
+-    }
+-}
+ 
+ // P122: 全 driver DbgPrint → GUI ring
+ #define HV_TRACE_THIS_CAT HV_TRACE_CAT_VM
+ #include "HvTrace.h"
+ 
+@@
+ //
+ // 默认行为 (HV_ENABLE_SVM_HARDENING=0):
+ //   所有 vCPU 共享 ASID=1, 无池, 无 CPUID 探测; 行为与历史保持一致。
+ //
+ // HV_ENABLE_SVM_HARDENING=1 时:
+-//   启动期一次性 CPUID 8000000AH.EBX 探测 MaxAsid (硬件典型 64..32768);
++//   启动期一次性 CPUID 80000008H.EBX 探测 MaxAsid (硬件典型 64..32768);
+ //   ASID 0 保留给 host, ASID 1..MaxAsid-1 进入位图自由分配;
+ //   每 vCPU 一个 L1 ASID, 嵌套 L2 也走同一池, 真正实现 TLB 隔离域。
+ //
+ // 位图容量 8192 (256 ASID groups × 32-bit), 足以覆盖所有已知 AMD CPU。
+ 
+@@
+     g_SvmMaxAsid = maxFromHw;
+ 
+     // ASID 0 保留给 host
+     InterlockedOr((volatile LONG*)&g_SvmAsidBitmap[0], 1);
+ 
+-    DbgPrint("[SVM] ASID pool initialized: MaxAsid=%u (CPUID 8000000AH.EBX)\n", g_SvmMaxAsid);
++    DbgPrint("[SVM] ASID pool initialized: MaxAsid=%u (CPUID 80000008H.EBX)\n", g_SvmMaxAsid);
+ }
+ 
+ /*
+  * 从池中分配一个 ASID; 失败返回 0 (调用方应回退到旧的 ASID=1 行为)
+  */
+@@
+  * 在当前CPU上启用SVM
+  */
+ NTSTATUS SvmEnableOnCpu(PVCPU_DATA VcpuData)
+ {
+     PHYSICAL_ADDRESS maxPhysAddr = { .QuadPart = -1LL };
+-    ULONG64 vmCr = 0;
+     
+     DbgPrint("[SVM] CPU %d: Enabling SVM...\n", VcpuData->ProcessorNumber);
+     
+     // 设置 EFER.SVME
+     SvmAdjustControlRegisters();
+     
+     // 验证 EFER.SVME 已设置
+     ULONG64 efer = __readmsr(MSR_IA32_EFER);
+-    __try {
+-        vmCr = __readmsr(MSR_AMD_VM_CR);
+-    }
+-    __except (EXCEPTION_EXECUTE_HANDLER) {
+-        vmCr = 0;
+-    }
+-    HvSvmStartupRecordMsrs(VcpuData, efer, vmCr);
+     if (!(efer & EFER_SVME)) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseSvmeEnabled,
+-            STATUS_UNSUCCESSFUL, TRUE);
+         DbgPrint("[SVM] CPU %d: Failed to enable EFER.SVME\n", VcpuData->ProcessorNumber);
+         return STATUS_UNSUCCESSFUL;
+     }
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseSvmeEnabled, STATUS_SUCCESS, FALSE);
+     
+     // 分配 Host Save Area (4KB 对齐)
+     VcpuData->HostSaveArea = MmAllocateContiguousMemory(PAGE_SIZE, maxPhysAddr);
+     if (!VcpuData->HostSaveArea) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseHostSaveAllocated,
+-            STATUS_INSUFFICIENT_RESOURCES, TRUE);
+         DbgPrint("[SVM] CPU %d: Failed to allocate Host Save Area\n", VcpuData->ProcessorNumber);
+-        SvmDisableOnCpu();
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+     RtlZeroMemory(VcpuData->HostSaveArea, PAGE_SIZE);
+     VcpuData->HostSaveAreaPhysical = MmGetPhysicalAddress(VcpuData->HostSaveArea);
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseHostSaveAllocated, STATUS_SUCCESS, FALSE);
+     
+     // 设置 VM_HSAVE_PA MSR
+     __writemsr(MSR_AMD_VM_HSAVE_PA, VcpuData->HostSaveAreaPhysical.QuadPart);
+     DbgPrint("[SVM] CPU %d: Host Save Area at PA 0x%llX\n", 
+              VcpuData->ProcessorNumber, VcpuData->HostSaveAreaPhysical.QuadPart);
+     
+     // 分配 VMCB (4KB 对齐)
+     VcpuData->Vmcb = (PVMCB)MmAllocateContiguousMemory(PAGE_SIZE, maxPhysAddr);
+     if (!VcpuData->Vmcb) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseVmcbAllocated,
+-            STATUS_INSUFFICIENT_RESOURCES, TRUE);
+         DbgPrint("[SVM] CPU %d: Failed to allocate VMCB\n", VcpuData->ProcessorNumber);
+-        SvmDisableOnCpu();
+         SvmCleanupVcpuResources(VcpuData);
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+     RtlZeroMemory(VcpuData->Vmcb, PAGE_SIZE);
+     VcpuData->VmcbPhysical = MmGetPhysicalAddress(VcpuData->Vmcb);
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmcbAllocated, STATUS_SUCCESS, FALSE);
+     DbgPrint("[SVM] CPU %d: VMCB at PA 0x%llX\n", 
+              VcpuData->ProcessorNumber, VcpuData->VmcbPhysical.QuadPart);
+     
+     // 分配 MSR 权限位图 (2 页 = 8KB)
+     VcpuData->MsrPermissionMap = MmAllocateContiguousMemory(PAGE_SIZE * 2, maxPhysAddr);
+     if (!VcpuData->MsrPermissionMap) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseMsrpmAllocated,
+-            STATUS_INSUFFICIENT_RESOURCES, TRUE);
+         DbgPrint("[SVM] CPU %d: Failed to allocate MSR Permission Map\n", VcpuData->ProcessorNumber);
+-        SvmDisableOnCpu();
+         SvmCleanupVcpuResources(VcpuData);
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+     // 初始化为全1 (不拦截任何MSR)，稍后会设置特定拦截
+     RtlFillMemory(VcpuData->MsrPermissionMap, PAGE_SIZE * 2, 0);
+     VcpuData->MsrPermissionMapPhysical = MmGetPhysicalAddress(VcpuData->MsrPermissionMap);
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseMsrpmAllocated, STATUS_SUCCESS, FALSE);
+     
+     // 分配 VM Exit 栈
+     VcpuData->VmExitStack = HvAllocateNonPagedZeroed(0x10000, 'SVMS');
+     if (!VcpuData->VmExitStack) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseExitStackAllocated,
+-            STATUS_INSUFFICIENT_RESOURCES, TRUE);
+         DbgPrint("[SVM] CPU %d: Failed to allocate VM Exit stack\n", VcpuData->ProcessorNumber);
+-        SvmDisableOnCpu();
+         SvmCleanupVcpuResources(VcpuData);
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseExitStackAllocated, STATUS_SUCCESS, FALSE);
+     
+     DbgPrint("[SVM] CPU %d: SVM enabled successfully\n", VcpuData->ProcessorNumber);
+     return STATUS_SUCCESS;
+ }
+ 
+@@
+     NTSTATUS status;
+     
+     DbgPrint("[SVM] CPU %d: Setting up VMCB...\n", VcpuData->ProcessorNumber);
+     
+     // 配置控制区
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmcbControlReady, STATUS_PENDING, FALSE);
+     status = SvmSetupVmcbControlArea(VcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseVmcbControlReady, status, TRUE);
+         return status;
+     }
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmcbControlReady, STATUS_SUCCESS, FALSE);
+     
+     // 配置状态保存区
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmcbStateReady, STATUS_PENDING, FALSE);
+     status = SvmSetupVmcbStateSave(VcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseVmcbStateReady, status, TRUE);
+         return status;
+     }
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmcbStateReady, STATUS_SUCCESS, FALSE);
+     
+     // 配置 MSR 权限位图
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseMsrpmConfigured, STATUS_PENDING, FALSE);
+     status = SvmSetupMsrPermissionMap(VcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseMsrpmConfigured, status, TRUE);
+         return status;
+     }
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseMsrpmConfigured, STATUS_SUCCESS, FALSE);
+     
+     DbgPrint("[SVM] CPU %d: VMCB setup complete\n", VcpuData->ProcessorNumber);
+     return STATUS_SUCCESS;
+ }
+ 
+@@
+     
+     // TLB 控制 - 首次运行时刷新 TLB
+     control->TlbControl = SVM_TLB_CONTROL_FLUSH_ALL;
+     
+     // 虚拟中断配置
+-    control->VIntr = 0;
++    // 虚拟中断控制: bit 24 = V_INTR_MASKING
++    control->VIntr = (1ULL << 24);  // 启用虚拟中断掩码
+     
+     DbgPrint("[SVM] CPU %d: Control Area configured\n", VcpuData->ProcessorNumber);
+-    DbgPrint("[SVM]   InterceptMisc1: 0x%08X\n", control->InterceptMisc1);
+-    DbgPrint("[SVM]   InterceptMisc2: 0x%08X\n", control->InterceptMisc2);
++    DbgPrint("[SVM]   InterceptMisc1: 0x%llX\n", control->InterceptMisc1);
++    DbgPrint("[SVM]   InterceptMisc2: 0x%llX\n", control->InterceptMisc2);
+     DbgPrint("[SVM]   GuestAsid: %d\n", control->GuestAsid);
+     
+     return STATUS_SUCCESS;
+ }
+ 
+@@
+  */
+ NTSTATUS SvmSetupVmcbStateSave(PVCPU_DATA VcpuData)
+ {
+     PVMCB_STATE_SAVE_AREA state = &VcpuData->Vmcb->StateSaveArea;
+     DESCRIPTOR_TABLE_REGISTER gdtr, idtr;
+-    SEGMENT_SELECTOR cs = { 0 };
+-    SEGMENT_SELECTOR ss = { 0 };
+-    SEGMENT_SELECTOR ds = { 0 };
+-    SEGMENT_SELECTOR es = { 0 };
+-    SEGMENT_SELECTOR fs = { 0 };
+-    SEGMENT_SELECTOR gs = { 0 };
+-    SEGMENT_SELECTOR ldtr = { 0 };
+-    SEGMENT_SELECTOR tr = { 0 };
+-    ULONG ssDiagnosticFlags = 0;
+     
+     // 清零状态保存区
+     RtlZeroMemory(state, sizeof(VMCB_STATE_SAVE_AREA));
+     
+     // 获取 GDTR 和 IDTR
+@@
+     
+     USHORT gdt_limit = *(USHORT*)&gdtr.Data[0];
+     ULONG64 gdt_base = *(ULONG64*)&gdtr.Data[2];
+     USHORT idt_limit = *(USHORT*)&idtr.Data[0];
+     ULONG64 idt_base = *(ULONG64*)&idtr.Data[2];
+-
+-    HvGetSegmentDescriptor(&cs, __readcs(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&ss, __readss(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&ds, __readds(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&es, __reades(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&fs, __readfs(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&gs, __readgs(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&ldtr, __readldtr(), (PUCHAR)gdt_base);
+-    HvGetSegmentDescriptor(&tr, __readtr(), (PUCHAR)gdt_base);
+-
+-    SvmSetSegment(&state->Cs, &cs, cs.Base);
+-    SvmSetSegment(&state->Ss, &ss, ss.Base);
+-    SvmSetSegment(&state->Ds, &ds, ds.Base);
+-    SvmSetSegment(&state->Es, &es, es.Base);
+-    SvmSetSegment(&state->Fs, &fs, __readmsr(MSR_IA32_FS_BASE));
+-    SvmSetSegment(&state->Gs, &gs, __readmsr(MSR_IA32_GS_BASE));
++    
++    // 段寄存器 - CS
++    state->Cs.Selector = __readcs();
++    state->Cs.Attributes = 0x029B;  // 64-bit code segment
++    state->Cs.Limit = 0xFFFFFFFF;
++    state->Cs.Base = 0;
++    
++    // 段寄存器 - SS
++    state->Ss.Selector = __readss();
++    state->Ss.Attributes = 0x0093;  // 64-bit data segment
++    state->Ss.Limit = 0xFFFFFFFF;
++    state->Ss.Base = 0;
++    
++    // 段寄存器 - DS
++    state->Ds.Selector = __readds();
++    state->Ds.Attributes = 0x0093;
++    state->Ds.Limit = 0xFFFFFFFF;
++    state->Ds.Base = 0;
++    
++    // 段寄存器 - ES
++    state->Es.Selector = __reades();
++    state->Es.Attributes = 0x0093;
++    state->Es.Limit = 0xFFFFFFFF;
++    state->Es.Base = 0;
++    
++    // 段寄存器 - FS
++    state->Fs.Selector = __readfs();
++    state->Fs.Attributes = 0x0093;
++    state->Fs.Limit = 0xFFFFFFFF;
++    state->Fs.Base = __readmsr(MSR_IA32_FS_BASE);
++    
++    // 段寄存器 - GS
++    state->Gs.Selector = __readgs();
++    state->Gs.Attributes = 0x0093;
++    state->Gs.Limit = 0xFFFFFFFF;
++    state->Gs.Base = __readmsr(MSR_IA32_GS_BASE);
+     
+     // GDTR
+     state->Gdtr.Limit = gdt_limit;
+     state->Gdtr.Base = gdt_base;
+     
+     // IDTR
+     state->Idtr.Limit = idt_limit;
+     state->Idtr.Base = idt_base;
+     
+-    SvmSetSegment(&state->Ldtr, &ldtr, ldtr.Base);
+-    SvmSetSegment(&state->Tr, &tr, tr.Base);
++    // LDTR (通常为空)
++    state->Ldtr.Selector = __readldtr();
++    state->Ldtr.Attributes = 0x0082;  // LDT
++    state->Ldtr.Limit = 0;
++    state->Ldtr.Base = 0;
++    
++    // TR
++    state->Tr.Selector = __readtr();
++    state->Tr.Attributes = 0x008B;  // 64-bit TSS (Busy)
++    // 需要从 GDT 获取 TR base 和 limit
++    {
++        SEGMENT_SELECTOR trSel = { 0 };
++        HvGetSegmentDescriptor(&trSel, __readtr(), (PUCHAR)gdt_base);
++        state->Tr.Base = trSel.Base;
++        state->Tr.Limit = trSel.Limit;
++    }
+     
+     // 控制寄存器
+     state->Cr0 = __readcr0();
+     state->Cr2 = __readcr2();
+     state->Cr3 = __readcr3();
+@@
+     // EFER
+     state->Efer = __readmsr(MSR_IA32_EFER);
+     
+     // CPL
+     state->Cpl = 0;  // Ring 0
+-
+-    if ((state->Efer & EFER_LMA) != 0) {
+-        ssDiagnosticFlags |= HV_SVM_SS_DIAG_LONG_MODE;
+-    }
+-    if ((ss.Selector & 0xFFF8u) == 0) {
+-        ssDiagnosticFlags |= HV_SVM_SS_DIAG_NULL_SELECTOR;
+-    }
+-    if ((ss.AccessRights & 0x10000u) != 0) {
+-        ssDiagnosticFlags |= HV_SVM_SS_DIAG_SOURCE_UNUSABLE;
+-    }
+-    if ((state->Ss.Attributes & 0x80u) != 0) {
+-        ssDiagnosticFlags |= HV_SVM_SS_DIAG_VMCB_PRESENT;
+-    }
+-    if ((state->Efer & EFER_LMA) != 0 &&
+-        (state->Ss.Attributes & 0x80u) == 0) {
+-        ssDiagnosticFlags |= HV_SVM_SS_DIAG_LONG_MODE_ALLOWED;
+-    }
+-    HvSvmStartupRecordSsState(
+-        VcpuData,
+-        ss.Selector,
+-        ss.AccessRights,
+-        state->Ss.Attributes,
+-        ssDiagnosticFlags);
+     
+     // 调试寄存器
+     state->Dr6 = __readdr(6);
+     state->Dr7 = __readdr(7);
+     
+@@
+  * 启动虚拟机
+  */
+ NTSTATUS SvmLaunchVm(PVCPU_DATA VcpuData)
+ {
+     int result;
+-    ULONG64 vmcbPhysical;
+-    ULONG64 hostSavePhysical;
+-    ULONG64 msrpmPhysical;
+-    ULONG requiredMisc1;
+-    ULONG requiredMisc2;
+-    ULONG validationMask = 0;
+-
+-    if (!VcpuData) {
++
++    VcpuData->IsVirtualized = FALSE;
++
++    DbgPrint("[SVM] CPU %d: Launching VM...\n", VcpuData->ProcessorNumber);
++
++    if (!VcpuData->Vmcb) {
++        DbgPrint("[SVM] CPU %d: ERROR - VMCB is NULL\n", VcpuData->ProcessorNumber);
+         return STATUS_INVALID_PARAMETER;
+     }
+ 
+-    VcpuData->IsVirtualized = FALSE;
+-
+-    DbgPrint("[SVM] CPU %d: Launching VM...\n", VcpuData->ProcessorNumber);
+-
+-    vmcbPhysical = (ULONG64)VcpuData->VmcbPhysical.QuadPart;
+-    hostSavePhysical = (ULONG64)VcpuData->HostSaveAreaPhysical.QuadPart;
+-    msrpmPhysical = (ULONG64)VcpuData->MsrPermissionMapPhysical.QuadPart;
+-    requiredMisc1 = (ULONG)(SVM_INTERCEPT_CPUID |
+-                            SVM_INTERCEPT_MSR |
+-                            SVM_INTERCEPT_SHUTDOWN);
+-    requiredMisc2 = (ULONG)(SVM_INTERCEPT_VMRUN |
+-                            SVM_INTERCEPT_VMMCALL |
+-                            SVM_INTERCEPT_VMLOAD |
+-                            SVM_INTERCEPT_VMSAVE |
+-                            SVM_INTERCEPT_STGI |
+-                            SVM_INTERCEPT_CLGI |
+-                            SVM_INTERCEPT_XSETBV);
+-
+-    if (!VcpuData->Vmcb) validationMask |= HV_SVM_LAUNCH_INVALID_VMCB;
+-    if (!VcpuData->HostSaveArea) validationMask |= HV_SVM_LAUNCH_INVALID_HOST_SAVE;
+-    if (!VcpuData->MsrPermissionMap) validationMask |= HV_SVM_LAUNCH_INVALID_MSRPM;
+-    if (!VcpuData->VmExitStack) validationMask |= HV_SVM_LAUNCH_INVALID_EXIT_STACK;
+-    if (vmcbPhysical == 0 || hostSavePhysical == 0 || msrpmPhysical == 0) {
+-        validationMask |= HV_SVM_LAUNCH_INVALID_PHYSICAL;
+-    }
+-    if (((ULONG_PTR)VcpuData->Vmcb & (PAGE_SIZE - 1)) != 0 ||
+-        ((ULONG_PTR)VcpuData->VmExitStack & 0xF) != 0 ||
+-        (vmcbPhysical & (PAGE_SIZE - 1)) != 0 ||
+-        (hostSavePhysical & (PAGE_SIZE - 1)) != 0 ||
+-        (msrpmPhysical & (PAGE_SIZE - 1)) != 0) {
+-        validationMask |= HV_SVM_LAUNCH_INVALID_ALIGNMENT;
+-    }
+-
+-    if (VcpuData->Vmcb != NULL) {
+-        if (VcpuData->Vmcb->ControlArea.GuestAsid == 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_ASID;
+-        }
+-        if ((VcpuData->Vmcb->ControlArea.InterceptMisc1 & requiredMisc1) != requiredMisc1) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_INTERCEPT1;
+-        }
+-        if ((VcpuData->Vmcb->ControlArea.InterceptMisc2 & requiredMisc2) != requiredMisc2) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_INTERCEPT2;
+-        }
+-        if (VcpuData->Vmcb->ControlArea.InterceptMisc3 != 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_INTERCEPT3;
+-        }
+-        if ((VcpuData->Vmcb->ControlArea.VIntr & SVM_V_INTR_MASKING_MASK) != 0 &&
+-            (VcpuData->Vmcb->ControlArea.InterceptMisc1 & SVM_INTERCEPT_INTR) == 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_VINTR;
+-        }
+-        if ((VcpuData->Vmcb->StateSaveArea.Cs.Attributes & 0x80u) == 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_CS;
+-        }
+-        if ((VcpuData->Vmcb->StateSaveArea.Ss.Attributes & 0x80u) == 0 &&
+-            (VcpuData->Vmcb->StateSaveArea.Efer & EFER_LMA) == 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_SS;
+-        }
+-        if ((VcpuData->Vmcb->StateSaveArea.Tr.Attributes & 0x80u) == 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_TR;
+-        }
+-        if ((VcpuData->Vmcb->ControlArea.NpEnable & 1u) != 0 &&
+-            (VcpuData->Vmcb->ControlArea.NCr3 & (PAGE_SIZE - 1)) != 0) {
+-            validationMask |= HV_SVM_LAUNCH_INVALID_NPT;
+-        }
+-    }
+-
+-    HvSvmStartupRecordLaunchValidation(VcpuData, validationMask);
+-    HvSvmStartupRecordVcpu(
+-        VcpuData,
+-        HvSvmStartPhaseLaunchValidation,
+-        validationMask == 0 ? STATUS_SUCCESS : STATUS_INVALID_PARAMETER,
+-        validationMask != 0);
+-
+-    if (validationMask != 0) {
+-        DbgPrint("[SVM] CPU %d: ERROR - invalid launch context\n",
+-                 VcpuData->ProcessorNumber);
+-        SvmDisableOnCpu();
+-        return STATUS_INVALID_PARAMETER;
+-    }
+-
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseVmrunEntered, STATUS_SUCCESS, FALSE);
+     result = AsmSvmLaunch(VcpuData);
+     
+     if (result == 0) {
+-        HvSvmStartupRecordVcpu(
+-            VcpuData, HvSvmStartPhaseGuestReturned, STATUS_SUCCESS, FALSE);
+         VcpuData->IsVirtualized = TRUE;
+         DbgPrint("[SVM] CPU %d: *** VIRTUALIZATION ACTIVE ***\n", 
+                  VcpuData->ProcessorNumber);
+         return STATUS_SUCCESS;
+     }
+     
+     // VMRUN 失败
+     VcpuData->IsVirtualized = FALSE;
+-    HvSvmStartupRecordVcpu(
+-        VcpuData, HvSvmStartPhaseLaunchFailed, STATUS_UNSUCCESSFUL, TRUE);
+     DbgPrint("[SVM] CPU %d: VMRUN failed with result=0x%X\n", 
+              VcpuData->ProcessorNumber, result);
+-    SvmDisableOnCpu();
+     
+     // 检查退出码
+     if (VcpuData->Vmcb) {
+         DbgPrint("[SVM] CPU %d: Exit Code: 0x%llX\n", 
+                  VcpuData->ProcessorNumber, 
+@@
+ }
+ 
+ /*
+  * 设置 InterceptMisc1 标志
+  */
+-VOID SvmSetInterceptMisc1(PVCPU_DATA VcpuData, ULONG Flags)
++VOID SvmSetInterceptMisc1(PVCPU_DATA VcpuData, ULONG64 Flags)
+ {
+     VcpuData->Vmcb->ControlArea.InterceptMisc1 |= Flags;
+ }
+ 
+ /*
+  * 设置 InterceptMisc2 标志
+  */
+-VOID SvmSetInterceptMisc2(PVCPU_DATA VcpuData, ULONG Flags)
++VOID SvmSetInterceptMisc2(PVCPU_DATA VcpuData, ULONG64 Flags)
+ {
+     VcpuData->Vmcb->ControlArea.InterceptMisc2 |= Flags;
+ }
+ 
+ // ==================== vGIF 中断门控 (HV_ENABLE_SVM_HARDENING) ====================
+*** End Patch

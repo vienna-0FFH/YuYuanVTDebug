@@ -1,0 +1,436 @@
+*** Begin Patch
+*** Update File: Netr/AsmSvm.asm
+@@
+ .CODE
+ 
+ ; ==================== 外部 C 函数 ====================
+ 
+ EXTERN SvmVmExitDispatch:PROC
+-EXTERN KeBugCheckEx:PROC
+ 
+ ; ==================== VCPU_DATA 结构偏移 ====================
+ ; 这些偏移需要与 HvTypes.h 中的 VCPU_DATA 结构保持一致
+ ;
+ ; VCPU_DATA 结构布局（64位系统）:
+@@
+ ;   偏移 0x28: PVOID VmcsRegion (8字节)
+ ;   偏移 0x30: PHYSICAL_ADDRESS VmcsRegionPhysical (8字节)
+ ;   偏移 0x38: PVOID MsrBitmap (8字节)
+ ;   偏移 0x40: PHYSICAL_ADDRESS MsrBitmapPhysical (8字节)
+ ;   偏移 0x48: PEPT_TABLES EptTables (8字节)
+-;   偏移 0x88: PVMCB Vmcb (8字节)
+-;   偏移 0x90: PHYSICAL_ADDRESS VmcbPhysical (8字节)
++;   偏移 0x50: PVMCB Vmcb (8字节)
++;   偏移 0x58: PHYSICAL_ADDRESS VmcbPhysical (8字节)
+ ;   ...
+ 
+ VCPU_PROCESSOR_NUMBER   EQU 00h     ; ULONG ProcessorNumber
+ VCPU_IS_VIRTUALIZED     EQU 04h     ; BOOLEAN IsVirtualized
+ VCPU_VMEXIT_STACK       EQU 08h     ; PVOID VmExitStack
+ VCPU_VMEXIT_STACK_PA    EQU 10h     ; ULONG64 VmExitStackPhysical
+-VCPU_VMCB               EQU 88h     ; PVMCB Vmcb
+-VCPU_VMCB_PHYSICAL      EQU 90h     ; PHYSICAL_ADDRESS VmcbPhysical
+-VCPU_HOST_SAVE_PHYSICAL EQU 0A0h    ; PHYSICAL_ADDRESS HostSaveAreaPhysical
+-
+-VMCB_EXIT_CODE          EQU 070h
+-VMCB_EXIT_INFO1         EQU 078h
+-VMCB_EXIT_INFO2         EQU 080h
+-VMCB_STATE_CR4          EQU 548h
+-VMCB_STATE_CR3          EQU 550h
+-VMCB_STATE_CR0          EQU 558h
+-VMCB_STATE_DR7          EQU 560h
+-VMCB_STATE_DR6          EQU 568h
+-VMCB_STATE_RFLAGS       EQU 570h
+-VMCB_STATE_RIP          EQU 578h
+-VMCB_STATE_RSP          EQU 5D8h
+-VMCB_STATE_S_CET        EQU 5E0h
+-VMCB_STATE_SSP          EQU 5E8h
+-VMCB_STATE_ISST_ADDR    EQU 5F0h
+-VMCB_STATE_RAX          EQU 5F8h
+-VMCB_STATE_CR2          EQU 640h
+-
+-SVM_EXIT_VMMCALL        EQU 081h
+-MSR_IA32_EFER           EQU 0C0000080h
+-MSR_IA32_S_CET          EQU 06A2h
+-MSR_IA32_INT_SSP_TABLE  EQU 06A8h
+-MSR_AMD_VM_HSAVE_PA     EQU 0C0010117h
++VCPU_VMCB               EQU 50h     ; PVMCB Vmcb
++VCPU_VMCB_PHYSICAL      EQU 58h     ; PHYSICAL_ADDRESS VmcbPhysical
+ 
+ ; 栈预留区偏移
+ RESTORE_RSP_OFFSET      EQU 070h
+ RESTORE_RIP_OFFSET      EQU 068h
+ RESTORE_RFLAGS_OFFSET   EQU 060h
+@@
+ RESTORE_RDI_OFFSET      EQU 040h
+ RESTORE_R12_OFFSET      EQU 038h
+ RESTORE_R13_OFFSET      EQU 030h
+ RESTORE_R14_OFFSET      EQU 028h
+ RESTORE_R15_OFFSET      EQU 020h
+-SVM_GUEST_STARTED_OFFSET EQU 018h
+ VCPU_DATA_OFFSET        EQU 078h
+ 
+ ; XMM 保存区大小（16 × 16 + 8 align）
+ XMM_SAVE_SIZE           EQU 100h        ; 256 bytes
+ XMM_SAVE_TOTAL          EQU 108h        ; 256 + 8 align
+-MXCSR_SAVE_OFFSET       EQU 100h
+-
+-SvmAfterVmrun:
+-    mov     rax, [rsp + VCPU_DATA_OFFSET]
+-    mov     rax, [rax + VCPU_VMCB]
+-    cmp     QWORD PTR [rax + VMCB_EXIT_CODE], -1
+-    jne     AsmSvmVmExitHandler
+-
+-    cmp     QWORD PTR [rsp + SVM_GUEST_STARTED_OFFSET], 0
+-    je      SvmInitialVmrunInvalid
+-
+-    mov     rax, [rsp + VCPU_DATA_OFFSET]
+-    mov     rax, [rax + VCPU_HOST_SAVE_PHYSICAL]
+-    vmload  rax
+-    stgi
+-
+-    mov     r11, [rsp + VCPU_DATA_OFFSET]
+-    mov     r10, [r11 + VCPU_VMCB]
+-    mov     edx, [r11 + VCPU_PROCESSOR_NUMBER]
+-    mov     r8, [r10 + VMCB_EXIT_CODE]
+-    mov     r9, [r10 + VMCB_EXIT_INFO1]
+-    mov     rax, [r10 + VMCB_EXIT_INFO2]
+-    mov     ecx, 20001h
+-    sub     rsp, 30h
+-    mov     [rsp + 20h], rax
+-    call    KeBugCheckEx
+-    int     3
+-
+-SvmInitialVmrunInvalid:
+-    mov     rdx, [rsp + VCPU_DATA_OFFSET]
+-    mov     rax, [rdx + VCPU_HOST_SAVE_PHYSICAL]
+-    vmload  rax
+-    mov     rax, [rdx + VCPU_VMCB]
+-    mov     rsp, [rax + VMCB_STATE_RSP]
+-
+-    pop     r15
+-    pop     r14
+-    pop     r13
+-    pop     r12
+-    pop     r11
+-    pop     r10
+-    pop     r9
+-    pop     r8
+-    pop     rdi
+-    pop     rsi
+-    pop     rbp
+-    add     rsp, 8
+-    pop     rbx
+-    pop     rdx
+-    pop     rcx
+-    pop     rax
+-    popfq
+-    stgi
+-    mov     eax, 1
+-    ret
+ 
+ ; ==================== SVM #VMEXIT Handler ====================
+ ;
+ ; AMD SVM #VMEXIT 处理入口
+ ;
+@@
+     push    rdx
+     push    rcx
+     push    rbx
+     push    rax             ; Guest RAX
+     ; 15 push × 8 = 120 字节；入口 RSP mod 16 == 0 → 现 RSP mod 16 == 8
+-
+-    lea     r8, [rsp + 120]
+-    mov     r9, [r8 + VCPU_DATA_OFFSET]
+-    mov     rax, [r9 + VCPU_VMCB_PHYSICAL]
+-    vmsave  rax
+-    mov     rax, [r9 + VCPU_HOST_SAVE_PHYSICAL]
+-    vmload  rax
+ 
+     ; === 保存 XMM0-XMM15 ===
+     ; movaps 需要 16 字节对齐：sub XMM_SAVE_TOTAL（108h，mod 16 == 8）→ RSP mod 16 == 0
+     sub     rsp, XMM_SAVE_TOTAL
+     movaps  xmmword ptr [rsp + 0],   xmm0
+@@
+     movaps  xmmword ptr [rsp + 176], xmm11
+     movaps  xmmword ptr [rsp + 192], xmm12
+     movaps  xmmword ptr [rsp + 208], xmm13
+     movaps  xmmword ptr [rsp + 224], xmm14
+     movaps  xmmword ptr [rsp + 240], xmm15
+-    stmxcsr DWORD PTR [rsp + MXCSR_SAVE_OFFSET]
+ 
+     ; 增加退出计数
+     lock inc QWORD PTR g_SvmExitCounter
+ 
+     ; === 调用 C 函数处理 ===
+@@
+     ; === 检查返回值 ===
+     test    al, al
+     jz      SvmExitTerminate
+ 
+     ; === 恢复 XMM ===
+-    ldmxcsr DWORD PTR [rsp + MXCSR_SAVE_OFFSET]
+     movaps  xmm0,  xmmword ptr [rsp + 0]
+     movaps  xmm1,  xmmword ptr [rsp + 16]
+     movaps  xmm2,  xmmword ptr [rsp + 32]
+     movaps  xmm3,  xmmword ptr [rsp + 48]
+     movaps  xmm4,  xmmword ptr [rsp + 64]
+@@
+     movaps  xmm13, xmmword ptr [rsp + 208]
+     movaps  xmm14, xmmword ptr [rsp + 224]
+     movaps  xmm15, xmmword ptr [rsp + 240]
+     add     rsp, XMM_SAVE_TOTAL
+ 
+-    lea     r8, [rsp + 120]
+-    mov     rax, [r8 + VCPU_DATA_OFFSET]
+-    mov     rax, [rax + VCPU_VMCB_PHYSICAL]
+-    vmload  rax
+-
+     ; === 恢复 Guest GPR 并继续 ===
+ SvmExitResume:
+     pop     rax
+     pop     rbx
+     pop     rcx
+@@
+     ; 从预留区获取
+     mov     rax, [rsp + VCPU_DATA_OFFSET]  ; RAX = VcpuData
+     mov     rax, [rax + VCPU_VMCB_PHYSICAL] ; RAX = VmcbPhysical
+ 
+     ; 执行 VMRUN 继续 Guest
+-    sti
+     vmrun   rax
+-    cli
+ 
+     ; VMRUN 返回意味着又发生了 #VMEXIT
+-    jmp     SvmAfterVmrun
++    jmp     AsmSvmVmExitHandler
+ 
+ ; === 终止虚拟化 ===
+ SvmExitTerminate:
+-    ldmxcsr DWORD PTR [rsp + MXCSR_SAVE_OFFSET]
+-    movaps  xmm0,  xmmword ptr [rsp + 0]
+-    movaps  xmm1,  xmmword ptr [rsp + 16]
+-    movaps  xmm2,  xmmword ptr [rsp + 32]
+-    movaps  xmm3,  xmmword ptr [rsp + 48]
+-    movaps  xmm4,  xmmword ptr [rsp + 64]
+-    movaps  xmm5,  xmmword ptr [rsp + 80]
+-    movaps  xmm6,  xmmword ptr [rsp + 96]
+-    movaps  xmm7,  xmmword ptr [rsp + 112]
+-    movaps  xmm8,  xmmword ptr [rsp + 128]
+-    movaps  xmm9,  xmmword ptr [rsp + 144]
+-    movaps  xmm10, xmmword ptr [rsp + 160]
+-    movaps  xmm11, xmmword ptr [rsp + 176]
+-    movaps  xmm12, xmmword ptr [rsp + 192]
+-    movaps  xmm13, xmmword ptr [rsp + 208]
+-    movaps  xmm14, xmmword ptr [rsp + 224]
+-    movaps  xmm15, xmmword ptr [rsp + 240]
++    ; 此时 RSP 在 XMM 区基址（add rsp,20h 已撤销 shadow space），先撤销 XMM 区
+     add     rsp, XMM_SAVE_TOTAL
+ 
+-    lea     r8, [rsp + 120]
+-    mov     r11, [r8 + VCPU_DATA_OFFSET]
+-    test    r11, r11
+-    jz      SvmTerminateUnexpected
+-
+-    mov     r10, [r11 + VCPU_VMCB]
+-    test    r10, r10
+-    jz      SvmTerminateUnexpected
+-
+-    cmp     QWORD PTR [r10 + VMCB_EXIT_CODE], SVM_EXIT_VMMCALL
+-    jne     SvmTerminateUnexpected
+-
+-    mov     rax, [r10 + VMCB_STATE_RIP]
+-    mov     [r8 + RESTORE_RIP_OFFSET], rax
+-    mov     rax, [r10 + VMCB_STATE_RSP]
+-    mov     [r8 + RESTORE_RSP_OFFSET], rax
+-    mov     rax, [r10 + VMCB_STATE_RFLAGS]
+-    mov     [r8 + RESTORE_RFLAGS_OFFSET], rax
+-    mov     rax, [r10 + VMCB_STATE_RAX]
+-    mov     [rsp], rax
+-
+-    mov     rax, [r11 + VCPU_VMCB_PHYSICAL]
+-    vmload  rax
+-
+-    cli
+-    stgi
+-
+-    mov     ecx, MSR_AMD_VM_HSAVE_PA
+-    xor     eax, eax
+-    xor     edx, edx
+-    wrmsr
+-
+-    mov     ecx, MSR_IA32_EFER
+-    rdmsr
+-    and     eax, 0FFFFEFFFh
+-    wrmsr
+-
+-    mov     BYTE PTR [r11 + VCPU_IS_VIRTUALIZED], 0
+-
+-    mov     rax, [r10 + VMCB_STATE_CR3]
+-    mov     cr3, rax
+-    mov     rax, [r10 + VMCB_STATE_CR0]
+-    mov     cr0, rax
+-    mov     rax, [r10 + VMCB_STATE_CR4]
+-    mov     cr4, rax
+-    mov     rax, [r10 + VMCB_STATE_CR2]
+-    mov     cr2, rax
+-    mov     rax, [r10 + VMCB_STATE_DR6]
+-    mov     dr6, rax
+-    mov     rax, [r10 + VMCB_STATE_DR7]
+-    mov     dr7, rax
+-
++    ; 恢复所有寄存器
+     pop     rax
+     pop     rbx
+     pop     rcx
+     pop     rdx
+     pop     rsi
+@@
+     pop     r12
+     pop     r13
+     pop     r14
+     pop     r15
+ 
++    ; 从预留区恢复返回信息
+     mov     rcx, [rsp + RESTORE_RIP_OFFSET]
+-    mov     rdx, [rsp + RESTORE_RSP_OFFSET]
+-    mov     r8, [rsp + RESTORE_RFLAGS_OFFSET]
+-    mov     rsp, rdx
+-    push    r8
+-    popfq
++    mov     rax, [rsp + RESTORE_RSP_OFFSET]
++
++    ; 切换到 Guest 栈
++    mov     rsp, rax
++
++    ; 返回值 = 0 (成功退出)
++    xor     rax, rax
++
++    ; 跳转回调用者
+     jmp     rcx
+-
+-SvmTerminateUnexpected:
+-    stgi
+-    xor     edx, edx
+-    xor     r8d, r8d
+-    xor     r9d, r9d
+-    xor     eax, eax
+-    test    r11, r11
+-    jz      SvmTerminateBugcheck
+-    mov     edx, [r11 + VCPU_PROCESSOR_NUMBER]
+-    test    r10, r10
+-    jz      SvmTerminateBugcheck
+-    mov     r8, [r10 + VMCB_EXIT_CODE]
+-    mov     r9, [r10 + VMCB_EXIT_INFO1]
+-    mov     rax, [r10 + VMCB_EXIT_INFO2]
+-SvmTerminateBugcheck:
+-    mov     ecx, 20001h
+-    sub     rsp, 28h
+-    mov     [rsp + 20h], rax
+-    call    KeBugCheckEx
+-    int     3
+ 
+ AsmSvmVmExitHandler ENDP
+ 
+ ; ==================== VMRUN 启动 ====================
+ ;
+@@
+     ; 获取 VMCB 虚拟地址用于设置 RIP/RSP
+     mov     r8, [r10 + VCPU_VMCB]
+     
+     ; 设置 Guest RIP = GuestEntry
+     lea     rcx, SvmGuestEntry
+-    mov     [r8 + VMCB_STATE_RIP], rcx
++    mov     [r8 + 578h], rcx        ; VMCB.StateSave.Rip (偏移 0x578)
+     
+     ; 设置 Guest RSP = 当前 RSP
+-    mov     [r8 + VMCB_STATE_RSP], rsp
++    mov     [r8 + 5D8h], rsp        ; VMCB.StateSave.Rsp (偏移 0x5D8)
+     
+     ; 设置 Guest RAX = 0
+-    mov     QWORD PTR [r8 + VMCB_STATE_RAX], 0
++    mov     QWORD PTR [r8 + 5F8h], 0  ; VMCB.StateSave.Rax (偏移 0x5F8)
+     
+     ; 设置 Guest RFLAGS - 确保 IF=1
+     mov     rcx, [rsp + 128]
+     or      rcx, 200h               ; IF=1
+     and     rcx, 0FFFFFFFFFFFFFEFFh ; TF=0
+-    mov     [r8 + VMCB_STATE_RFLAGS], rcx
++    mov     [r8 + 570h], rcx        ; VMCB.StateSave.Rflags (偏移 0x570)
+     
+     mov     QWORD PTR g_SvmDebugFlag, 4
+-
+-    mov     rax, cr4
+-    bt      rax, 23
+-    jnc     SvmLaunchCetDisabled
+-
+-    mov     ecx, MSR_IA32_S_CET
+-    rdmsr
+-    shl     rdx, 32
+-    or      rax, rdx
+-    mov     [r8 + VMCB_STATE_S_CET], rax
+-
+-    DB      0F3h, 048h, 00Fh, 01Eh, 0C8h
+-    mov     [r8 + VMCB_STATE_SSP], rax
+-
+-    mov     ecx, MSR_IA32_INT_SSP_TABLE
+-    rdmsr
+-    shl     rdx, 32
+-    or      rax, rdx
+-    mov     [r8 + VMCB_STATE_ISST_ADDR], rax
+-    jmp     SvmLaunchCetReady
+-
+-SvmLaunchCetDisabled:
+-    mov     QWORD PTR [r8 + VMCB_STATE_S_CET], 0
+-    mov     QWORD PTR [r8 + VMCB_STATE_SSP], 0
+-    mov     QWORD PTR [r8 + VMCB_STATE_ISST_ADDR], 0
+-
+-SvmLaunchCetReady:
+-    
+-    mov     QWORD PTR [r11 + SVM_GUEST_STARTED_OFFSET], 0
+-
+-    clgi
+-    mov     rax, [r10 + VCPU_HOST_SAVE_PHYSICAL]
+-    vmsave  rax
+-    mov     rax, [r10 + VCPU_VMCB_PHYSICAL]
+-    vmload  rax
+-
++    
+     ; 切换到 VmExit 栈
+     mov     rsp, r11
+     
+     ; === 执行 VMRUN ===
+     ; RAX = VMCB 物理地址
+-    sti
+     vmrun   rax
+-    cli
+     
+     ; VMRUN 返回意味着发生了 #VMEXIT
+     ; 跳转到 #VMEXIT 处理
+-    jmp     SvmAfterVmrun
++    jmp     AsmSvmVmExitHandler
+ 
+ ; === Guest 入口点 ===
+ SvmGuestEntry:
+     mov     QWORD PTR g_SvmDebugFlag, 10
+-    mov     QWORD PTR [r11 + SVM_GUEST_STARTED_OFFSET], 1
+     
+     ; 恢复所有寄存器
+     pop     r15
+     pop     r14
+     pop     r13
+@@
+ 
+ ; VMRUN - 启动 Guest（用于外部调用）
+ PUBLIC AsmSvmVmrun
+ AsmSvmVmrun PROC
+     mov     rax, rcx        ; VMCB 物理地址
+-    sti
+     vmrun   rax
+-    cli
+     ret
+ AsmSvmVmrun ENDP
+ 
+ ; ==================== SKINIT 包装 ====================
+ 
+*** End Patch

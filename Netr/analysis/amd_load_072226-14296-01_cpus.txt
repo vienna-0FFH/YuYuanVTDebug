@@ -1,0 +1,365 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_load_072226-14296-01_cpus.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072226-14296-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff807`eea00000 PsLoadedModuleList = 0xfffff807`ef8f5350
+Debug session time: Wed Jul 22 23:40:52.188 2026 (UTC + 8:00)
+System Uptime: 0 days 1:53:25.922
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+................................................................
+......
+Loading User Symbols
+
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+0: kd> .lines
+Line number information will be loaded
+0: kd> .reload /f nt
+0: kd> .reload /f GuardMetaCore.sys
+0: kd> ~
+       ^ Syntax error in '~'
+0: kd> ~0s
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+*** WARNING: Unable to verify timestamp for nvlddmkm.sys
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~1s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~2s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~3s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~4s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~5s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~6s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~7s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~8s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~9s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~10s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~11s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~12s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~13s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~14s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> ~15s
+Can't switch processors on a single processor kernel triage dump
+0: kd> kv
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+0: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

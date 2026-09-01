@@ -1,0 +1,1028 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\072226-14000-01-offline.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*C:\Symbols
+Deferred                                       srv*C:\ProgramData\dbg\sym
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.016 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\072226-14000-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*C:\Symbols
+Deferred                                       srv*C:\ProgramData\dbg\sym
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: srv*C:\Symbols;srv*C:\ProgramData\dbg\sym;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff804`21200000 PsLoadedModuleList = 0xfffff804`21e135f0
+Debug session time: Wed Jul 22 14:32:31.395 2026 (UTC + 8:00)
+System Uptime: 0 days 3:04:56.062
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 000000bf`7ba19018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+5: kd> .lines; .reload /f; .bugcheck; r; kv 100; lmvm GuardMetaCore; !thread; !irql; !analyze -v; q
+Line number information will be loaded
+Loading Kernel Symbols
+..Unable to load image kdcom.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for kdcom.dll
+.Unable to load image mcupdate.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mcupdate.dll
+.Unable to load image CLFS.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CLFS.SYS
+.Unable to load image tm.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tm.sys
+.Unable to load image PSHED.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for PSHED.dll
+.Unable to load image BOOTVID.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for BOOTVID.dll
+.Unable to load image FLTMGR.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for FLTMGR.SYS
+.Unable to load image msrpc.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for msrpc.sys
+.Unable to load image ksecdd.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ksecdd.sys
+.Unable to load image clipsp.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for clipsp.sys
+.Unable to load image cmimcext.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for cmimcext.sys
+.Unable to load image dtrace.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dtrace.sys
+.Unable to load image werkernel.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for werkernel.sys
+.Unable to load image ntosext.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ntosext.sys
+.Unable to load image CI.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CI.dll
+.Unable to load image cng.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for cng.sys
+.Unable to load image Wdf01000.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Wdf01000.sys
+.Unable to load image WppRecorder.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WppRecorder.sys
+.Unable to load image WDFLDR.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WDFLDR.SYS
+.Unable to load image PRM.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for PRM.sys
+.Unable to load image acpiex.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for acpiex.sys
+.Unable to load image lxss.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for lxss.sys
+.Unable to load image LXCORE.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for LXCORE.SYS
+.Unable to load image ACPI.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ACPI.sys
+.Unable to load image WMILIB.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WMILIB.SYS
+.Unable to load image msisadrv.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for msisadrv.sys
+.Unable to load image pci.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for pci.sys
+.Unable to load image tpm.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tpm.sys
+.Unable to load image intelpep.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for intelpep.sys
+.Unable to load image WindowsTrustedRT.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WindowsTrustedRT.sys
+.Unable to load image IntelPMT.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for IntelPMT.sys
+.Unable to load image WindowsTrustedRTProxy.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WindowsTrustedRTProxy.sys
+.Unable to load image pcw.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for pcw.sys
+.Unable to load image vdrvroot.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vdrvroot.sys
+.Unable to load image pdc.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for pdc.sys
+.Unable to load image CEA.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CEA.sys
+.Unable to load image partmgr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for partmgr.sys
+.Unable to load image spaceport.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for spaceport.sys
+.Unable to load image volmgr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for volmgr.sys
+.Unable to load image volmgrx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for volmgrx.sys
+.Unable to load image vsock.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vsock.sys
+.Unable to load image vmci.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmci.sys
+.Unable to load image mountmgr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mountmgr.sys
+.Unable to load image stornvme.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for stornvme.sys
+.Unable to load image storport.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for storport.sys
+.Unable to load image EhStorClass.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for EhStorClass.sys
+.Unable to load image fileinfo.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for fileinfo.sys
+.Unable to load image Wof.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Wof.sys
+.Unable to load image Ntfs.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Ntfs.sys
+.Unable to load image Fs_Rec.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Fs_Rec.sys
+.Unable to load image ndis.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ndis.sys
+.Unable to load image NETIO.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for NETIO.SYS
+.Unable to load image ksecpkg.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ksecpkg.sys
+.Unable to load image tcpip.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tcpip.sys
+.Unable to load image fwpkclnt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for fwpkclnt.sys
+.Unable to load image wfplwfs.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for wfplwfs.sys
+.Unable to load image VmsProxy.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for VmsProxy.sys
+.Unable to load image VmsProxyHNic.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for VmsProxyHNic.sys
+.Unable to load image fvevol.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for fvevol.sys
+.Unable to load image volume.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for volume.sys
+.Unable to load image volsnap.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for volsnap.sys
+.
+Unable to load image rdyboost.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rdyboost.sys
+.Unable to load image mup.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mup.sys
+.Unable to load image iorate.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for iorate.sys
+.Unable to load image disk.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for disk.sys
+.Unable to load image CLASSPNP.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CLASSPNP.SYS
+.Unable to load image crashdmp.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for crashdmp.sys
+.Unable to load image cdrom.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for cdrom.sys
+.Unable to load image filecrypt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for filecrypt.sys
+.Unable to load image tbs.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tbs.sys
+.Unable to load image UCPD.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for UCPD.sys
+.Unable to load image Null.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Null.SYS
+.Unable to load image Beep.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Beep.SYS
+.Unable to load image dxgkrnl.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dxgkrnl.sys
+.Unable to load image watchdog.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for watchdog.sys
+.Unable to load image BasicDisplay.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for BasicDisplay.sys
+.Unable to load image BasicRender.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for BasicRender.sys
+.Unable to load image Npfs.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Npfs.SYS
+.Unable to load image Msfs.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Msfs.SYS
+.Unable to load image CimFS.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CimFS.SYS
+.Unable to load image tdx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tdx.sys
+.Unable to load image TDI.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for TDI.SYS
+.Unable to load image ws2ifsl.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ws2ifsl.sys
+.Unable to load image sysdiag.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for sysdiag.sys
+.Unable to load image netbt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for netbt.sys
+.Unable to load image afunix.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for afunix.sys
+.Unable to load image afd.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for afd.sys
+.Unable to load image npcap.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for npcap.sys
+.Unable to load image vwififlt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vwififlt.sys
+.Unable to load image pacer.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for pacer.sys
+.Unable to load image ndiscap.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ndiscap.sys
+.Unable to load image netbios.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for netbios.sys
+.Unable to load image Vid.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Vid.sys
+.Unable to load image winhvr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for winhvr.sys
+.Unable to load image rdbss.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rdbss.sys
+.Unable to load image YSDrv.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for YSDrv.sys
+.Unable to load image XLGuard.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for XLGuard.sys
+.Unable to load image ViGEmBus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ViGEmBus.sys
+.Unable to load image veracrypt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for veracrypt.sys
+.Unable to load image nsiproxy.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for nsiproxy.sys
+.Unable to load image npsvctrig.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for npsvctrig.sys
+.Unable to load image mssmbios.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mssmbios.sys
+.Unable to load image dfsc.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dfsc.sys
+.Unable to load image fastfat.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for fastfat.SYS
+..Unable to load image ahcache.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ahcache.sys
+.Unable to load image 360bprot64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for 360bprot64.sys
+.Unable to load image hvservice.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for hvservice.sys
+.Unable to load image loop.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for loop.sys
+.Unable to load image tap0901.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tap0901.sys
+.Unable to load image vmnetadapter.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmnetadapter.sys
+.Unable to load image VMNET.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for VMNET.SYS
+.Unable to load image CompositeBus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CompositeBus.sys
+.Unable to load image kdnic.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for kdnic.sys
+.Unable to load image umbus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for umbus.sys
+.Unable to load image CAD.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for CAD.sys
+.Unable to load image nvlddmkm.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for nvlddmkm.sys
+.Unable to load image HDAudBus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for HDAudBus.sys
+.Unable to load image portcls.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for portcls.sys
+.Unable to load image drmk.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for drmk.sys
+.Unable to load image ks.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ks.sys
+.Unable to load image igdkmdn64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for igdkmdn64.sys
+.Unable to load image USBXHCI.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for USBXHCI.SYS
+.Unable to load image ucx01000.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ucx01000.sys
+.Unable to load image Netwtw14.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Netwtw14.sys
+.
+Unable to load image wdiwifi.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for wdiwifi.sys
+.Unable to load image vwifibus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vwifibus.sys
+.Unable to load image iaLPSS2_I2C_ADL.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for iaLPSS2_I2C_ADL.sys
+.Unable to load image SpbCx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for SpbCx.sys
+.Unable to load image TeeDriverW10x64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for TeeDriverW10x64.sys
+.Unable to load image rt640x64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rt640x64.sys
+..Unable to load image BATTC.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for BATTC.SYS
+.Unable to load image AcpiVpc.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for AcpiVpc.sys
+.Unable to load image ipf_acpi.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ipf_acpi.sys
+.Unable to load image ICCWDT.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ICCWDT.sys
+...Unable to load image IntcAudioBus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for IntcAudioBus.sys
+...Unable to load image iaLPSS2_GPIO2_ADL.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for iaLPSS2_GPIO2_ADL.sys
+.Unable to load image msgpioclx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for msgpioclx.sys
+..Unable to load image acpipagr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for acpipagr.sys
+..Unable to load image UcmUcsiCx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for UcmUcsiCx.sys
+.Unable to load image UcmCx.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for UcmCx.sys
+.Unable to load image nvpcf.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for nvpcf.sys
+..Unable to load image NdisVirtualBus.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for NdisVirtualBus.sys
+.Unable to load image swenum.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for swenum.sys
+.Unable to load image phdskmnt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for phdskmnt.sys
+.Unable to load image gvinput.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for gvinput.sys
+.Unable to load image mshidkmdf.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mshidkmdf.sys
+....Unable to load image ToDeskAudio.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ToDeskAudio.sys
+.Unable to load image ksthunk.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ksthunk.sys
+.Unable to load image mouhid.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mouhid.sys
+.Unable to load image gvinputmf.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for gvinputmf.sys
+.Unable to load image mouclass.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mouclass.sys
+...Unable to load image USBD.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for USBD.SYS
+.Unable to load image USBPcap.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for USBPcap.sys
+.Unable to load image iocbios2.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for iocbios2.sys
+.Unable to load image nvhda64v.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for nvhda64v.sys
+..Unable to load image IntcOED.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for IntcOED.sys
+.Unable to load image MTConfig.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for MTConfig.sys
+.Unable to load image RTKVHD64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for RTKVHD64.sys
+.Unable to load image NahimicBTLink.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for NahimicBTLink.sys
+.Unable to load image Nahimic_Mirroring.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Nahimic_Mirroring.sys
+.Unable to load image NahimicXVAD.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for NahimicXVAD.sys
+.Unable to load image usbccgp.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for usbccgp.sys
+.Unable to load image ibtusb.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ibtusb.sys
+.Unable to load image BTHUSB.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for BTHUSB.sys
+..Unable to load image hidusb.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for hidusb.sys
+.Unable to load image usbvideo.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for usbvideo.sys
+.Unable to load image WinUsb.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WinUsb.sys
+.Unable to load image win32k.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for win32k.sys
+.Unable to load image WIN32KSGD.SYS, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WIN32KSGD.SYS
+.Unable to load image dump_storport.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dump_storport.sys
+.Unable to load image dump_stornvme.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dump_stornvme.sys
+.Unable to load image dump_dumpfve.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dump_dumpfve.sys
+.Unable to load image win32kbase.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for win32kbase.sys
+.
+Unable to load image win32kfull.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for win32kfull.sys
+.Unable to load image dxgmms2.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dxgmms2.sys
+.Unable to load image monitor.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for monitor.sys
+.Unable to load image WUDFRd.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for WUDFRd.sys
+.Unable to load image IndirectKmd.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for IndirectKmd.sys
+.Unable to load image ipf_cpu.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ipf_cpu.sys
+.Unable to load image ipf_lf.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ipf_lf.sys
+.Unable to load image cdd.dll, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for cdd.dll
+.Unable to load image bfs.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for bfs.sys
+.Unable to load image luafv.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for luafv.sys
+.Unable to load image wcifs.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for wcifs.sys
+.Unable to load image mmcss.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mmcss.sys
+.Unable to load image cldflt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for cldflt.sys
+.Unable to load image rdpdr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rdpdr.sys
+.Unable to load image storqosflt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for storqosflt.sys
+.Unable to load image bindflt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for bindflt.sys
+.Unable to load image bowser.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for bowser.sys
+..Unable to load image mrxsmb20.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mrxsmb20.sys
+..Unable to load image vmnetbridge.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmnetbridge.sys
+.Unable to load image lltdio.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for lltdio.sys
+.Unable to load image vmswitch.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmswitch.sys
+.Unable to load image vmbkmclr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmbkmclr.sys
+.Unable to load image rspndr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rspndr.sys
+.Unable to load image vmnetuserif.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmnetuserif.sys
+.....Unable to load image HTTP.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for HTTP.sys
+.Unable to load image mpsdrv.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for mpsdrv.sys
+.Unable to load image vmx86.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vmx86.sys
+.Unable to load image SdpNetFilter1.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for SdpNetFilter1.sys
+.Unable to load image awealloc.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for awealloc.sys
+.Unable to load image deviodrv.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for deviodrv.sys
+.Unable to load image dokan2.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for dokan2.sys
+.Unable to load image hcmon.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for hcmon.sys
+.Unable to load image peauth.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for peauth.sys
+....Unable to load image vhdaccess.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vhdaccess.sys
+.Unable to load image vstor2-mntapi10-shared.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vstor2-mntapi10-shared.sys
+.Unable to load image vstor2-x64.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for vstor2-x64.sys
+.Unable to load image wtd.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for wtd.sys
+.Unable to load image xlwfp.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for xlwfp.sys
+.Unable to load image srv2.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for srv2.sys
+.Unable to load image p9rdr.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for p9rdr.sys
+..Unable to load image ahflt.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ahflt.sys
+..Unable to load image NDProxy.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for NDProxy.sys
+..Unable to load image rasl2tp.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for rasl2tp.sys
+.....
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 000000bf`7ba19018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+.......................
+
+************* Symbol Loading Error Summary **************
+Module name            Error
+hal                    The system cannot find the file specified
+kdcom                  The system cannot find the file specified
+mcupdate               The system cannot find the file specified
+CLFS                   The system cannot find the file specified
+tm                     The system cannot find the file specified
+PSHED                  The system cannot find the file specified
+BOOTVID                The system cannot find the file specified
+FLTMGR                 The system cannot find the file specified
+msrpc                  The system cannot find the file specified
+ksecdd                 The system cannot find the file specified
+clipsp                 The system cannot find the file specified
+cmimcext               The system cannot find the file specified
+dtrace                 The system cannot find the file specified
+werkernel              The system cannot find the file specified
+ntosext                The system cannot find the file specified
+CI                     The system cannot find the file specified
+cng                    The system cannot find the file specified
+Wdf01000               The system cannot find the file specified
+WppRecorder            The system cannot find the file specified
+WDFLDR                 The system cannot find the file specified
+PRM                    The system cannot find the file specified
+acpiex                 The system cannot find the file specified
+lxss                   The system cannot find the file specified
+LXCORE                 The system cannot find the file specified
+ACPI                   The system cannot find the file specified
+WMILIB                 The system cannot find the file specified
+msisadrv               The system cannot find the file specified
+pci                    The system cannot find the file specified
+tpm                    The system cannot find the file specified
+intelpep               The system cannot find the file specified
+WindowsTrustedRT       The system cannot find the file specified
+IntelPMT               The system cannot find the file specified
+WindowsTrustedRTProxy  The system cannot find the file specified
+pcw                    The system cannot find the file specified
+vdrvroot               The system cannot find the file specified
+pdc                    The system cannot find the file specified
+CEA                    The system cannot find the file specified
+partmgr                The system cannot find the file specified
+spaceport              The system cannot find the file specified
+volmgr                 The system cannot find the file specified
+volmgrx                The system cannot find the file specified
+vsock                  The system cannot find the file specified
+vmci                   The system cannot find the file specified
+mountmgr               The system cannot find the file specified
+stornvme               The system cannot find the file specified
+storport               The system cannot find the file specified
+EhStorClass            The system cannot find the file specified
+fileinfo               The system cannot find the file specified
+Wof                    The system cannot find the file specified
+Ntfs                   The system cannot find the file specified
+Fs_Rec                 The system cannot find the file specified
+ndis                   The system cannot find the file specified
+NETIO                  The system cannot find the file specified
+ksecpkg                The system cannot find the file specified
+tcpip                  The system cannot find the file specified
+fwpkclnt               The system cannot find the file specified
+wfplwfs                The system cannot find the file specified
+VmsProxy               The system cannot find the file specified
+VmsProxyHNic           The system cannot find the file specified
+fvevol                 The system cannot find the file specified
+volume                 The system cannot find the file specified
+volsnap                The system cannot find the file specified
+rdyboost               The system cannot find the file specified
+mup                    The system cannot find the file specified
+iorate                 The system cannot find the file specified
+disk                   The system cannot find the file specified
+CLASSPNP               The system cannot find the file specified
+crashdmp               The system cannot find the file specified
+cdrom                  The system cannot find the file specified
+filecrypt              The system cannot find the file specified
+tbs                    The system cannot find the file specified
+UCPD                   The system cannot find the file specified
+Null                   The system cannot find the file specified
+Beep                   The system cannot find the file specified
+dxgkrnl                The system cannot find the file specified
+watchdog               The system cannot find the file specified
+BasicDisplay           The system cannot find the file specified
+BasicRender            The system cannot find the file specified
+Npfs                   The system cannot find the file specified
+Msfs                   The system cannot find the file specified
+CimFS                  The system cannot find the file specified
+tdx                    The system cannot find the file specified
+TDI                    The system cannot find the file specified
+ws2ifsl                The system cannot find the file specified
+sysdiag                The system cannot find the file specified
+netbt                  The system cannot find the file specified
+afunix                 The system cannot find the file specified
+afd                    The system cannot find the file specified
+npcap                  The system cannot find the file specified
+vwififlt               The system cannot find the file specified
+pacer                  The system cannot find the file specified
+ndiscap                The system cannot find the file specified
+netbios                The system cannot find the file specified
+Vid                    The system cannot find the file specified
+winhvr                 The system cannot find the file specified
+rdbss                  The system cannot find the file specified
+YSDrv                  The system cannot find the file specified
+XLGuard                The system cannot find the file specified
+ViGEmBus               The system cannot find the file specified
+veracrypt              The system cannot find the file specified
+nsiproxy               The system cannot find the file specified
+npsvctrig              The system cannot find the file specified
+mssmbios               The system cannot find the file specified
+dfsc                   The system cannot find the file specified
+fastfat                The system cannot find the file specified
+bam                    The system cannot find the file specified
+ahcache                The system cannot find the file specified
+360bprot64             The system cannot find the file specified
+hvservice              The system cannot find the file specified
+loop                   The system cannot find the file specified
+tap0901                The system cannot find the file specified
+vmnetadapter           The system cannot find the file specified
+VMNET                  The system cannot find the file specified
+CompositeBus           The system cannot find the file specified
+kdnic                  The system cannot find the file specified
+umbus                  The system cannot find the file specified
+CAD                    The system cannot find the file specified
+nvlddmkm               The system cannot find the file specified
+HDAudBus               The system cannot find the file specified
+portcls                The system cannot find the file specified
+drmk                   The system cannot find the file specified
+ks                     The system cannot find the file specified
+igdkmdn64              The system cannot find the file specified
+USBXHCI                The system cannot find the file specified
+ucx01000               The system cannot find the file specified
+Netwtw14               The system cannot find the file specified
+wdiwifi                The system cannot find the file specified
+vwifibus               The system cannot find the file specified
+iaLPSS2_I2C_ADL        The system cannot find the file specified
+SpbCx                  The system cannot find the file specified
+TeeDriverW10x64        The system cannot find the file specified
+rt640x64               The system cannot find the file specified
+CmBatt                 The system cannot find the file specified
+BATTC                  The system cannot find the file specified
+AcpiVpc                The system cannot find the file specified
+ipf_acpi               The system cannot find the file specified
+ICCWDT                 The system cannot find the file specified
+i8042prt               The system cannot find the file specified
+kbdclass               The system cannot find the file specified
+IntcAudioBus           The system cannot find the file specified
+wmiacpi                The system cannot find the file specified
+acpitime               The system cannot find the file specified
+iaLPSS2_GPIO2_ADL      The system cannot find the file specified
+msgpioclx              The system cannot find the file specified
+intelppm               The system cannot find the file specified
+acpipagr               The system cannot find the file specified
+UcmUcsiAcpiClient      The system cannot find the file specified
+UcmUcsiCx              The system cannot find the file specified
+UcmCx                  The system cannot find the file specified
+nvpcf                  The system cannot find the file specified
+UEFI                   The system cannot find the file specified
+NdisVirtualBus         The system cannot find the file specified
+swenum                 The system cannot find the file specified
+phdskmnt               The system cannot find the file specified
+gvinput                The system cannot find the file specified
+mshidkmdf              The system cannot find the file specified
+HIDCLASS               The system cannot find the file specified
+HIDPARSE               The system cannot find the file specified
+rdpbus                 The system cannot find the file specified
+ToDeskAudio            The system cannot find the file specified
+ksthunk                The system cannot find the file specified
+mouhid                 The system cannot find the file specified
+gvinputmf              The system cannot find the file specified
+mouclass               The system cannot find the file specified
+kbdhid                 The system cannot find the file specified
+UsbHub3                The system cannot find the file specified
+USBD                   The system cannot find the file specified
+USBPcap                The system cannot find the file specified
+iocbios2               The system cannot find the file specified
+nvhda64v               The system cannot find the file specified
+hidi2c                 The system cannot find the file specified
+IntcOED                The system cannot find the file specified
+MTConfig               The system cannot find the file specified
+RTKVHD64               The system cannot find the file specified
+NahimicBTLink          The system cannot find the file specified
+Nahimic_Mirroring      The system cannot find the file specified
+NahimicXVAD            The system cannot find the file specified
+usbccgp                The system cannot find the file specified
+ibtusb                 The system cannot find the file specified
+BTHUSB                 The system cannot find the file specified
+BTHport                The system cannot find the file specified
+hidusb                 The system cannot find the file specified
+usbvideo               The system cannot find the file specified
+WinUsb                 The system cannot find the file specified
+win32k                 The system cannot find the file specified
+WIN32KSGD              The system cannot find the file specified
+dump_storport          The system cannot find the file specified
+dump_stornvme          The system cannot find the file specified
+dump_dumpfve           The system cannot find the file specified
+win32kbase             The system cannot find the file specified
+win32kfull             The system cannot find the file specified
+dxgmms2                The system cannot find the file specified
+monitor                The system cannot find the file specified
+WUDFRd                 The system cannot find the file specified
+IndirectKmd            The system cannot find the file specified
+ipf_cpu                The system cannot find the file specified
+ipf_lf                 The system cannot find the file specified
+cdd                    The system cannot find the file specified
+bfs                    The system cannot find the file specified
+luafv                  The system cannot find the file specified
+wcifs                  The system cannot find the file specified
+mmcss                  The system cannot find the file specified
+cldflt                 The system cannot find the file specified
+rdpdr                  The system cannot find the file specified
+storqosflt             The system cannot find the file specified
+bindflt                The system cannot find the file specified
+bowser                 The system cannot find the file specified
+mrxsmb                 The system cannot find the file specified
+mrxsmb20               The system cannot find the file specified
+condrv                 The system cannot find the file specified
+vmnetbridge            The system cannot find the file specified
+lltdio                 The system cannot find the file specified
+vmswitch               The system cannot find the file specified
+vmbkmclr               The system cannot find the file specified
+rspndr                 The system cannot find the file specified
+vmnetuserif            The system cannot find the file specified
+mslldp                 The system cannot find the file specified
+wanarp                 The system cannot find the file specified
+nwifi                  The system cannot find the file specified
+ndisuio                The system cannot find the file specified
+HTTP                   The system cannot find the file specified
+mpsdrv                 The system cannot find the file specified
+vmx86                  The system cannot find the file specified
+SdpNetFilter1          The system cannot find the file specified
+awealloc               The system cannot find the file specified
+deviodrv               The system cannot find the file specified
+dokan2                 The system cannot find the file specified
+hcmon                  The system cannot find the file specified
+peauth                 The system cannot find the file specified
+srvnet                 The system cannot find the file specified
+Ndu                    The system cannot find the file specified
+tcpipreg               The system cannot find the file specified
+vhdaccess              The system cannot find the file specified
+vstor2-mntapi10-shared The system cannot find the file specified
+vstor2-x64             The system cannot find the file specified
+wtd                    The system cannot find the file specified
+xlwfp                  The system cannot find the file specified
+srv2                   The system cannot find the file specified
+p9rdr                  The system cannot find the file specified
+vwifimp                The system cannot find the file specified
+ahflt                  The system cannot find the file specified
+rassstp                The system cannot find the file specified
+NDProxy                The system cannot find the file specified
+AgileVpn               The system cannot find the file specified
+rasl2tp                The system cannot find the file specified
+raspptp                The system cannot find the file specified
+raspppoe               The system cannot find the file specified
+ndistapi               The system cannot find the file specified
+ndiswan                The system cannot find the file specified
+
+You can troubleshoot most symbol related issues by turning on symbol loading diagnostics (!sym noisy) and repeating the command that caused symbols to be loaded.
+You should also verify that your symbol search path (.sympath) is correct.
+Bugcheck code 00000101
+Arguments 00000000`0000000a 00000000`00000000 ffffd680`1de66180 00000000`00000007
+rax=0000000001020000 rbx=ffffd6801dd3b180 rcx=0000000000000101
+rdx=000000000000000a rsi=0000000000000001 rdi=ffff8a0c03281080
+rip=fffff8042161a160 rsp=ffffd6801dd559e8 rbp=000000000000000c
+ r8=0000000000000000  r9=ffffd6801de66180 r10=ffffffffffffffff
+r11=ffffd6801dd559e8 r12=000000000000000d r13=00000000000ad604
+r14=ffffd6801de66180 r15=0000000000000007
+iopl=0         nv up ei pl zr na po nc
+cs=0010  ss=0018  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+nt!KeBugCheckEx:
+fffff804`2161a160 48894c2408      mov     qword ptr [rsp+8],rcx ss:0018:ffffd680`1dd559f0=0000000000000101
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 ffffd680`1dd559e8 fffff804`2168dcd8     : 00000000`00000101 00000000`0000000a 00000000`00000000 ffffd680`1de66180 : nt!KeBugCheckEx
+01 ffffd680`1dd559f0 fffff804`21486871     : fffff780`00000350 ffffd680`1dd3b180 00000000`000ad603 00000000`00000000 : nt!KeAccumulateTicks+0x206f08
+02 ffffd680`1dd55a50 fffff804`21482f9f     : 00000000`00000014 00000000`00001388 00000000`000ad600 00000000`00067571 : nt!KiUpdateRunTime+0xd1
+03 ffffd680`1dd55c00 fffff804`21483b88     : 00000000`00000000 00000000`00000000 ffffd680`1dd3b180 00000000`00000000 : nt!KiUpdateTime+0x63f
+04 ffffd680`1dd55ea0 fffff804`2148344a     : fffff804`21e60258 00000000`00000001 00000000`00000001 00000000`0000000c : nt!KeClockInterruptNotify+0x228
+05 ffffd680`1dd55f40 fffff804`2151e66c     : 00000019`d5df8914 ffff8a0b`e6b5a720 ffff8a0b`e6b5a7d0 00000000`00000000 : nt!HalpTimerClockInterrupt+0x10a
+06 ffffd680`1dd55f70 fffff804`2161c36a     : ffffb00b`e21d6d30 ffff8a0b`e6b5a720 ffffd680`1dd3b180 00000000`00000000 : nt!KiCallInterruptServiceRoutine+0x9c
+07 ffffd680`1dd55fb0 fffff804`2161cc37     : 00000000`122bd6cb ffffd680`1dd3e148 00000000`000000e1 00000000`00000000 : nt!KiInterruptSubDispatchNoLockNoEtw+0xfa (TrapFrame @ ffffd680`1dd55e70)
+08 ffffb00b`e21d6cb0 fffff804`21406448     : 00000000`00000000 00000000`00000001 fffff804`21e6f780 00000000`00000000 : nt!KiInterruptDispatchNoLockNoEtw+0x37 (TrapFrame @ ffffb00b`e21d6cb0)
+09 ffffb00b`e21d6e40 fffff804`2158b144     : ffffb00b`e21d7000 ffffffff`ffffffff 00000000`00000000 fffff804`21430964 : nt!KiIpiSendRequestEx+0x7c
+0a ffffb00b`e21d6e80 fffff804`2158b062     : ffffb00b`e21d7000 ffffb00b`e21d6f40 00000000`00000001 00000000`00000000 : nt!KxFlushMultipleTb+0xa0
+0b ffffb00b`e21d6ef0 fffff804`214674ad     : ffffb00b`e21d7000 00000000`00000000 00000000`00000000 ffffb00b`e21d7010 : nt!KeFlushMultipleRangeTb+0x9e
+0c ffffb00b`e21d6f70 fffff804`2146ab47     : 00000000`00000000 00000000`00000004 80000002`f8096921 ffff8a0c`1114b200 : nt!MiFlushTbList+0xcd
+0d ffffb00b`e21d6fa0 fffff804`2140e227     : ffff8a0c`00e36c50 ffff8a0c`00e36c50 ffff8a0c`1114b228 ffff8a0c`1114b228 : nt!MmSetAddressRangeModifiedEx+0x2c7
+0e ffffb00b`e21d7100 fffff804`2140d0fb     : ffff8a0b`e6ab2a00 ffff8a0c`00001000 ffff8a0c`10fd3520 00000000`00000000 : nt!CcFlushCacheOneRange+0xe7
+0f ffffb00b`e21d71d0 fffff804`21409b38     : ffffb00b`e21d7328 00000000`00000000 00000000`00000000 00000000`00000000 : nt!CcFlushCachePriv+0x10f
+10 ffffb00b`e21d7240 fffff804`27165285     : 00000000`00000005 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 : nt!CcCoherencyFlushAndPurgeCache+0x88
+11 ffffb00b`e21d72a0 00000000`00000005     : 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 : Ntfs+0xd5285
+12 ffffb00b`e21d72a8 00000000`00000000     : 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 ffffb00b`e21d7500 : 0x5
+Browse full module list
+start             end                 module name
+fffff804`25640000 fffff804`259f3000   GuardMetaCore   (private pdb symbols)  e:\project_learning\yuyuanvtdebug\netr\x64\release\GuardMetaCore.pdb
+    Loaded symbol image file: GuardMetaCore.sys
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\x64\release\GuardMetaCore.sys
+    Image path: GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Wed Jul 22 14:23:12 2026 (6A6061D0)
+    CheckSum:         00082C5D
+    ImageSize:        003B3000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+THREAD ffff8a0c03281080  Cid 462c.1cfc  Teb: 000000bf7ba5a000 Win32Thread: ffff8a0c03c8f990 RUNNING on processor 5
+IRP List:
+    Unable to read nt!_IRP @ ffff8a0bfa7afb20
+Not impersonating
+GetUlongFromAddress: unable to read from fffff80421e0c0ac
+Owning Process            ffff8a0c134ec080       Image:         x64dbg.exe
+Attached Process          N/A            Image:         N/A
+fffff78000000000: Unable to get shared data
+Wait Start TickCount      709458       
+Context Switch Count      245            IdealProcessor: 19             
+ReadMemory error: Cannot get nt!KeMaximumIncrement value.
+UserTime                  00:00:00.000
+KernelTime                00:00:00.000
+Win32 Start Address 0x00007fff862f1590
+Stack Init ffffb00be21d7bb0 Current ffffb00be21d7600
+Base ffffb00be21d8000 Limit ffffb00be21d1000 Call 0000000000000000
+Priority 11  BasePriority 8  IoPriority 2  PagePriority 5
+Part of process with FOREGROUND Priority
+Child-SP          RetAddr               : Args to Child                                                           : Call Site
+ffffd680`1dd559e8 fffff804`2168dcd8     : 00000000`00000101 00000000`0000000a 00000000`00000000 ffffd680`1de66180 : nt!KeBugCheckEx
+ffffd680`1dd559f0 fffff804`21486871     : fffff780`00000350 ffffd680`1dd3b180 00000000`000ad603 00000000`00000000 : nt!KeAccumulateTicks+0x206f08
+ffffd680`1dd55a50 fffff804`21482f9f     : 00000000`00000014 00000000`00001388 00000000`000ad600 00000000`00067571 : nt!KiUpdateRunTime+0xd1
+ffffd680`1dd55c00 fffff804`21483b88     : 00000000`00000000 00000000`00000000 ffffd680`1dd3b180 00000000`00000000 : nt!KiUpdateTime+0x63f
+ffffd680`1dd55ea0 fffff804`2148344a     : fffff804`21e60258 00000000`00000001 00000000`00000001 00000000`0000000c : nt!KeClockInterruptNotify+0x228
+ffffd680`1dd55f40 fffff804`2151e66c     : 00000019`d5df8914 ffff8a0b`e6b5a720 ffff8a0b`e6b5a7d0 00000000`00000000 : nt!HalpTimerClockInterrupt+0x10a
+ffffd680`1dd55f70 fffff804`2161c36a     : ffffb00b`e21d6d30 ffff8a0b`e6b5a720 ffffd680`1dd3b180 00000000`00000000 : nt!KiCallInterruptServiceRoutine+0x9c
+ffffd680`1dd55fb0 fffff804`2161cc37     : 00000000`122bd6cb ffffd680`1dd3e148 00000000`000000e1 00000000`00000000 : nt!KiInterruptSubDispatchNoLockNoEtw+0xfa (TrapFrame @ ffffd680`1dd55e70)
+ffffb00b`e21d6cb0 fffff804`21406448     : 00000000`00000000 00000000`00000001 fffff804`21e6f780 00000000`00000000 : nt!KiInterruptDispatchNoLockNoEtw+0x37 (TrapFrame @ ffffb00b`e21d6cb0)
+ffffb00b`e21d6e40 fffff804`2158b144     : ffffb00b`e21d7000 ffffffff`ffffffff 00000000`00000000 fffff804`21430964 : nt!KiIpiSendRequestEx+0x7c
+ffffb00b`e21d6e80 fffff804`2158b062     : ffffb00b`e21d7000 ffffb00b`e21d6f40 00000000`00000001 00000000`00000000 : nt!KxFlushMultipleTb+0xa0
+ffffb00b`e21d6ef0 fffff804`214674ad     : ffffb00b`e21d7000 00000000`00000000 00000000`00000000 ffffb00b`e21d7010 : nt!KeFlushMultipleRangeTb+0x9e
+ffffb00b`e21d6f70 fffff804`2146ab47     : 00000000`00000000 00000000`00000004 80000002`f8096921 ffff8a0c`1114b200 : nt!MiFlushTbList+0xcd
+ffffb00b`e21d6fa0 fffff804`2140e227     : ffff8a0c`00e36c50 ffff8a0c`00e36c50 ffff8a0c`1114b228 ffff8a0c`1114b228 : nt!MmSetAddressRangeModifiedEx+0x2c7
+ffffb00b`e21d7100 fffff804`2140d0fb     : ffff8a0b`e6ab2a00 ffff8a0c`00001000 ffff8a0c`10fd3520 00000000`00000000 : nt!CcFlushCacheOneRange+0xe7
+ffffb00b`e21d71d0 fffff804`21409b38     : ffffb00b`e21d7328 00000000`00000000 00000000`00000000 00000000`00000000 : nt!CcFlushCachePriv+0x10f
+ffffb00b`e21d7240 fffff804`27165285     : 00000000`00000005 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 : nt!CcCoherencyFlushAndPurgeCache+0x88
+ffffb00b`e21d72a0 00000000`00000005     : 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 : Ntfs+0xd5285
+ffffb00b`e21d72a8 00000000`00000000     : 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 ffffb00b`e21d7500 : 0x5
+
+Debugger saved IRQL for processor 0x5 -- 13
+*******************************************************************************
+*                                                                             *
+*                        Bugcheck Analysis                                    *
+*                                                                             *
+*******************************************************************************
+
+CLOCK_WATCHDOG_TIMEOUT (101)
+An expected clock interrupt was not received on a secondary processor in an
+MP system within the allocated interval. This indicates that the specified
+processor is hung and not processing interrupts.
+Arguments:
+Arg1: 000000000000000a, Clock interrupt time out interval in nominal clock ticks.
+Arg2: 0000000000000000, 0.
+Arg3: ffffd6801de66180, The PRCB address of the hung processor.
+Arg4: 0000000000000007, The index of the hung processor.
+
+Debugging Details:
+------------------
+
+*** WARNING: Check Image - Checksum mismatch - Dump: 0x20489e, File: 0x204b70 - C:\Symbols\BTHport.sys\881D1564202000\BTHport.sys
+
+KEY_VALUES_STRING: 1
+
+    Key  : Analysis.CPU.mSec
+    Value: 953
+
+    Key  : Analysis.Elapsed.mSec
+    Value: 1801
+
+    Key  : Analysis.IO.Other.Mb
+    Value: 3
+
+    Key  : Analysis.IO.Read.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Write.Mb
+    Value: 0
+
+    Key  : Analysis.Init.CPU.mSec
+    Value: 234
+
+    Key  : Analysis.Init.Elapsed.mSec
+    Value: 1092
+
+    Key  : Analysis.Memory.CommitPeak.Mb
+    Value: 100
+
+    Key  : Bugcheck.Code.LegacyAPI
+    Value: 0x101
+
+    Key  : Dump.Attributes.AsUlong
+    Value: 1008
+
+    Key  : Dump.Attributes.DiagDataWrittenToHeader
+    Value: 1
+
+    Key  : Dump.Attributes.ErrorCode
+    Value: 0
+
+    Key  : Dump.Attributes.KernelGeneratedTriageDump
+    Value: 1
+
+    Key  : Dump.Attributes.LastLine
+    Value: Dump completed successfully.
+
+    Key  : Dump.Attributes.ProgressPercentage
+    Value: 0
+
+    Key  : Failure.Bucket
+    Value: CLOCK_WATCHDOG_TIMEOUT_INTERRUPTS_DISABLED_nt!KeAccumulateTicks
+
+    Key  : Failure.Hash
+    Value: {8a15b9bb-bc5a-1f75-0cf3-5add54ec4c0d}
+
+
+BUGCHECK_CODE:  101
+
+BUGCHECK_P1: a
+
+BUGCHECK_P2: 0
+
+BUGCHECK_P3: ffffd6801de66180
+
+BUGCHECK_P4: 7
+
+FILE_IN_CAB:  072226-14000-01.dmp
+
+DUMP_FILE_ATTRIBUTES: 0x1008
+  Kernel Generated Triage Dump
+
+FAULTING_PROCESSOR: 7
+
+FAULTING_THREAD:  ffff8a0bfb49d080
+
+BLACKBOXBSD: 1 (!blackboxbsd)
+
+
+BLACKBOXNTFS: 1 (!blackboxntfs)
+
+
+BLACKBOXPNP: 1 (!blackboxpnp)
+
+
+BLACKBOXWINLOGON: 1
+
+CUSTOMER_CRASH_COUNT:  1
+
+PROCESS_NAME:  x64dbg.exe
+
+IP_IN_FREE_BLOCK: 0
+
+STACK_TEXT:  
+ffffd680`1dd559e8 fffff804`2168dcd8     : 00000000`00000101 00000000`0000000a 00000000`00000000 ffffd680`1de66180 : nt!KeBugCheckEx
+ffffd680`1dd559f0 fffff804`21486871     : fffff780`00000350 ffffd680`1dd3b180 00000000`000ad603 00000000`00000000 : nt!KeAccumulateTicks+0x206f08
+ffffd680`1dd55a50 fffff804`21482f9f     : 00000000`00000014 00000000`00001388 00000000`000ad600 00000000`00067571 : nt!KiUpdateRunTime+0xd1
+ffffd680`1dd55c00 fffff804`21483b88     : 00000000`00000000 00000000`00000000 ffffd680`1dd3b180 00000000`00000000 : nt!KiUpdateTime+0x63f
+ffffd680`1dd55ea0 fffff804`2148344a     : fffff804`21e60258 00000000`00000001 00000000`00000001 00000000`0000000c : nt!KeClockInterruptNotify+0x228
+ffffd680`1dd55f40 fffff804`2151e66c     : 00000019`d5df8914 ffff8a0b`e6b5a720 ffff8a0b`e6b5a7d0 00000000`00000000 : nt!HalpTimerClockInterrupt+0x10a
+ffffd680`1dd55f70 fffff804`2161c36a     : ffffb00b`e21d6d30 ffff8a0b`e6b5a720 ffffd680`1dd3b180 00000000`00000000 : nt!KiCallInterruptServiceRoutine+0x9c
+ffffd680`1dd55fb0 fffff804`2161cc37     : 00000000`122bd6cb ffffd680`1dd3e148 00000000`000000e1 00000000`00000000 : nt!KiInterruptSubDispatchNoLockNoEtw+0xfa
+ffffb00b`e21d6cb0 fffff804`21406448     : 00000000`00000000 00000000`00000001 fffff804`21e6f780 00000000`00000000 : nt!KiInterruptDispatchNoLockNoEtw+0x37
+ffffb00b`e21d6e40 fffff804`2158b144     : ffffb00b`e21d7000 ffffffff`ffffffff 00000000`00000000 fffff804`21430964 : nt!KiIpiSendRequestEx+0x7c
+ffffb00b`e21d6e80 fffff804`2158b062     : ffffb00b`e21d7000 ffffb00b`e21d6f40 00000000`00000001 00000000`00000000 : nt!KxFlushMultipleTb+0xa0
+ffffb00b`e21d6ef0 fffff804`214674ad     : ffffb00b`e21d7000 00000000`00000000 00000000`00000000 ffffb00b`e21d7010 : nt!KeFlushMultipleRangeTb+0x9e
+ffffb00b`e21d6f70 fffff804`2146ab47     : 00000000`00000000 00000000`00000004 80000002`f8096921 ffff8a0c`1114b200 : nt!MiFlushTbList+0xcd
+ffffb00b`e21d6fa0 fffff804`2140e227     : ffff8a0c`00e36c50 ffff8a0c`00e36c50 ffff8a0c`1114b228 ffff8a0c`1114b228 : nt!MmSetAddressRangeModifiedEx+0x2c7
+ffffb00b`e21d7100 fffff804`2140d0fb     : ffff8a0b`e6ab2a00 ffff8a0c`00001000 ffff8a0c`10fd3520 00000000`00000000 : nt!CcFlushCacheOneRange+0xe7
+ffffb00b`e21d71d0 fffff804`21409b38     : ffffb00b`e21d7328 00000000`00000000 00000000`00000000 00000000`00000000 : nt!CcFlushCachePriv+0x10f
+ffffb00b`e21d7240 fffff804`27165285     : 00000000`00000005 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 : nt!CcCoherencyFlushAndPurgeCache+0x88
+ffffb00b`e21d72a0 00000000`00000005     : 00000000`00000000 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 : Ntfs+0xd5285
+ffffb00b`e21d72a8 00000000`00000000     : 00000000`00000000 ffffa00c`8a58f170 ffff8a0b`00000005 ffffb00b`e21d7500 : 0x5
+
+
+SYMBOL_NAME:  nt!KeAccumulateTicks+206f08
+
+MODULE_NAME: nt
+
+IMAGE_NAME:  ntkrnlmp.exe
+
+IMAGE_VERSION:  10.0.22621.5624
+
+STACK_COMMAND:  .cxr; .ecxr ; kb
+
+BUCKET_ID_FUNC_OFFSET:  206f08
+
+FAILURE_BUCKET_ID:  CLOCK_WATCHDOG_TIMEOUT_INTERRUPTS_DISABLED_nt!KeAccumulateTicks
+
+OSPLATFORM_TYPE:  x64
+
+OSNAME:  Windows 10
+
+FAILURE_ID_HASH:  {8a15b9bb-bc5a-1f75-0cf3-5add54ec4c0d}
+
+Followup:     MachineOwner
+---------
+
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

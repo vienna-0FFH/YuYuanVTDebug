@@ -1,0 +1,37 @@
+.lines
+.reload /f nt
+.reload /f GuardMetaCore.sys
+~
+~0s
+kv
+~1s
+kv
+~2s
+kv
+~3s
+kv
+~4s
+kv
+~5s
+kv
+~6s
+kv
+~7s
+kv
+~8s
+kv
+~9s
+kv
+~10s
+kv
+~11s
+kv
+~12s
+kv
+~13s
+kv
+~14s
+kv
+~15s
+kv
+q

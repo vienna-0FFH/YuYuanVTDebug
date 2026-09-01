@@ -1,0 +1,158 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_load_072226-14296-01_triage.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072226-14296-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff807`eea00000 PsLoadedModuleList = 0xfffff807`ef8f5350
+Debug session time: Wed Jul 22 23:40:52.188 2026 (UTC + 8:00)
+System Uptime: 0 days 1:53:25.922
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+................................................................
+......
+Loading User Symbols
+
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+0: kd> .lines
+Line number information will be loaded
+0: kd> .reload /f nt
+0: kd> .reload /f GuardMetaCore.sys
+0: kd> .bugcheck
+Bugcheck code 00000133
+Arguments 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 00000000`00000000
+0: kd> dt nt!_DPC_WATCHDOG_GLOBAL_TRIAGE_BLOCK fffff807ef9c53c8
+Symbol nt!_DPC_WATCHDOG_GLOBAL_TRIAGE_BLOCK not found.
+0: kd> dq fffff807ef9c53c8 L20
+fffff807`ef9c53c8  00100001`aebecede 00008200`00008ea8
+fffff807`ef9c53d8  00000078`00000001 00000014`00000001
+fffff807`ef9c53e8  00000000`0000f1b8 00000000`00000014
+fffff807`ef9c53f8  00000000`0000f1b8 00000000`00000032
+fffff807`ef9c5408  00000004`00000000 00000000`00000001
+fffff807`ef9c5418  00000000`00000019 00000000`00000000
+fffff807`ef9c5428  00000100`00000000 00000000`00000000
+fffff807`ef9c5438  00000100`00000000 00000000`00000000
+fffff807`ef9c5448  00000000`00000000 000032c9`000186a0
+fffff807`ef9c5458  0016e360`00004e20 00000002`00000002
+fffff807`ef9c5468  00000002`00000002 00000002`00000000
+fffff807`ef9c5478  00000000`00000000 00000002`00000002
+fffff807`ef9c5488  00000002`00000000 00000002`00000000
+fffff807`ef9c5498  00002710`00000003 0000000f`ffffffff
+fffff807`ef9c54a8  00000bb8`00000011 00000001`00000100
+fffff807`ef9c54b8  000003ff`0000000a 00000000`006c7648
+0: kd> !dpcs
+CPU Type      KDPC       Function
+Unable to load image nvlddmkm.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for nvlddmkm.sys
+ 0: Normal  : 0xffffb305f1bc7a70 0xfffff807b9ded920 nvlddmkm
+ 0: Normal  : 0xfffff8077e6ecad8 0xfffff807eecafc80 nt!PpmPerfAction
+Unable to load image ndis.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ndis.sys
+ 0: Normal  : 0xffffb305f78818f8 0xfffff8078242bd40 ndis
+ 0: Normal  : 0xffffb20e5623f360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e51157360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e527c7360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e51977360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e53f0f360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e4cf2f360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Normal  : 0xffffb20e4eea7360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+Unable to load image tcpip.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for tcpip.sys
+ 0: Normal  : 0xffffb305f0dd1048 0xfffff80782820750 tcpip
+ 0: Normal  : 0xffffb20e54757360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+Unable to load image ACPI.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for ACPI.sys
+ 0: Normal  : 0xffffb305e677c070 0xfffff807811d23a0 ACPI
+Unable to load image Ndu.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for Ndu.sys
+ 0: Normal  : 0xffffb305fddc4010 0xfffff807c14ea830 Ndu
+ 0: Normal  : 0xffffb20e4d757360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+Unable to load image storport.sys, Win32 error 0n2
+*** WARNING: Unable to verify timestamp for storport.sys
+ 0: Normal  : 0xffffb305ea3fd000 0xfffff80781ce0760 storport
+ 0: Normal  : 0xffffb20e5049f360 0xfffff807eed70490 nt!PopExecuteProcessorCallback
+ 0: Threaded: 0xfffff8077e6ecc58 0xfffff807eefc4620 nt!KiDpcWatchdog
+
+0: kd> !irql
+Debugger saved IRQL for processor 0x0 -- 13
+0: kd> !timer
+Dump system timers
+
+Interrupt time: d8a549de 0000000f [ 7/22/2026 23:40:52.188]
+ Failed to read value at 0xef9c7294
+ Failed to read value at 0xef9c7290
+ Failed to read value at 0xef9c6fb4
+ Failed to read value at 0xef9c6fb0
+GetUlongFromAddress: unable to read from fffff807ef9c6ac0
+Unable to read processor block array
+0: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

@@ -12,6 +12,8 @@
  */
 
 #include "HvCore.h"
+#include "HvCompat.h"
+#include "NptHook.h"
 #include "HvCpu.h"
 #include "HvUtils.h"         // OS 版本全局初始化 (DriverEntry 早期)
 #include "HvHostPt.h"        // Step 4 (虚幻范式): host 自家 PT + 0..64GB 物理段映射
@@ -27,10 +29,18 @@
 #include "HvVtRoot.h"        // 阶段 6: 真·VT 无痕物理 R/W (VMCALL root path)
 #include "HvCr3Snoop.h"      // VMEXIT GUEST_CR3 被动嗅探 (反作弊敏感场景兜底)
 #include "HvDebugger.h"      // 阶段 7: HWBP shadow + event ring
+#include "HvBroadcast.h"     // debugger unbind 后全 VCPU 刷新 DR publication
+#include "HvNested.h"        // Nested VMX/SVM lifecycle + event ring
 #include "HvLicense.h"       // Phase 2: 网络验证 license 内核校验
+#include "NetrBridgeProtocol.h" // debugger-process bridge protocol
 #include "HvInput.h"         // 阶段 7.10: VT 透明键鼠注入
 #include "HvUsbXhci.h"       // 阶段 7.10 Layer 4: 真 VT-透明 USB HID (xHCI)
 #include "HvXhciEptTrap.h"   // 阶段 7.10 Layer 4 Item 2: USBSTS/IMAN EPT read trap
+#include "HvPower.h"
+
+#include "HvPrivateDebugObject.h"
+
+NTKERNELAPI ULONG IoGetRequestorProcessId(_In_ PIRP Irp);
 #include "HvRegistryHook.h"  // 阶段 8.2: 注册表枚举隐藏
 #include <ntstrsafe.h>
 
@@ -40,16 +50,25 @@
 
 // RtlRandomEx 在某些 WDK 配置下未被 ntddk.h 暴露 —— 显式声明
 NTSYSAPI ULONG NTAPI RtlRandomEx(_Inout_ PULONG Seed);
+NTKERNELAPI NTSTATUS PsLookupThreadByThreadId(
+    _In_ HANDLE ThreadId,
+    _Out_ PETHREAD* Thread);
 
 // 配置选项
-#define ENABLE_DRIVER_SELF_HIDE     1   // 是否启用驱动自隐藏（0=禁用，1=启用）
+#define ENABLE_DRIVER_HIDE_HOOK     1   // EPT/NPT-backed module enumeration filtering
+#define ENABLE_DRIVER_SELF_HIDE     1   // add this image to the backend hidden-driver set
+#define ENABLE_FILE_HIDE_HOOK       1   // resolved NtQueryDirectoryFile implementation only
+#define ENABLE_REGISTRY_HIDE_HOOK   1   // resolved NtEnumerateKey implementation only
+#define ENABLE_NETWORK_HOOK         1   // publish only after an NSI hook has a trampoline
 #define ENABLE_INJECTION_FRAMEWORK  1   // 是否启用注入框架
-// 2026-05-21 BISECT #80:services.exe 启动期 0x1E (0xC0000096) RIP 在
-//   NonPagedPool 跳板池中。Registry Hook 已先一步禁用,本轮再禁掉文件隐藏
-//   hook(NtQueryDirectoryFile)单独验证。若仍崩则元凶在 Driver Hide
-//   (NtQuerySystemInformation / ObReferenceObjectByName);若不崩则元凶
-//   是 NtQueryDirectoryFile 这条 hook 本身。
-#define ENABLE_FILE_HIDE_HOOK       0   // BISECT: 暂时禁用以定位跳板崩溃源
+
+/*
+ * The old PE-header obfuscator writes into the live loaded image.  It is kept
+ * in this tree for a future VT-shadow implementation, but is deliberately not
+ * published as a runtime feature: there is no read-shadow, rollback, or
+ * PatchGuard-safe lifetime yet.
+ */
+#define ENABLE_PE_IMAGE_OBFUSCATION 0
 
 // ==================== 用户态通信接口定义 ====================
 
@@ -65,7 +84,9 @@ NTSYSAPI ULONG NTAPI RtlRandomEx(_Inout_ PULONG Seed);
 #define HV_DEVICE_REG_VALUE         L"DeviceName"
 
 // IOCTL 基址 (与 VTWindowsProject DriverComm.h 一致)
+#ifndef HV_IOCTL_BASE
 #define HV_IOCTL_BASE   0x800
+#endif
 
 // IOCTL 控制码 (与 VTWindowsProject 匹配)
 #define IOCTL_HV_GET_STATUS             CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x00, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -99,6 +120,8 @@ NTSYSAPI ULONG NTAPI RtlRandomEx(_Inout_ PULONG Seed);
 #define IOCTL_HV_XHCI_TRAP_ENABLE       CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x55, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_XHCI_TRAP_DISABLE      CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x56, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_XHCI_TRAP_GET_STATS    CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x57, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_HV_GET_ANTIANTIDEBUG_STATUS CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x58, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_HV_SET_PRIVATE_DEBUG_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x59, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_INJECT_DLL             CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x60, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_INJECT_SHELLCODE       CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x70, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_MEMORY_READ            CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x80, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -139,6 +162,7 @@ NTSYSAPI ULONG NTAPI RtlRandomEx(_Inout_ PULONG Seed);
 #define IOCTL_HV_DBG_SW_BP_DEL          CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x109, METHOD_BUFFERED, FILE_ANY_ACCESS)
 // P51 单步 — R3 用 SetThreadContext 设 EFLAGS.TF=1+resume,这里登记 tid 让 #DB(BS) 命中时能识别为我们的步进
 #define IOCTL_HV_DBG_STEP_ARM           CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x10A, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_HV_DBG_STEP_CLEAR         CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x10C, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_KERNEL_READ            CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x104, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HV_KERNEL_WRITE           CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x105, METHOD_BUFFERED, FILE_ANY_ACCESS)
 // Phase G: 根因事件 ring buffer 拉取 —— GUI 1s 轮询,显示到日志面板
@@ -181,9 +205,8 @@ typedef struct _HV_STATUS_INFO {
     ULONG       ProtectedProcessCount;
     ULONG       CpuVendor;
     ULONG       ProcessorCount;
-    // ---- Phase F (2026-06-03): hook 链路就绪状态,排查"启动并保护没生效"的关键指示 ----
-    // 末尾追加,旧 GUI 客户端读到原长度不受影响。Version 不需要 bump,字段不被旧
-    // 客户端读取就是 0。GUI 新版按 sizeof(HV_STATUS_INFO) 请求,拿到完整结构。
+    // ---- V2 append-only hook readiness fields ----
+    // V1 clients may request FIELD_OFFSET(HV_STATUS_INFO, VtRootEnabled).
     BOOLEAN     VtRootEnabled;          // HvPhysReadProcessMemory 等物理直通的前提
     BOOLEAN     DebuggerProxyEnabled;   // NtSetContextThread + Nt[R/W]VirtualMemory hook 装载
     BOOLEAN     AccessBypassEnabled;    // NtOpenProcess hook 装载 (PPL/System 绕过)
@@ -337,7 +360,12 @@ typedef struct _HV_INJECT_DLL_RESULT {
     HV_STATUS_CODE  Status;
     UINT64          ModuleBase;
     ULONG           ModuleSize;
+    HV_INJECTION_DIAGNOSTICS Diagnostics;
 } HV_INJECT_DLL_RESULT, *PHV_INJECT_DLL_RESULT;
+C_ASSERT(sizeof(HV_INJECT_DLL_REQUEST) == 1051);
+C_ASSERT(FIELD_OFFSET(HV_INJECT_DLL_REQUEST, UseManualMap) == 1046);
+C_ASSERT(FIELD_OFFSET(HV_INJECT_DLL_RESULT, Diagnostics) == 16);
+C_ASSERT(sizeof(HV_INJECT_DLL_RESULT) == 4404);
 
 // Shellcode 注入请求
 typedef struct _HV_INJECT_SHELLCODE_REQUEST {
@@ -362,7 +390,9 @@ typedef struct _HV_DEBUGGER_REQUEST {
     BOOLEAN     EnablePrivilege;
     BOOLEAN     ProtectFromTerminate;
     BOOLEAN     HideFromList;
+    BOOLEAN     BridgeIdentityOnly;
 } HV_DEBUGGER_REQUEST, *PHV_DEBUGGER_REQUEST;
+C_ASSERT(sizeof(HV_DEBUGGER_REQUEST) == 528);
 
 // 进程保护请求
 typedef struct _HV_PROTECT_REQUEST {
@@ -381,6 +411,31 @@ typedef struct _HV_ANTIANTIDEBUG_REQUEST {
     BOOLEAN     HookNtClose;
     BOOLEAN     HookNtQueryObject;
 } HV_ANTIANTIDEBUG_REQUEST, *PHV_ANTIANTIDEBUG_REQUEST;
+
+#define HV_ANTIVMP_CONTROL_VERSION 1UL
+
+typedef struct _HV_ANTIVMP_CONTROL_REQUEST {
+    ULONG       Version;
+    ULONG       TargetPid;
+    ULONG       FeatureMask;
+    ULONG       Reserved;
+} HV_ANTIVMP_CONTROL_REQUEST, *PHV_ANTIVMP_CONTROL_REQUEST;
+
+typedef struct _HV_ANTIVMP_CONTROL_STATUS {
+    ULONG       Version;
+    ULONG       Enabled;
+    ULONG       TargetPid;
+    ULONG       ConfiguredMask;
+    ULONG       InstalledMask;
+    ULONG       BridgeAutoEnabled;
+    ULONG       ProtectedTargetCount;
+    ULONG       Reserved;
+} HV_ANTIVMP_CONTROL_STATUS, *PHV_ANTIVMP_CONTROL_STATUS;
+
+typedef struct _HV_PRIVATE_DEBUG_OBJECT_CONTROL {
+    ULONG Version;
+    ULONG Enabled;
+} HV_PRIVATE_DEBUG_OBJECT_CONTROL, *PHV_PRIVATE_DEBUG_OBJECT_CONTROL;
 
 // 嵌套虚拟化状态
 typedef struct _HV_NESTED_STATUS {
@@ -402,6 +457,24 @@ typedef struct _HV_NESTED_STATUS {
     ULONG       LastIrql;
     UINT64      LastVmcs12ValidationError;
 } HV_NESTED_STATUS, *PHV_NESTED_STATUS;
+
+// Append-only V2 extension.  The V1 prefix remains byte-for-byte compatible
+// with existing clients that still request sizeof(HV_NESTED_STATUS).
+#define HV_NESTED_STATUS_VERSION_2  2u
+typedef struct _HV_NESTED_STATUS_V2 {
+    HV_NESTED_STATUS V1;
+    ULONG       Version;
+    BOOLEAN     HardwareSupported;
+    BOOLEAN     Initialized;
+    BOOLEAN     Enabled;
+    BOOLEAN     Quiescing;
+    BOOLEAN     RootWindowReady;
+    UCHAR       Reserved0[3];
+    ULONG       LifecycleState;
+    ULONG       EventCapacity;
+    UINT64      EventNextSequence;
+    UINT64      EventLostCount;
+} HV_NESTED_STATUS_V2, *PHV_NESTED_STATUS_V2;
 
 // ==================== 阶段 7 调试器赋能 数据结构 ====================
 
@@ -432,7 +505,8 @@ typedef struct _HV_HWBP_REQUEST {
     UINT64      Address;
     UCHAR       Length;        // 1/2/4/8
     UCHAR       Type;          // HV_HWBP_TYPE_*
-    UCHAR       Reserved1[6];
+    UCHAR       Reserved1[2];
+    ULONG       TargetTid;
 } HV_HWBP_REQUEST, *PHV_HWBP_REQUEST;
 
 // 调试事件等待请求
@@ -470,6 +544,125 @@ static PDEVICE_OBJECT g_DeviceObject = NULL;
 static UNICODE_STRING g_DeviceName;
 static UNICODE_STRING g_SymbolicLink;
 static BOOLEAN g_DeviceCreated = FALSE;
+static BOOLEAN g_SymbolicLinkCreated = FALSE;
+static EX_RUNDOWN_REF g_DeviceIoRundown;
+static volatile LONG g_DeviceIoClosing = TRUE;
+static BOOLEAN g_DeviceIoRundownInitialized = FALSE;
+
+static BOOLEAN HvAcquireDeviceIoRundown(VOID)
+{
+    if (!g_DeviceIoRundownInitialized ||
+        InterlockedCompareExchange(&g_DeviceIoClosing, 0, 0) != 0) {
+        return FALSE;
+    }
+    return ExAcquireRundownProtection(&g_DeviceIoRundown);
+}
+
+static VOID HvReleaseDeviceIoRundown(VOID)
+{
+    if (g_DeviceIoRundownInitialized) {
+        ExReleaseRundownProtection(&g_DeviceIoRundown);
+    }
+}
+
+static VOID HvBeginDeviceIoShutdown(VOID)
+{
+    if (InterlockedExchange(&g_DeviceIoClosing, TRUE) == FALSE &&
+        g_SymbolicLinkCreated) {
+        IoDeleteSymbolicLink(&g_SymbolicLink);
+        g_SymbolicLinkCreated = FALSE;
+        DbgPrint("[HV] Device symbolic link closed for unload\n");
+    }
+}
+
+static VOID HvWaitDeviceIoDrain(VOID)
+{
+    if (g_DeviceIoRundownInitialized) {
+        ExWaitForRundownProtectionRelease(&g_DeviceIoRundown);
+    }
+}
+
+/* DriverEntry/DriverUnload run at PASSIVE_LEVEL and are serialized by I/O
+ * manager lifetime.  These flags describe only successfully published
+ * optional subsystems so unload never tears down a half-built feature. */
+typedef struct _HV_OPTIONAL_SUBSYSTEM_STATE {
+    BOOLEAN DriverHideInstalled;
+    BOOLEAN DriverSelfHidden;
+    BOOLEAN FileHideInstalled;
+    BOOLEAN RegistryInitialized;
+    BOOLEAN RegistryInstalled;
+    BOOLEAN NetworkInitialized;
+} HV_OPTIONAL_SUBSYSTEM_STATE;
+
+static HV_OPTIONAL_SUBSYSTEM_STATE g_OptionalSubsystems = { 0 };
+
+static ULONG
+HvBridgeQueryNegotiatedFlags(_In_ ULONG RequestedCapabilities)
+{
+    ULONG supported = 0;
+    ULONG flags;
+    BOOLEAN vtMemoryReady =
+        g_VtRootEnabled &&
+        HvAreAllProcessorsVirtualized() &&
+        HvIsHypervisorRunning();
+
+    if (HvDbgIsInitialized()) {
+        supported |= HV_BRIDGE_CAP_DEBUG_EVENTS |
+                     HV_BRIDGE_CAP_THREAD_CONTEXT |
+                     HV_BRIDGE_CAP_DR_HWBP_FALLBACK;
+    }
+    if (vtMemoryReady) {
+        supported |= HV_BRIDGE_CAP_MEMORY_IO;
+        if (HvDbgIsInitialized()) {
+            supported |= HV_BRIDGE_CAP_PEB_SCRUB;
+        }
+    }
+    if (vtMemoryReady &&
+        HvVwatchIsPrivateSoftwareBreakpointSupported()) {
+        supported |= HV_BRIDGE_CAP_PRIVATE_SWBP;
+    }
+    if (vtMemoryReady &&
+        HvVwatchIsVirtualHardwareBreakpointSupported()) {
+        supported |= HV_BRIDGE_CAP_VT_HWBP;
+    }
+    if (vtMemoryReady &&
+        (HvVwatchIsVtStepSupported() ||
+         NptHookIsDebugStepSupported())) {
+        supported |= HV_BRIDGE_CAP_VT_STEP;
+    }
+    if (vtMemoryReady && HvDbgIsInitialized()) {
+        supported |= HV_BRIDGE_CAP_PRIVATE_DEBUG_OBJECT;
+    }
+
+    /* These are deliberately separate from the VT capability bits. */
+    supported |= HV_BRIDGE_CAP_OS_MEMORY_PROTECT;
+    {
+        UNICODE_STRING routineName;
+        RtlInitUnicodeString(&routineName, L"MmCopyVirtualMemory");
+        if (MmGetSystemRoutineAddress(&routineName) != NULL) {
+            supported |= HV_BRIDGE_CAP_OS_COW_WRITE;
+        }
+    }
+
+    flags = RequestedCapabilities & supported;
+    if (g_OptionalSubsystems.DriverHideInstalled) {
+        flags |= HV_BRIDGE_STATE_DRIVER_HIDE;
+    }
+    if (g_OptionalSubsystems.FileHideInstalled) {
+        flags |= HV_BRIDGE_STATE_FILE_HIDE;
+    }
+    if (g_OptionalSubsystems.RegistryInstalled) {
+        flags |= HV_BRIDGE_STATE_REGISTRY_HIDE;
+    }
+    if (g_OptionalSubsystems.NetworkInitialized &&
+        HvNetHookIsInitialized()) {
+        flags |= HV_BRIDGE_STATE_NETWORK_HOOK;
+    }
+    if (vtMemoryReady && HvPrivateDebugObjectIsEnabled()) {
+        flags |= HV_BRIDGE_STATE_PRIVATE_DEBUG_OBJECT;
+    }
+    return flags;
+}
 
 // 阶段 8.4: 启动期随机生成的设备名片段(16 字符 + NUL)
 static WCHAR g_DeviceLeafBuf[HV_DEVICE_LEAF_LEN + 1] = { 0 };
@@ -478,16 +671,51 @@ static WCHAR g_SymlinkFullBuf[64]  = { 0 };  // "\??\<leaf>"
 
 // ==================== IRP 派发函数 ====================
 
+static VOID
+HvRefreshPrivateSwBpAfterWrite(
+    _In_ ULONG ProcessId,
+    _In_ UINT64 Address,
+    _In_ SIZE_T BytesWritten)
+{
+    if (BytesWritten == 0) return;
+
+    NTSTATUS status = HvVwatchRefreshPrivateSwBpRange(
+        (HANDLE)(ULONG_PTR)ProcessId,
+        Address,
+        BytesWritten);
+    if (!NT_SUCCESS(status) && status != STATUS_NOT_FOUND) {
+        DbgPrint("[HV] Private SWBP refresh failed: PID=%u Addr=0x%llX Size=%llu NT=0x%X\n",
+                 ProcessId, Address, (UINT64)BytesWritten, status);
+        HvDbgEvtPost(
+            HV_DBGEVT_SEV_WARN,
+            HV_DBGEVT_CAT_WRITE_MEMORY,
+            status,
+            (ULONG)(ULONG_PTR)PsGetCurrentProcessId(),
+            ProcessId,
+            Address,
+            BytesWritten,
+            "Private SWBP shadow disabled after write refresh failure");
+    }
+}
+
 /*
  * IRP 派发函数 - 创建/关闭
  */
 static NTSTATUS NetrDispatchCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 {
     UNREFERENCED_PARAMETER(DeviceObject);
+
+    if (!HvAcquireDeviceIoRundown()) {
+        Irp->IoStatus.Status = STATUS_DELETE_PENDING;
+        Irp->IoStatus.Information = 0;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        return STATUS_DELETE_PENDING;
+    }
     
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    HvReleaseDeviceIoRundown();
     return STATUS_SUCCESS;
 }
 
@@ -498,27 +726,58 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 {
     UNREFERENCED_PARAMETER(DeviceObject);
 
+    if (!HvAcquireDeviceIoRundown()) {
+        Irp->IoStatus.Status = STATUS_DELETE_PENDING;
+        Irp->IoStatus.Information = 0;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        return STATUS_DELETE_PENDING;
+    }
+
     PIO_STACK_LOCATION irpSp = IoGetCurrentIrpStackLocation(Irp);
     ULONG controlCode = irpSp->Parameters.DeviceIoControl.IoControlCode;
     PVOID inputBuffer = Irp->AssociatedIrp.SystemBuffer;
     PVOID outputBuffer = Irp->AssociatedIrp.SystemBuffer;
     ULONG inputLength = irpSp->Parameters.DeviceIoControl.InputBufferLength;
     ULONG outputLength = irpSp->Parameters.DeviceIoControl.OutputBufferLength;
+    /* Authorize the process that issued this IRP, not the process that first
+     * opened the FILE_OBJECT.  A duplicated/inherited device handle must not
+     * inherit its creator's Bridge identity. */
+    ULONG requestorPid = IoGetRequestorProcessId(Irp);
+    if (requestorPid == 0) {
+        requestorPid = (ULONG)(ULONG_PTR)PsGetCurrentProcessId();
+    }
 
     NTSTATUS status = STATUS_SUCCESS;
     ULONG bytesReturned = 0;
 
 #if HV_MINIMAL_MODE
     // 空壳模式: 所有功能 IOCTL 直接拒绝, 避免调用未初始化的子系统
+    // Expose only a read-only health check. The response proves VMCALL works
+    // on the processor servicing this IRP without touching subsystems.
     UNREFERENCED_PARAMETER(inputBuffer);
-    UNREFERENCED_PARAMETER(outputBuffer);
     UNREFERENCED_PARAMETER(inputLength);
-    UNREFERENCED_PARAMETER(outputLength);
-    UNREFERENCED_PARAMETER(controlCode);
-    Irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
-    Irp->IoStatus.Information = 0;
+
+    if (controlCode == IOCTL_HV_GET_STATUS &&
+        outputLength >= sizeof(HV_STATUS_INFO)) {
+        PHV_STATUS_INFO pStatus = (PHV_STATUS_INFO)outputBuffer;
+        RtlZeroMemory(pStatus, sizeof(*pStatus));
+        pStatus->Version = 0x00010000;
+        pStatus->HypervisorActive = HvIsHypervisorRunning();
+        pStatus->CpuVendor = (ULONG)HvGetCpuVendor();
+        pStatus->ProcessorCount = g_HypervisorContext.ProcessorCount;
+        status = pStatus->HypervisorActive ? STATUS_SUCCESS : STATUS_DEVICE_NOT_READY;
+        bytesReturned = sizeof(*pStatus);
+    } else if (controlCode == IOCTL_HV_GET_STATUS) {
+        status = STATUS_BUFFER_TOO_SMALL;
+    } else {
+        status = STATUS_NOT_SUPPORTED;
+    }
+
+    Irp->IoStatus.Status = status;
+    Irp->IoStatus.Information = bytesReturned;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
-    return STATUS_NOT_SUPPORTED;
+    HvReleaseDeviceIoRundown();
+    return status;
 #else
 
     DbgPrint("[HV] IOCTL received: 0x%X\n", controlCode);
@@ -535,6 +794,7 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
         Irp->IoStatus.Information = 0;
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        HvReleaseDeviceIoRundown();
         return STATUS_ACCESS_DENIED;
     }
 
@@ -551,30 +811,46 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 
     // ==================== 获取状态 ====================
     case IOCTL_HV_GET_STATUS:
-        if (outputLength >= sizeof(HV_STATUS_INFO)) {
+        if (outputLength >= (ULONG)FIELD_OFFSET(HV_STATUS_INFO, VtRootEnabled)) {
             PHV_STATUS_INFO pStatus = (PHV_STATUS_INFO)outputBuffer;
-            RtlZeroMemory(pStatus, sizeof(HV_STATUS_INFO));
+            ULONG statusBytes = min(outputLength, (ULONG)sizeof(HV_STATUS_INFO));
+            BOOLEAN hasV2 = statusBytes >= sizeof(HV_STATUS_INFO);
+            RtlZeroMemory(pStatus, statusBytes);
             
             BOOLEAN dseEnabled = TRUE;
             HvDseGetStatus(&dseEnabled, NULL, NULL);
             
-            pStatus->Version = 0x00010000;
+            pStatus->Version = hasV2 ? 0x00020000 : 0x00010000;
             pStatus->HypervisorActive = HvIsHypervisorRunning();
             pStatus->HookManagerInitialized = HvHookIsInitialized();
             pStatus->DseDisabled = !dseEnabled;
             pStatus->AntiAntiDebugEnabled = HvHookIsAntiAntiDebugEnabled();
-            pStatus->HiddenProcessCount = 0;  // TODO: 实现计数
-            pStatus->HiddenDriverCount = 0;   // TODO: 实现计数
+            pStatus->HiddenProcessCount = 0;  // AMD backend has no count ABI yet
+            pStatus->HiddenDriverCount = 0;
             pStatus->ProtectedDebuggerCount = HvHookGetDebuggerCount();
             pStatus->ProtectedProcessCount = HvHookGetProtectedProcessCount();
             pStatus->CpuVendor = (ULONG)HvGetCpuVendor();
+            if (pStatus->CpuVendor == CPU_VENDOR_INTEL) {
+                pStatus->HiddenProcessCount =
+                    *(volatile ULONG*)&g_HiddenProcessCount;
+                pStatus->HiddenDriverCount =
+                    EptHookGetHiddenDriverCount();
+            } else if (pStatus->CpuVendor == CPU_VENDOR_AMD &&
+                       g_OptionalSubsystems.DriverSelfHidden) {
+                /* NPT does not expose its list count through the current ABI. */
+                pStatus->HiddenDriverCount = 1;
+            }
             pStatus->ProcessorCount = g_HypervisorContext.ProcessorCount;
-            // hook 链路就绪状态 (Phase F)
-            pStatus->VtRootEnabled        = g_VtRootEnabled;
-            pStatus->DebuggerProxyEnabled = HvHookIsDebuggerProxyEnabled();
-            pStatus->AccessBypassEnabled  = HvHookIsAccessBypassEnabled();
+            if (pStatus->ProcessorCount == 0) {
+                pStatus->ProcessorCount = KeQueryActiveProcessorCount(NULL);
+            }
+            if (hasV2) {
+                pStatus->VtRootEnabled        = g_VtRootEnabled;
+                pStatus->DebuggerProxyEnabled = HvHookIsDebuggerProxyEnabled();
+                pStatus->AccessBypassEnabled  = HvHookIsAccessBypassEnabled();
+            }
 
-            bytesReturned = sizeof(HV_STATUS_INFO);
+            bytesReturned = statusBytes;
             DbgPrint("[HV] GET_STATUS: Active=%d, CPUs=%d, AAD=%d, Debuggers=%d, "
                      "VtRoot=%d, Proxy=%d, Bypass=%d\n",
                 pStatus->HypervisorActive, pStatus->ProcessorCount,
@@ -708,6 +984,14 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         if (inputLength >= sizeof(HV_DEBUGGER_REQUEST)) {
             PHV_DEBUGGER_REQUEST pReq = (PHV_DEBUGGER_REQUEST)inputBuffer;
             HV_DEBUGGER_CONFIG config = { 0 };
+
+            if (pReq->EnablePrivilege > TRUE ||
+                pReq->ProtectFromTerminate > TRUE ||
+                pReq->HideFromList > TRUE ||
+                pReq->BridgeIdentityOnly > TRUE) {
+                status = STATUS_INVALID_PARAMETER;
+                break;
+            }
             
             config.ProcessId = pReq->ProcessId;
             if (pReq->ProcessName[0] != L'\0') {
@@ -721,11 +1005,31 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             config.EnablePrivilege = pReq->EnablePrivilege;
             config.ProtectFromTerminate = pReq->ProtectFromTerminate;
             config.HideFromList = pReq->HideFromList;
+            config.BridgeIdentityOnly =
+                pReq->BridgeIdentityOnly ? TRUE : FALSE;
             
-            DbgPrint("[HV] ADD_DEBUGGER: PID=%d, Hide=%d\n", 
-                pReq->ProcessId, pReq->HideFromList);
+            DbgPrint("[HV] ADD_DEBUGGER: PID=%d, Hide=%d, BridgeIdentityOnly=%d\n",
+                pReq->ProcessId, pReq->HideFromList,
+                config.BridgeIdentityOnly);
             
-            status = HvHookAddDebugger(&config);
+            // Compatibility with older GUI builds: their status poll registers
+            // the GUI itself every 1.5 s. Treat that request as acknowledged but
+            // do not arm EPT hooks; the injected debugger bridge registers
+            // explicitly and remains the real activation point.
+            {
+                UNICODE_STRING requestedName;
+                UNICODE_STRING guiSelfName;
+                RtlInitUnicodeString(&requestedName, config.ProcessName);
+                RtlInitUnicodeString(&guiSelfName, L"GuardMetaVirtualSecurityPlatform");
+
+                if (config.ProcessId == requestorPid &&
+                    RtlEqualUnicodeString(&requestedName, &guiSelfName, TRUE)) {
+                    status = STATUS_SUCCESS;
+                    DbgPrint("[HV] GUI self-registration acknowledged without arming EPT hooks\n");
+                } else {
+                    status = HvHookAddDebugger(&config);
+                }
+            }
             if (NT_SUCCESS(status)) {
                 DbgPrint("[HV] Debugger added successfully\n");
             } else {
@@ -753,6 +1057,288 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         }
         break;
     
+    // ==================== debugger-process bridge ====================
+    case IOCTL_HV_BRIDGE_REGISTER:
+        if (inputLength >= sizeof(HV_BRIDGE_REGISTER_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_RESULT))
+        {
+            HV_BRIDGE_REGISTER_REQUEST request =
+                *(PHV_BRIDGE_REGISTER_REQUEST)inputBuffer;
+            PHV_BRIDGE_RESULT result = (PHV_BRIDGE_RESULT)outputBuffer;
+            ULONG callerPid = requestorPid;
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Version = HV_BRIDGE_PROTOCOL_VERSION;
+            result->DebuggerPid = callerPid;
+            if (request.Version != HV_BRIDGE_PROTOCOL_VERSION || callerPid == 0) {
+                status = STATUS_REVISION_MISMATCH;
+            } else {
+                /* REGISTER is transport/capability negotiation only. No
+                 * syscall hook or debugger policy is armed by the handshake;
+                 * every BIND requires a prior explicit debugger_add whose
+                 * retained process identity matches this Bridge caller. */
+                status = STATUS_SUCCESS;
+            }
+
+            if (NT_SUCCESS(status)) {
+                result->Flags =
+                    HvBridgeQueryNegotiatedFlags(request.Capabilities);
+            }
+
+            result->Status = status;
+            result->ActiveBindings = HvHookGetBoundTargetCount(callerPid);
+            bytesReturned = sizeof(*result);
+            HvDbgEvtPost(NT_SUCCESS(status) ? HV_DBGEVT_SEV_INFO : HV_DBGEVT_SEV_ERROR,
+                         HV_DBGEVT_CAT_ADD_DEBUGGER, status, callerPid, 0,
+                         request.Capabilities, 0,
+                         "Debugger bridge transport negotiate");
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
+    case IOCTL_HV_BRIDGE_BIND_TARGET:
+        if (inputLength >= sizeof(HV_BRIDGE_TARGET_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_RESULT))
+        {
+            HV_BRIDGE_TARGET_REQUEST request =
+                *(PHV_BRIDGE_TARGET_REQUEST)inputBuffer;
+            PHV_BRIDGE_RESULT result = (PHV_BRIDGE_RESULT)outputBuffer;
+            ULONG callerPid = requestorPid;
+            NTSTATUS operationStatus;
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Version = HV_BRIDGE_PROTOCOL_VERSION;
+            result->DebuggerPid = callerPid;
+            result->TargetPid = request.TargetPid;
+            result->Flags = request.Flags;
+
+            if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+                operationStatus = STATUS_REVISION_MISMATCH;
+            } else if (request.TargetPid == 0 || request.TargetPid == callerPid) {
+                operationStatus = STATUS_INVALID_PARAMETER;
+            } else {
+                HV_PROTECT_CONFIG config = { 0 };
+                config.ProcessId = request.TargetPid;
+                config.DebuggerPid = callerPid;
+                config.PreventTerminate =
+                    (request.Flags & HV_BRIDGE_BIND_PREVENT_TERMINATE) != 0;
+                config.PreventSuspend =
+                    (request.Flags & HV_BRIDGE_BIND_PREVENT_SUSPEND) != 0;
+                config.PreventMemoryAccess =
+                    (request.Flags & HV_BRIDGE_BIND_PREVENT_MEMORY) != 0;
+                operationStatus = HvHookBindBridgeTarget(
+                    callerPid, &config, request.Flags);
+            }
+
+            result->Status = operationStatus;
+            result->ActiveBindings = HvHookGetBoundTargetCount(callerPid);
+            bytesReturned = sizeof(*result);
+            HvDbgEvtPost(NT_SUCCESS(operationStatus) ? HV_DBGEVT_SEV_INFO : HV_DBGEVT_SEV_ERROR,
+                         HV_DBGEVT_CAT_AAD, operationStatus, callerPid, request.TargetPid,
+                         request.Flags, result->ActiveBindings,
+                         "Debugger bridge target bind");
+            status = STATUS_SUCCESS;
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
+    case IOCTL_HV_BRIDGE_UNBIND_TARGET:
+        if (inputLength >= sizeof(HV_BRIDGE_TARGET_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_RESULT))
+        {
+            HV_BRIDGE_TARGET_REQUEST request =
+                *(PHV_BRIDGE_TARGET_REQUEST)inputBuffer;
+            PHV_BRIDGE_RESULT result = (PHV_BRIDGE_RESULT)outputBuffer;
+            ULONG callerPid = requestorPid;
+            NTSTATUS operationStatus;
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Version = HV_BRIDGE_PROTOCOL_VERSION;
+            result->DebuggerPid = callerPid;
+            result->TargetPid = request.TargetPid;
+            result->Flags = request.Flags;
+
+            if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+                operationStatus = STATUS_REVISION_MISMATCH;
+            } else if (!HvHookIsDebuggerPid((HANDLE)(ULONG_PTR)callerPid)) {
+                operationStatus = STATUS_ACCESS_DENIED;
+            } else {
+                operationStatus = HvHookUnbindBridgeTarget(
+                    request.TargetPid, callerPid);
+                if (operationStatus == STATUS_NOT_FOUND) {
+                    operationStatus = STATUS_SUCCESS;
+                }
+                if (NT_SUCCESS(operationStatus)) {
+                    (void)HvPrivateDebugObjectUnbind(
+                        (HANDLE)(ULONG_PTR)callerPid,
+                        (HANDLE)(ULONG_PTR)request.TargetPid);
+                    // Bridge-side per-slot deletion is best effort.  Unbind is
+                    // the authoritative ownership boundary, so remove every
+                    // VT HWBP/private SWBP and DR fallback still owned by this
+                    // debugger-target pair before discarding queued events.
+                    HvVwatchClearAllForDebuggerTarget(
+                        (HANDLE)(ULONG_PTR)callerPid,
+                        (HANDLE)(ULONG_PTR)request.TargetPid);
+                    NptHookDebugStepClearAll(
+                        (HANDLE)(ULONG_PTR)callerPid,
+                        (HANDLE)(ULONG_PTR)request.TargetPid);
+                    (void)HvDbgClearAllForDebuggerTarget(
+                        (HANDLE)(ULONG_PTR)callerPid,
+                        (HANDLE)(ULONG_PTR)request.TargetPid);
+                    (void)HvBroadcastVmCallToAllCpus(
+                        VMCALL_REFRESH_HWBP_STATE);
+                    HvDbgDiscardEventsForTarget(
+                        (HANDLE)(ULONG_PTR)callerPid,
+                        (HANDLE)(ULONG_PTR)request.TargetPid);
+                }
+            }
+
+            result->Status = operationStatus;
+            result->ActiveBindings = HvHookGetBoundTargetCount(callerPid);
+            bytesReturned = sizeof(*result);
+            HvDbgEvtPost(NT_SUCCESS(operationStatus) ? HV_DBGEVT_SEV_INFO : HV_DBGEVT_SEV_ERROR,
+                         HV_DBGEVT_CAT_AAD, operationStatus, callerPid, request.TargetPid,
+                         0, result->ActiveBindings,
+                         "Debugger bridge target unbind");
+            status = STATUS_SUCCESS;
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
+    case IOCTL_HV_BRIDGE_SCRUB_PEB:
+        if (inputLength >= sizeof(HV_BRIDGE_TARGET_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_RESULT))
+        {
+            HV_BRIDGE_TARGET_REQUEST request =
+                *(PHV_BRIDGE_TARGET_REQUEST)inputBuffer;
+            PHV_BRIDGE_RESULT result = (PHV_BRIDGE_RESULT)outputBuffer;
+            ULONG callerPid = requestorPid;
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Version = HV_BRIDGE_PROTOCOL_VERSION;
+            result->DebuggerPid = callerPid;
+            result->TargetPid = request.TargetPid;
+            result->Flags = request.Flags;
+
+            if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+                status = STATUS_REVISION_MISMATCH;
+            } else if (!HvHookIsDebuggerPid((HANDLE)(ULONG_PTR)callerPid) ||
+                       !HvHookIsBoundTargetForDebugger(
+                           request.TargetPid, callerPid)) {
+                status = STATUS_ACCESS_DENIED;
+            } else {
+                status = HvDbgScrubPebDebugState(request.TargetPid);
+                if (NT_SUCCESS(status) &&
+                    (request.Flags & HV_BRIDGE_PEB_CLOAK_ACTIVATE) != 0) {
+                    status = HvHookActivateDeferredPebCloak(
+                        request.TargetPid,
+                        callerPid);
+                }
+            }
+
+            result->Status = status;
+            result->ActiveBindings = HvHookGetBoundTargetCount(callerPid);
+            bytesReturned = sizeof(*result);
+            HvDbgEvtPost(NT_SUCCESS(status) ? HV_DBGEVT_SEV_INFO : HV_DBGEVT_SEV_ERROR,
+                         HV_DBGEVT_CAT_AAD, status, callerPid, request.TargetPid,
+                         request.Flags, result->ActiveBindings,
+                         (request.Flags & HV_BRIDGE_PEB_CLOAK_ACTIVATE) != 0
+                             ? "Debugger bridge PEB scrub and cloak activation"
+                             : "Debugger bridge delayed PEB scrub");
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
+    case IOCTL_HV_BRIDGE_MEMORY_PROTECT:
+        if (inputLength >= sizeof(HV_BRIDGE_PROTECT_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_PROTECT_RESULT))
+        {
+            HV_BRIDGE_PROTECT_REQUEST request =
+                *(PHV_BRIDGE_PROTECT_REQUEST)inputBuffer;
+            PHV_BRIDGE_PROTECT_RESULT result =
+                (PHV_BRIDGE_PROTECT_RESULT)outputBuffer;
+            ULONG callerPid = requestorPid;
+            ULONG oldProtection = 0;
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Address = request.Address;
+            result->Size = request.Size;
+
+            if (request.Address == 0 || request.Size == 0 ||
+                request.Size > MAXULONG_PTR) {
+                status = STATUS_INVALID_PARAMETER;
+            } else if (!HvHookIsBoundTargetForDebugger(
+                           request.ProcessId, callerPid)) {
+                status = STATUS_ACCESS_DENIED;
+            } else {
+                status = HvMemoryProtect(
+                    request.ProcessId,
+                    (PVOID)(ULONG_PTR)request.Address,
+                    (SIZE_T)request.Size,
+                    request.NewProtection,
+                    &oldProtection);
+            }
+
+            result->Status = status;
+            result->OldProtection = oldProtection;
+            bytesReturned = sizeof(*result);
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
+    case IOCTL_HV_BRIDGE_MEMORY_WRITE_COW:
+        if (inputLength >= sizeof(HV_BRIDGE_MEMORY_REQUEST) &&
+            outputLength >= sizeof(HV_BRIDGE_MEMORY_RESULT))
+        {
+            HV_BRIDGE_MEMORY_REQUEST request =
+                *(PHV_BRIDGE_MEMORY_REQUEST)inputBuffer;
+            PHV_BRIDGE_MEMORY_RESULT result =
+                (PHV_BRIDGE_MEMORY_RESULT)outputBuffer;
+            ULONG payloadAvailable =
+                inputLength - sizeof(HV_BRIDGE_MEMORY_REQUEST);
+            PUCHAR payload =
+                (PUCHAR)inputBuffer + sizeof(HV_BRIDGE_MEMORY_REQUEST);
+            SIZE_T bytesWritten = 0;
+            NTSTATUS operationStatus;
+
+            if (request.ProcessId == 0 || request.Address == 0 ||
+                request.Size == 0 ||
+                request.Size > HV_BRIDGE_MEMORY_MAX_PAYLOAD ||
+                request.Size > payloadAvailable) {
+                operationStatus = STATUS_INVALID_PARAMETER;
+            } else if (!HvHookIsBoundTargetForDebugger(
+                           request.ProcessId, requestorPid)) {
+                operationStatus = STATUS_ACCESS_DENIED;
+            } else {
+                operationStatus = HvMemoryWriteCow(
+                    request.ProcessId,
+                    (PVOID)(ULONG_PTR)request.Address,
+                    payload,
+                    request.Size,
+                    &bytesWritten);
+                if (NT_SUCCESS(operationStatus)) {
+                    HvRefreshPrivateSwBpAfterWrite(
+                        request.ProcessId,
+                        request.Address,
+                        bytesWritten);
+                }
+            }
+
+            RtlZeroMemory(result, sizeof(*result));
+            result->Status = operationStatus;
+            result->Address = request.Address;
+            result->BytesTransferred = (ULONG)bytesWritten;
+            bytesReturned = sizeof(*result);
+        } else {
+            status = STATUS_BUFFER_TOO_SMALL;
+        }
+        break;
+
     case IOCTL_HV_PROTECT_PROCESS:
         if (inputLength >= sizeof(HV_PROTECT_REQUEST)) {
             PHV_PROTECT_REQUEST pReq = (PHV_PROTECT_REQUEST)inputBuffer;
@@ -812,9 +1398,13 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         break;
 
     case IOCTL_HV_DISABLE_ACCESS_BYPASS:
-        HvHookDisableAccessBypass();
-        status = STATUS_SUCCESS;
-        DbgPrint("[HV] Access bypass disabled\n");
+        status = HvHookDisableAccessBypass();
+        if (NT_SUCCESS(status)) {
+            DbgPrint("[HV] Access bypass disabled\n");
+        } else {
+            DbgPrint("[HV] Access bypass disable retained ownership: 0x%X\n",
+                     status);
+        }
         break;
 
     // ==================== 阶段 7.10: VT 透明键鼠注入 ====================
@@ -917,9 +1507,42 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     case IOCTL_HV_ENABLE_ANTIANTIDEBUG:
         {
             HV_ANTIANTIDEBUG_CONFIG config = { 0 };
-            
-            // 如果提供了请求数据，使用它
-            if (inputLength >= sizeof(HV_ANTIANTIDEBUG_REQUEST)) {
+            BOOLEAN hasConfig = FALSE;
+
+            if (inputLength >= sizeof(HV_ANTIVMP_CONTROL_REQUEST)) {
+                PHV_ANTIVMP_CONTROL_REQUEST pReq =
+                    (PHV_ANTIVMP_CONTROL_REQUEST)inputBuffer;
+                if (pReq->Version != HV_ANTIVMP_CONTROL_VERSION ||
+                    pReq->FeatureMask == 0 ||
+                    (pReq->FeatureMask & ~HV_AAD_FEATURE_ALL) != 0) {
+                    status = STATUS_INVALID_PARAMETER;
+                    break;
+                }
+
+                config.TargetPid = pReq->TargetPid;
+                config.HookNtQueryInformationProcess =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_PROCESS_DEBUG_QUERY) != 0;
+                config.HookNtQuerySystemInformation =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_KERNEL_DEBUG_QUERY) != 0;
+                config.HookNtSetInformationThread =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_THREAD_HIDE) != 0;
+                config.HookNtQueryInformationThread =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_THREAD_HIDE) != 0;
+                config.HookNtClose =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_INVALID_HANDLE) != 0;
+                config.HookNtQueryObject =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_DEBUG_OBJECT) != 0;
+                config.HookNtGetContextThread =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_DEBUG_REGISTERS) != 0;
+                config.HookNtSetContextThread =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_DEBUG_REGISTERS) != 0;
+                config.HookNtSystemDebugControl =
+                    (pReq->FeatureMask & HV_AAD_FEATURE_SYSTEM_DEBUG_CONTROL) != 0;
+                hasConfig = TRUE;
+
+                DbgPrint("[HV] ENABLE_ANTIANTIDEBUG v%u: TargetPID=%u mask=0x%X\n",
+                         pReq->Version, pReq->TargetPid, pReq->FeatureMask);
+            } else if (inputLength >= sizeof(HV_ANTIANTIDEBUG_REQUEST)) {
                 PHV_ANTIANTIDEBUG_REQUEST pReq = (PHV_ANTIANTIDEBUG_REQUEST)inputBuffer;
                 config.TargetPid = pReq->TargetPid;
                 config.HookNtQueryInformationProcess = pReq->HookNtQueryInformationProcess;
@@ -927,18 +1550,75 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
                 config.HookNtSetInformationThread = pReq->HookNtSetInformationThread;
                 config.HookNtClose = pReq->HookNtClose;
                 config.HookNtQueryObject = pReq->HookNtQueryObject;
-                
+                hasConfig = TRUE;
+
                 DbgPrint("[HV] ENABLE_ANTIANTIDEBUG: TargetPID=%d\n", pReq->TargetPid);
             } else {
                 // 使用默认配置（Hook 所有函数）
                 DbgPrint("[HV] ENABLE_ANTIANTIDEBUG: Using default config\n");
             }
-            
-            status = HvHookEnableAntiAntiDebug(inputLength >= sizeof(HV_ANTIANTIDEBUG_REQUEST) ? &config : NULL);
+
+            if (HvHookIsAntiAntiDebugEnabled()) {
+                status = HvHookDisableAntiAntiDebug();
+                if (!NT_SUCCESS(status)) {
+                    break;
+                }
+            }
+
+            status = HvHookEnableAntiAntiDebug(hasConfig ? &config : NULL);
             if (NT_SUCCESS(status)) {
                 DbgPrint("[HV] Anti-anti-debug enabled successfully\n");
             } else {
                 DbgPrint("[HV] Failed to enable anti-anti-debug: 0x%X\n", status);
+            }
+        }
+        break;
+
+    case IOCTL_HV_GET_ANTIANTIDEBUG_STATUS:
+        if (outputLength < sizeof(HV_ANTIVMP_CONTROL_STATUS) || !outputBuffer) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        {
+            PHV_ANTIVMP_CONTROL_STATUS pStatus =
+                (PHV_ANTIVMP_CONTROL_STATUS)outputBuffer;
+            RtlZeroMemory(pStatus, sizeof(*pStatus));
+            pStatus->Version = HV_ANTIVMP_CONTROL_VERSION;
+            pStatus->Enabled = HvHookIsAntiAntiDebugEnabled() ? 1UL : 0UL;
+            pStatus->TargetPid = HvHookGetAntiAntiDebugTargetPid();
+            pStatus->ConfiguredMask = HvHookGetAntiAntiDebugConfiguredMask();
+            pStatus->InstalledMask = HvHookGetAntiAntiDebugInstalledMask();
+            pStatus->BridgeAutoEnabled =
+                HvHookIsBridgeAntiDebugEnabled() ? 1UL : 0UL;
+            pStatus->ProtectedTargetCount = HvHookGetProtectedProcessCount();
+            pStatus->Reserved =
+                HvPrivateDebugObjectIsEnabled() ? 1UL : 0UL;
+            bytesReturned = sizeof(*pStatus);
+            status = STATUS_SUCCESS;
+        }
+        break;
+
+    case IOCTL_HV_SET_PRIVATE_DEBUG_OBJECT:
+        if (inputLength < sizeof(HV_PRIVATE_DEBUG_OBJECT_CONTROL)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        {
+            HV_PRIVATE_DEBUG_OBJECT_CONTROL request =
+                *(PHV_PRIVATE_DEBUG_OBJECT_CONTROL)inputBuffer;
+            if (request.Version != HV_PRIVATE_DEBUG_OBJECT_VERSION ||
+                request.Enabled > 1) {
+                status = STATUS_INVALID_PARAMETER;
+                break;
+            }
+            status = HvHookSetPrivateDebugObjectEnabled(
+                request.Enabled != 0);
+            if (NT_SUCCESS(status) &&
+                outputBuffer &&
+                outputLength >= sizeof(HV_PRIVATE_DEBUG_OBJECT_STATUS)) {
+                HvPrivateDebugObjectGetStatus(
+                    (PHV_PRIVATE_DEBUG_OBJECT_STATUS)outputBuffer);
+                bytesReturned = sizeof(HV_PRIVATE_DEBUG_OBJECT_STATUS);
             }
         }
         break;
@@ -955,9 +1635,19 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     
     // ==================== 注入 ====================
     case IOCTL_HV_INJECT_DLL:
-        if (inputLength >= sizeof(HV_INJECT_DLL_REQUEST) && outputLength >= sizeof(HV_INJECT_DLL_RESULT)) {
+        if (inputLength >= sizeof(HV_INJECT_DLL_REQUEST) &&
+            outputLength >= (ULONG)FIELD_OFFSET(
+                HV_INJECT_DLL_RESULT, Diagnostics)) {
             PHV_INJECT_DLL_REQUEST pReq = (PHV_INJECT_DLL_REQUEST)inputBuffer;
             PHV_INJECT_DLL_RESULT pResult = (PHV_INJECT_DLL_RESULT)outputBuffer;
+            PHV_INJECTION_RESULT injResult = NULL;
+            PWCHAR dllPath = NULL;
+            BOOLEAN pathTerminated = FALSE;
+            BOOLEAN useManualMap = pReq->UseManualMap != FALSE;
+            ULONG pathIndex;
+            ULONG returnedLength;
+            USHORT fallbackStage = HvInjectStageRequestValidate;
+            NTSTATUS operationStatus = STATUS_UNSUCCESSFUL;
 
             // METHOD_BUFFERED: pReq 和 pResult 共用 SystemBuffer。
             // RtlZeroMemory(pResult, 16) 会抹掉 pReq->TargetPid 和 DllPath 前 6 个 WCHAR。
@@ -965,22 +1655,96 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             // 所以调 HvInjectDllFromFile 时 DllPath 大部分还在 — 但保险起见,
             // 在调注入函数前不写任何 pResult。
             ULONG targetPid = pReq->TargetPid;
+            for (pathIndex = 0;
+                 pathIndex < RTL_NUMBER_OF(pReq->DllPath);
+                 pathIndex++) {
+                if (pReq->DllPath[pathIndex] == L'\0') {
+                    pathTerminated = TRUE;
+                    break;
+                }
+            }
 
-            DbgPrint("[HV] INJECT_DLL: PID=%d, Path=%ws\n", targetPid, pReq->DllPath);
+            if (!pathTerminated) {
+                operationStatus = STATUS_NAME_TOO_LONG;
+            } else {
+                fallbackStage = HvInjectStageRequestSnapshot;
+                dllPath = (PWCHAR)HvAllocateNonPagedZeroed(
+                    sizeof(pReq->DllPath), HV_INJECTION_TAG);
+                injResult = (PHV_INJECTION_RESULT)
+                    HvAllocateNonPagedZeroed(
+                        sizeof(*injResult), HV_INJECTION_TAG);
+                if (!dllPath || !injResult) {
+                    operationStatus = STATUS_INSUFFICIENT_RESOURCES;
+                } else {
+                    RtlCopyMemory(
+                        dllPath, pReq->DllPath, sizeof(pReq->DllPath));
+                    DbgPrint(
+                        "[HV] INJECT_DLL: PID=%d, Mode=%s, Path=%ws\n",
+                        targetPid,
+                        useManualMap ? "manual-map" : "LdrLoadDll",
+                        dllPath);
+                    operationStatus = useManualMap
+                        ? HvInjectDllFromFile(
+                            targetPid, dllPath, injResult)
+                        : HvInjectDllViaLoader(
+                            targetPid, dllPath, injResult);
+                }
+            }
 
-            HV_INJECTION_RESULT injResult = { 0 };
-            status = HvInjectDllFromFile(targetPid, pReq->DllPath, &injResult);
+            returnedLength = outputLength >= sizeof(HV_INJECT_DLL_RESULT)
+                ? sizeof(HV_INJECT_DLL_RESULT)
+                : (ULONG)FIELD_OFFSET(
+                    HV_INJECT_DLL_RESULT, Diagnostics);
+            RtlZeroMemory(pResult, returnedLength);
+            pResult->Status = (ULONG)operationStatus;
+            if (injResult) {
+                pResult->ModuleBase = (UINT64)injResult->ModuleBase;
+                pResult->ModuleSize = (ULONG)injResult->ModuleSize;
+            }
+            if (returnedLength == sizeof(HV_INJECT_DLL_RESULT)) {
+                if (injResult &&
+                    injResult->Diagnostics.Version ==
+                        HV_INJECTION_DIAGNOSTIC_VERSION) {
+                    pResult->Diagnostics = injResult->Diagnostics;
+                } else {
+                    pResult->Diagnostics.Version =
+                        HV_INJECTION_DIAGNOSTIC_VERSION;
+                    pResult->Diagnostics.Size =
+                        (USHORT)sizeof(pResult->Diagnostics);
+                    pResult->Diagnostics.Flags = useManualMap
+                        ? HV_INJECTION_DIAG_FLAG_MANUAL_MAP
+                        : HV_INJECTION_DIAG_FLAG_WINDOWS_LOADER;
+                    pResult->Diagnostics.PrimaryStage = fallbackStage;
+                    pResult->Diagnostics.PrimaryStatus = operationStatus;
+                    pResult->Diagnostics.CleanupStatus = STATUS_SUCCESS;
+                    pResult->Diagnostics.DependencyIndex = 0xFFFFFFFFUL;
+                    pResult->Diagnostics.EventCount = 2;
+                    pResult->Diagnostics.Events[0].Stage = fallbackStage;
+                    pResult->Diagnostics.Events[0].Phase =
+                        HvInjectDiagnosticPhaseOperation;
+                    pResult->Diagnostics.Events[0].Status = operationStatus;
+                    pResult->Diagnostics.Events[1].Stage =
+                        HvInjectStageComplete;
+                    pResult->Diagnostics.Events[1].Phase =
+                        HvInjectDiagnosticPhaseOperation;
+                    pResult->Diagnostics.Events[1].Status = operationStatus;
+                }
+            }
+            bytesReturned = returnedLength;
 
-            pResult->Status = NT_SUCCESS(status) ? HV_STATUS_SUCCESS : HV_STATUS_ERROR;
-            pResult->ModuleBase = (UINT64)injResult.ModuleBase;
-            pResult->ModuleSize = (ULONG)injResult.ModuleSize;
-            bytesReturned = sizeof(HV_INJECT_DLL_RESULT);
+            if (dllPath) {
+                ExFreePoolWithTag(dllPath, HV_INJECTION_TAG);
+            }
+            if (injResult) {
+                ExFreePoolWithTag(injResult, HV_INJECTION_TAG);
+            }
 
-            if (NT_SUCCESS(status)) {
+            if (operationStatus == STATUS_SUCCESS) {
                 DbgPrint("[HV] DLL injected at 0x%llX, size=%d\n", pResult->ModuleBase, pResult->ModuleSize);
             } else {
-                DbgPrint("[HV] DLL injection failed: 0x%X\n", status);
+                DbgPrint("[HV] DLL injection failed: 0x%X\n", operationStatus);
             }
+            status = STATUS_SUCCESS;
         } else {
             status = STATUS_BUFFER_TOO_SMALL;
         }
@@ -1106,6 +1870,12 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
                 writeSize,
                 &bytesWritten
             );
+            if (NT_SUCCESS(opStatus)) {
+                HvRefreshPrivateSwBpAfterWrite(
+                    procId,
+                    address,
+                    bytesWritten);
+            }
 
             pResult->Status = (HV_STATUS_CODE)opStatus;
             pResult->Address = address;
@@ -1142,28 +1912,38 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             PUCHAR payload = (PUCHAR)outputBuffer + sizeof(HV_MEMORY_RESULT_EX);
 
             SIZE_T bytesRead = 0;
+            HV_PHYS_COPY_DIAG copyDiag = { 0 };
             NTSTATUS opStatus = STATUS_INVALID_PARAMETER;
             if (readSize > 0) {
-                opStatus = HvMemoryRead(procId, (PVOID)address,
-                                        payload, readSize, &bytesRead);
+                opStatus = HvPhysReadProcessMemoryDiagnosed(
+                    procId, address, payload, readSize,
+                    &bytesRead, &copyDiag);
                 // 失败 / 部分成功 → 把 payload 尾巴 zero 掉, 避免泄漏 SystemBuffer 残留
                 if (bytesRead < readSize) {
                     RtlZeroMemory(payload + bytesRead, readSize - bytesRead);
                 }
             }
 
+            if (NT_SUCCESS(opStatus) && bytesRead != readSize) {
+                opStatus = STATUS_PARTIAL_COPY;
+            }
+
             // 先写 payload, 再写 header (覆盖前 24 字节)
             PHV_MEMORY_RESULT_EX pResult = (PHV_MEMORY_RESULT_EX)outputBuffer;
             pResult->Status           = (HV_STATUS_CODE)opStatus;
-            pResult->Reserved0        = 0;
+            pResult->Reserved0        = copyDiag.Stage;
             pResult->Address          = address;
             pResult->BytesTransferred = (ULONG)bytesRead;
-            pResult->Reserved1        = 0;
+            pResult->Reserved1        = (ULONG)copyDiag.DetailStatus;
             bytesReturned = sizeof(HV_MEMORY_RESULT_EX) + readSize;
 
             if (!NT_SUCCESS(opStatus)) {
                 DbgPrint("[HV] MEMORY_READ_EX failed: PID=%d, Size=%u, status=0x%X\n",
                          procId, readSize, opStatus);
+                HvDbgEvtPost(HV_DBGEVT_SEV_ERROR, HV_DBGEVT_CAT_READ_MEMORY,
+                             opStatus, requestorPid, procId,
+                             address, readSize,
+                             "MEMORY_READ_EX: VT read failed");
             }
         } else {
             status = STATUS_BUFFER_TOO_SMALL;
@@ -1195,6 +1975,12 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             if (writeSize > 0) {
                 opStatus = HvMemoryWrite(procId, (PVOID)address,
                                          payload, writeSize, &bytesWritten);
+                if (NT_SUCCESS(opStatus)) {
+                    HvRefreshPrivateSwBpAfterWrite(
+                        procId,
+                        address,
+                        bytesWritten);
+                }
             }
 
             PHV_MEMORY_RESULT_EX pResult = (PHV_MEMORY_RESULT_EX)outputBuffer;
@@ -1369,6 +2155,12 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
                 SIZE_T thisWritten = 0;
                 NTSTATUS opStatus = HvMemoryWrite(procId, (PVOID)addr,
                                                   src, itemSize, &thisWritten);
+                if (NT_SUCCESS(opStatus)) {
+                    HvRefreshPrivateSwBpAfterWrite(
+                        procId,
+                        addr,
+                        thisWritten);
+                }
                 resItems[i].Status           = (HV_STATUS_CODE)opStatus;
                 resItems[i].BytesTransferred = (ULONG)thisWritten;
             }
@@ -1470,83 +2262,111 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 
     // ==================== 嵌套虚拟化监控 ====================
     case IOCTL_HV_GET_NESTED_STATUS:
-        if (outputLength >= sizeof(HV_NESTED_STATUS)) {
-            PHV_NESTED_STATUS pNested = (PHV_NESTED_STATUS)outputBuffer;
-            RtlZeroMemory(pNested, sizeof(HV_NESTED_STATUS));
-            
-            // 检查是否支持嵌套虚拟化
-            CPU_VENDOR vendor = HvGetCpuVendor();
-            pNested->NestedVmxSupported = (vendor == CPU_VENDOR_INTEL);
-            pNested->NestedSvmSupported = (vendor == CPU_VENDOR_AMD);
-            
-            // 遍历所有 CPU 收集嵌套状态
-            ULONG cpuCount = g_HypervisorContext.ProcessorCount;
-            ULONG activeCpus = 0;
-            UINT64 totalVmxon = 0, totalVmlaunch = 0, totalVmresume = 0;
-            UINT64 totalL2Exit = 0, totalErrors = 0;
-            BOOLEAN anyL1Enabled = FALSE, anyL2Running = FALSE;
-            UINT64 currentVmcsGpa = 0, vmxonRegionGpa = 0;
-            
-            for (ULONG i = 0; i < cpuCount; i++) {
-                PVCPU_DATA vcpu = &g_HypervisorContext.VcpuData[i];
-                if (!vcpu->IsVirtualized) continue;
-                
-                if (vendor == CPU_VENDOR_INTEL) {
-                    PNESTED_VMX_STATE nested = &vcpu->NestedVmx;
-                    if (nested->VmxEnabled) {
-                        anyL1Enabled = TRUE;
-                        activeCpus++;
-                        totalVmxon++;
-                    }
-                    if (vcpu->IsInL2) {
-                        anyL2Running = TRUE;
-                    }
-                    totalL2Exit += nested->L2VmExitCount;
-                    totalVmlaunch += nested->NestedVmEntryCount;
-                    
-                    if (nested->CurrentVmcsGpa != 0) {
-                        currentVmcsGpa = nested->CurrentVmcsGpa;
-                    }
-                    if (nested->VmxonRegionGpa != 0) {
-                        vmxonRegionGpa = nested->VmxonRegionGpa;
-                    }
-                } else if (vendor == CPU_VENDOR_AMD) {
-                    PNESTED_SVM_STATE nested = &vcpu->NestedSvm;
-                    if (nested->SvmEnabled) {
-                        anyL1Enabled = TRUE;
-                        activeCpus++;
-                    }
-                    if (nested->InGuestMode) {
-                        anyL2Running = TRUE;
-                    }
-                    totalL2Exit += nested->L2VmExitCount;
-                    totalVmlaunch += nested->NestedVmrunCount;
-                }
-            }
-            
-            pNested->L1VmxEnabled = anyL1Enabled;
-            pNested->L2Running = anyL2Running;
-            pNested->ActiveCpuCount = activeCpus;
-            pNested->TotalVmxonCount = totalVmxon;
-            pNested->TotalVmlaunchCount = totalVmlaunch;
-            pNested->TotalVmresumeCount = totalVmresume;
-            pNested->TotalL2ExitCount = totalL2Exit;
-            pNested->TotalErrorCount = totalErrors;
-            pNested->CurrentVmcsGpa = currentVmcsGpa;
-            pNested->VmxonRegionGpa = vmxonRegionGpa;
-            
-            bytesReturned = sizeof(HV_NESTED_STATUS);
-            DbgPrint("[HV] GET_NESTED_STATUS: L1=%d, L2=%d, ActiveCPUs=%d\n",
-                pNested->L1VmxEnabled, pNested->L2Running, pNested->ActiveCpuCount);
-        } else {
+    {
+        PHV_NESTED_STATUS pNested;
+        CPU_VENDOR vendor;
+        ULONG cpuCount;
+        ULONG activeCpus = 0;
+        UINT64 totalVmxon = 0, totalVmlaunch = 0, totalVmresume = 0;
+        UINT64 totalL2Exit = 0, totalErrors = 0;
+        BOOLEAN anyL1Enabled = FALSE, anyL2Running = FALSE;
+        UINT64 currentVmcsGpa = 0, vmxonRegionGpa = 0;
+
+        if (outputLength < sizeof(HV_NESTED_STATUS)) {
             status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        bytesReturned = outputLength >= sizeof(HV_NESTED_STATUS_V2)
+            ? sizeof(HV_NESTED_STATUS_V2)
+            : sizeof(HV_NESTED_STATUS);
+        RtlZeroMemory(outputBuffer, bytesReturned);
+        pNested = (PHV_NESTED_STATUS)outputBuffer;
+        vendor = HvGetCpuVendor();
+
+        pNested->NestedVmxSupported = HvNestedIsVmxSupported();
+        pNested->NestedSvmSupported = HvNestedIsSvmSupported();
+
+        cpuCount = g_HypervisorContext.VcpuData
+            ? g_HypervisorContext.ProcessorCount
+            : 0;
+        for (ULONG i = 0; i < cpuCount; i++) {
+            PVCPU_DATA vcpu = &g_HypervisorContext.VcpuData[i];
+            if (!vcpu->IsVirtualized) continue;
+
+            if (vendor == CPU_VENDOR_INTEL) {
+                PNESTED_VMX_STATE nested = &vcpu->NestedVmx;
+                if (nested->VmxEnabled) {
+                    anyL1Enabled = TRUE;
+                    activeCpus++;
+                    totalVmxon++;
+                }
+                if (vcpu->IsInL2) anyL2Running = TRUE;
+                totalL2Exit += nested->L2VmExitCount;
+                totalVmlaunch += nested->NestedVmEntryCount;
+
+                if (nested->CurrentVmcsGpa != 0) {
+                    currentVmcsGpa = nested->CurrentVmcsGpa;
+                }
+                if (nested->VmxonRegionGpa != 0) {
+                    vmxonRegionGpa = nested->VmxonRegionGpa;
+                }
+            } else if (vendor == CPU_VENDOR_AMD) {
+                PNESTED_SVM_STATE nested = &vcpu->NestedSvm;
+                if (nested->SvmEnabled) {
+                    anyL1Enabled = TRUE;
+                    activeCpus++;
+                }
+                if (nested->InGuestMode || vcpu->IsInL2) anyL2Running = TRUE;
+                totalL2Exit += nested->L2VmExitCount;
+                totalVmlaunch += nested->NestedVmrunCount;
+            }
+        }
+
+        pNested->L1VmxEnabled = anyL1Enabled;
+        pNested->L2Running = anyL2Running;
+        pNested->ActiveCpuCount = activeCpus;
+        pNested->TotalVmxonCount = totalVmxon;
+        pNested->TotalVmlaunchCount = totalVmlaunch;
+        pNested->TotalVmresumeCount = totalVmresume;
+        pNested->TotalL2ExitCount = totalL2Exit;
+        pNested->TotalErrorCount = totalErrors;
+        pNested->CurrentVmcsGpa = currentVmcsGpa;
+        pNested->VmxonRegionGpa = vmxonRegionGpa;
+
+        if (bytesReturned == sizeof(HV_NESTED_STATUS_V2)) {
+            PHV_NESTED_STATUS_V2 pV2 = (PHV_NESTED_STATUS_V2)outputBuffer;
+            HV_NESTED_EVENT_BATCH eventStats;
+            ULONG eventBytes = 0;
+
+            RtlZeroMemory(&eventStats, sizeof(eventStats));
+            (VOID)HvNestedQueryEvents(
+                &eventStats, sizeof(eventStats), &eventBytes);
+
+            pV2->Version = HV_NESTED_STATUS_VERSION_2;
+            pV2->HardwareSupported =
+                pNested->NestedVmxSupported || pNested->NestedSvmSupported;
+            pV2->Initialized = HvNestedIsInitialized();
+            pV2->Enabled = HvNestedIsEnabled();
+            pV2->Quiescing = HvNestedIsQuiescing();
+            pV2->RootWindowReady = g_VtRootEnabled;
+            pV2->LifecycleState = (ULONG)HvNestedGetLifecycleState();
+            pV2->EventCapacity = eventStats.Capacity;
+            pV2->EventNextSequence = eventStats.NextSequence;
+            pV2->EventLostCount = eventStats.LostEvents;
         }
         break;
-    
+    }
+
     case IOCTL_HV_GET_NESTED_EVENTS:
+        status = HvNestedQueryEvents(
+            outputBuffer, outputLength, &bytesReturned);
+        break;
+
     case IOCTL_HV_CLEAR_NESTED_EVENTS:
-        DbgPrint("[HV] Nested events not implemented\n");
-        status = STATUS_NOT_IMPLEMENTED;
+        HvNestedClearEvents();
+        bytesReturned = 0;
+        status = STATUS_SUCCESS;
         break;
 
     // ==================== 阶段 7.1: 内核任意地址读写 ====================
@@ -1724,35 +2544,182 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     case IOCTL_HV_DBG_SW_BP_ADD:
     {
         // 输入: ULONG target_pid; UINT64 address
-        typedef struct { ULONG TargetPid; ULONG _pad; UINT64 Address; } SW_BP_REQ;
-        if (inputLength < sizeof(SW_BP_REQ)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        SW_BP_REQ* r = (SW_BP_REQ*)inputBuffer;
-        status = HvDbgRegisterSwBp(
-            PsGetCurrentProcessId(),
-            (HANDLE)(ULONG_PTR)r->TargetPid,
-            r->Address);
+        if (inputLength < sizeof(HV_BRIDGE_SWBP_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_OPERATION_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        HV_BRIDGE_SWBP_REQUEST request =
+            *(PHV_BRIDGE_SWBP_REQUEST)inputBuffer;
+        PHV_BRIDGE_OPERATION_RESULT result =
+            (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        NTSTATUS operationStatus;
+
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsDebuggerPid(caller) ||
+                   !HvHookIsBoundTargetForDebugger(
+                       request.TargetPid,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else if ((request.Flags & ~HV_BRIDGE_SWBP_SCOPE_THREAD) != 0 ||
+                   ((request.Flags & HV_BRIDGE_SWBP_SCOPE_THREAD) != 0 &&
+                    request.ScopeThreadId == 0) ||
+                   ((request.Flags & HV_BRIDGE_SWBP_SCOPE_THREAD) == 0 &&
+                    request.ScopeThreadId != 0)) {
+            operationStatus = STATUS_INVALID_PARAMETER;
+        } else if ((request.Flags & HV_BRIDGE_SWBP_SCOPE_THREAD) != 0 &&
+                   !HvPrivateDebugObjectIsBound(
+                       caller,
+                       (HANDLE)(ULONG_PTR)request.TargetPid)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else {
+            operationStatus = HvVwatchSwBpAdd(
+                caller,
+                (HANDLE)(ULONG_PTR)request.TargetPid,
+                request.Address,
+                (request.Flags & HV_BRIDGE_SWBP_SCOPE_THREAD) != 0
+                    ? (HANDLE)(ULONG_PTR)request.ScopeThreadId
+                    : NULL);
+        }
+
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = NT_SUCCESS(operationStatus)
+            ? HV_BRIDGE_STATUS_SUCCESS
+            : (operationStatus == STATUS_NOT_FOUND
+                ? HV_BRIDGE_STATUS_NOT_FOUND
+                : HV_STATUS_ERROR);
+        result->Info = request.Address;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
         DbgPrint("[HV] SW_BP_ADD: target=%u rip=0x%llX status=0x%X\n",
-                 r->TargetPid, r->Address, status);
+                 request.TargetPid, request.Address, operationStatus);
         break;
     }
     case IOCTL_HV_DBG_SW_BP_DEL:
     {
-        typedef struct { ULONG TargetPid; ULONG _pad; UINT64 Address; } SW_BP_REQ;
-        if (inputLength < sizeof(SW_BP_REQ)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        SW_BP_REQ* r = (SW_BP_REQ*)inputBuffer;
-        status = HvDbgUnregisterSwBp((HANDLE)(ULONG_PTR)r->TargetPid, r->Address);
+        if (inputLength < sizeof(HV_BRIDGE_SWBP_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_OPERATION_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        HV_BRIDGE_SWBP_REQUEST request =
+            *(PHV_BRIDGE_SWBP_REQUEST)inputBuffer;
+        PHV_BRIDGE_OPERATION_RESULT result =
+            (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        NTSTATUS operationStatus;
+
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsDebuggerPid(caller) ||
+                   !HvHookIsBoundTargetForDebugger(
+                       request.TargetPid,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else {
+            operationStatus = HvVwatchSwBpRemove(
+                caller,
+                (HANDLE)(ULONG_PTR)request.TargetPid,
+                request.Address);
+        }
+
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = NT_SUCCESS(operationStatus)
+            ? HV_BRIDGE_STATUS_SUCCESS
+            : (operationStatus == STATUS_NOT_FOUND
+                ? HV_BRIDGE_STATUS_NOT_FOUND
+                : HV_STATUS_ERROR);
+        result->Info = request.Address;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
         DbgPrint("[HV] SW_BP_DEL: target=%u rip=0x%llX status=0x%X\n",
-                 r->TargetPid, r->Address, status);
+                 request.TargetPid, request.Address, operationStatus);
         break;
     }
 
     case IOCTL_HV_DBG_STEP_ARM:
+    case IOCTL_HV_DBG_STEP_CLEAR:
     {
         // 输入: ULONG target_tid
-        if (inputLength < sizeof(ULONG)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        ULONG tid = *(ULONG*)inputBuffer;
-        status = HvDbgArmStep(PsGetCurrentProcessId(), (HANDLE)(ULONG_PTR)tid);
-        DbgPrint("[HV] STEP_ARM: tid=%u status=0x%X\n", tid, status);
+        if (inputLength < sizeof(HV_BRIDGE_STEP_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_OPERATION_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        HV_BRIDGE_STEP_REQUEST request =
+            *(PHV_BRIDGE_STEP_REQUEST)inputBuffer;
+        PHV_BRIDGE_OPERATION_RESULT result =
+            (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        NTSTATUS operationStatus = STATUS_INVALID_PARAMETER;
+        PETHREAD targetThread = NULL;
+
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsDebuggerPid(caller) ||
+                   !HvHookIsBoundTargetForDebugger(
+                       request.TargetPid,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else if (!request.TargetPid || !request.ThreadId) {
+            operationStatus = STATUS_INVALID_PARAMETER;
+        } else {
+            operationStatus = PsLookupThreadByThreadId(
+                (HANDLE)(ULONG_PTR)request.ThreadId,
+                &targetThread);
+            if (NT_SUCCESS(operationStatus)) {
+                if (PsGetThreadProcessId(targetThread) !=
+                    (HANDLE)(ULONG_PTR)request.TargetPid) {
+                    operationStatus = STATUS_INVALID_CID;
+                } else if (controlCode == IOCTL_HV_DBG_STEP_ARM) {
+                    operationStatus = HvGetCpuVendor() == CPU_VENDOR_AMD
+                        ? NptHookDebugStepArm(
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            (HANDLE)(ULONG_PTR)request.ThreadId,
+                            targetThread,
+                            request.Address)
+                        : HvVwatchStepArm(
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            (HANDLE)(ULONG_PTR)request.ThreadId,
+                            targetThread,
+                            request.Address);
+                } else {
+                    operationStatus = HvGetCpuVendor() == CPU_VENDOR_AMD
+                        ? NptHookDebugStepClear(
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            (HANDLE)(ULONG_PTR)request.ThreadId)
+                        : HvVwatchStepClear(
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            (HANDLE)(ULONG_PTR)request.ThreadId);
+                }
+                ObDereferenceObject(targetThread);
+            }
+        }
+
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = NT_SUCCESS(operationStatus)
+            ? HV_BRIDGE_STATUS_SUCCESS
+            : (operationStatus == STATUS_NOT_FOUND
+                ? HV_BRIDGE_STATUS_NOT_FOUND
+                : HV_STATUS_ERROR);
+        result->Info = request.Address;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
+        DbgPrint("[HV] STEP_%s: target=%u tid=%u rip=0x%llX status=0x%X\n",
+            controlCode == IOCTL_HV_DBG_STEP_ARM ? "ARM" : "CLEAR",
+            request.TargetPid,
+            request.ThreadId,
+            request.Address,
+            operationStatus);
         break;
     }
 
@@ -1773,7 +2740,7 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     // ==================== 阶段 7.7: HWBP 控制 IOCTL ====================
     case IOCTL_HV_DBG_SET_HWBP:
     {
-        HANDLE caller = PsGetCurrentProcessId();
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
         if (!HvHookIsDebuggerPid(caller)) {
             DbgPrint("[HV] DBG_SET_HWBP: access denied (PID=%llu)\n",
                 (ULONG64)(ULONG_PTR)caller);
@@ -1787,41 +2754,92 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             break;
         }
 
-        PHV_HWBP_REQUEST pReq = (PHV_HWBP_REQUEST)inputBuffer;
-        // 先把输入字段全部拷出 (因为 input/output 共享 buffer)
-        ULONG  targetPid  = pReq->TargetPid;
-        ULONG  slotIndex  = pReq->SlotIndex;
-        UINT64 address    = pReq->Address;
-        UCHAR  length     = pReq->Length;
-        UCHAR  type       = pReq->Type;
+        HV_HWBP_REQUEST request = *(PHV_HWBP_REQUEST)inputBuffer;
+        ULONG  targetPid  = request.TargetPid;
+        ULONG  targetTid  = request.TargetTid;
+        ULONG  slotIndex  = request.SlotIndex;
+        UINT64 address    = request.Address;
+        UCHAR  length     = request.Length;
+        UCHAR  type       = request.Type;
+        ULONG  policy     = request.Reserved0;
+        BOOLEAN allowVt =
+            (policy & HV_BRIDGE_HWBP_ALLOW_VT) != 0;
+        BOOLEAN allowDr =
+            (policy & HV_BRIDGE_HWBP_ALLOW_DR) != 0;
+        BOOLEAN privateEvent =
+            (policy & HV_BRIDGE_HWBP_PRIVATE_EVENT) != 0;
+
+        // Legacy GUI requests used Reserved0==0 and explicitly install DRs in
+        // user mode.  Preserve that ABI as DR-only; protocol-v4 bridge callers
+        // opt into VT and receive the selected mode in Result.Info.
+        if (policy == 0) allowDr = TRUE;
 
         PHV_DBG_RESULT pResult = (PHV_DBG_RESULT)outputBuffer;
         RtlZeroMemory(pResult, sizeof(HV_DBG_RESULT));
+        NTSTATUS st = STATUS_NOT_SUPPORTED;
+        ULONG selectedMode = HV_BRIDGE_HWBP_MODE_NONE;
 
-        // P128 (2026-06-25): 走虚拟硬断 (EPT-based, 不真写 DR).
-        //   HvDbgSetHwBp 旧 DR 路径完全 deprecate, 改成转发 HvVwatchSet.
-        NTSTATUS st = HvVwatchSet(
-            caller,
-            (HANDLE)(ULONG_PTR)targetPid,
-            slotIndex,
-            address,
-            length,
-            type);
+        if (policy != 0 && !HvHookIsBoundTargetForDebugger(
+                targetPid,
+                (ULONG)(ULONG_PTR)caller)) {
+            st = STATUS_ACCESS_DENIED;
+        } else if (allowVt) {
+            UCHAR vwatchType = HV_VWATCH_TYPE_NONE;
+            if (type == HV_HWBP_TYPE_EXEC) {
+                vwatchType = HV_VWATCH_TYPE_EXECUTE;
+            } else if (type == HV_HWBP_TYPE_WRITE) {
+                vwatchType = HV_VWATCH_TYPE_WRITE;
+            } else if (type == HV_HWBP_TYPE_RW) {
+                vwatchType = HV_VWATCH_TYPE_READWRITE;
+            }
+
+            st = vwatchType == HV_VWATCH_TYPE_NONE
+                ? STATUS_NOT_SUPPORTED
+                : HvVwatchSetThreadScopedEx(
+                      caller,
+                      (HANDLE)(ULONG_PTR)targetPid,
+                      (HANDLE)(ULONG_PTR)targetTid,
+                      slotIndex,
+                      address,
+                      length,
+                      vwatchType,
+                      privateEvent);
+            if (NT_SUCCESS(st)) {
+                selectedMode = HV_BRIDGE_HWBP_MODE_VT;
+                (void)HvDbgClearHwBpOwned(
+                    caller,
+                    (HANDLE)(ULONG_PTR)targetPid,
+                    slotIndex);
+            }
+        }
+        if (!NT_SUCCESS(st) && st != STATUS_ACCESS_DENIED && allowDr) {
+            st = HvDbgSetHwBp(
+                caller,
+                (HANDLE)(ULONG_PTR)targetPid,
+                slotIndex,
+                address,
+                length,
+                type);
+            if (NT_SUCCESS(st)) selectedMode = HV_BRIDGE_HWBP_MODE_DR;
+        }
 
         pResult->Status = NT_SUCCESS(st) ? HV_STATUS_SUCCESS :
-            (st == STATUS_INVALID_PARAMETER) ? HV_STATUS_INVALID_PARAMETER :
+            (st == STATUS_INVALID_PARAMETER ||
+             st == STATUS_DATATYPE_MISALIGNMENT) ? HV_STATUS_INVALID_PARAMETER :
             (st == STATUS_INSUFFICIENT_RESOURCES) ? HV_STATUS_INSUFFICIENT_BUFFER :
             HV_STATUS_ERROR;
+        pResult->Info = selectedMode;
         bytesReturned = sizeof(HV_DBG_RESULT);
 
-        DbgPrint("[HV] DBG_SET_HWBP -> Vwatch: Dbg=%llu Target=%u Slot=%u Addr=0x%llX Len=%u Type=%u -> NT=0x%X\n",
-            (ULONG64)(ULONG_PTR)caller, targetPid, slotIndex, address, length, type, st);
+        DbgPrint("[HV] DBG_SET_HWBP: Dbg=%llu Target=%u Tid=%u Slot=%u Addr=0x%llX Len=%u Type=%u Mode=%u Private=%u -> NT=0x%X\n",
+            (ULONG64)(ULONG_PTR)caller, targetPid, targetTid, slotIndex, address,
+            length, type, selectedMode, privateEvent ? 1 : 0, st);
         break;
     }
 
     case IOCTL_HV_DBG_CLEAR_HWBP:
     {
-        HANDLE caller = PsGetCurrentProcessId();
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
         if (!HvHookIsDebuggerPid(caller)) {
             DbgPrint("[HV] DBG_CLEAR_HWBP: access denied (PID=%llu)\n",
                 (ULONG64)(ULONG_PTR)caller);
@@ -1835,31 +2853,144 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             break;
         }
 
-        PHV_HWBP_REQUEST pReq = (PHV_HWBP_REQUEST)inputBuffer;
-        ULONG  targetPid  = pReq->TargetPid;
-        ULONG  slotIndex  = pReq->SlotIndex;
+        HV_HWBP_REQUEST request = *(PHV_HWBP_REQUEST)inputBuffer;
+        ULONG  targetPid  = request.TargetPid;
+        ULONG  targetTid  = request.TargetTid;
+        ULONG  slotIndex  = request.SlotIndex;
+        ULONG  policy     = request.Reserved0;
+        BOOLEAN allowVt =
+            (policy & HV_BRIDGE_HWBP_ALLOW_VT) != 0;
+        BOOLEAN allowDr =
+            (policy & HV_BRIDGE_HWBP_ALLOW_DR) != 0;
+        if (policy == 0) allowDr = TRUE;
 
         PHV_DBG_RESULT pResult = (PHV_DBG_RESULT)outputBuffer;
         RtlZeroMemory(pResult, sizeof(HV_DBG_RESULT));
 
-        NTSTATUS st = HvVwatchClear(
-            (HANDLE)(ULONG_PTR)targetPid,
-            slotIndex);
+        NTSTATUS vtStatus = STATUS_NOT_FOUND;
+        NTSTATUS drStatus = STATUS_NOT_FOUND;
+        ULONG clearedMode = HV_BRIDGE_HWBP_MODE_NONE;
+        if (policy != 0 && !HvHookIsBoundTargetForDebugger(
+                targetPid,
+                (ULONG)(ULONG_PTR)caller)) {
+            vtStatus = STATUS_ACCESS_DENIED;
+        } else {
+            if (allowVt) {
+                vtStatus = HvVwatchClearThreadOwned(
+                    caller,
+                    (HANDLE)(ULONG_PTR)targetPid,
+                    (HANDLE)(ULONG_PTR)targetTid,
+                    slotIndex);
+                if (NT_SUCCESS(vtStatus)) {
+                    clearedMode = HV_BRIDGE_HWBP_MODE_VT;
+                }
+            }
+            if (allowDr && vtStatus != STATUS_ACCESS_DENIED) {
+                drStatus = HvDbgClearHwBpOwned(
+                    caller,
+                    (HANDLE)(ULONG_PTR)targetPid,
+                    slotIndex);
+                if (NT_SUCCESS(drStatus) &&
+                    clearedMode == HV_BRIDGE_HWBP_MODE_NONE) {
+                    clearedMode = HV_BRIDGE_HWBP_MODE_DR;
+                }
+            }
+        }
+        NTSTATUS st = NT_SUCCESS(vtStatus) || NT_SUCCESS(drStatus)
+            ? STATUS_SUCCESS
+            : (vtStatus == STATUS_ACCESS_DENIED ||
+               drStatus == STATUS_ACCESS_DENIED)
+                ? STATUS_ACCESS_DENIED
+                : (vtStatus != STATUS_NOT_FOUND && allowVt)
+                    ? vtStatus
+                    : drStatus;
 
         pResult->Status = NT_SUCCESS(st) ? HV_STATUS_SUCCESS :
             (st == STATUS_INVALID_PARAMETER) ? HV_STATUS_INVALID_PARAMETER :
             (st == STATUS_NOT_FOUND) ? HV_STATUS_NOT_FOUND :
             HV_STATUS_ERROR;
+        pResult->Info = clearedMode;
         bytesReturned = sizeof(HV_DBG_RESULT);
 
-        DbgPrint("[HV] DBG_CLEAR_HWBP -> Vwatch: Target=%u Slot=%u -> NT=0x%X\n",
-            targetPid, slotIndex, st);
+        DbgPrint("[HV] DBG_CLEAR_HWBP: Target=%u Tid=%u Slot=%u Mode=%u -> NT=0x%X\n",
+            targetPid, targetTid, slotIndex, clearedMode, st);
+        break;
+    }
+
+    case IOCTL_HV_BRIDGE_PENDING_HWBP:
+    {
+        if (inputLength < sizeof(HV_BRIDGE_PENDING_HWBP_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_PENDING_HWBP_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        HV_BRIDGE_PENDING_HWBP_REQUEST request =
+            *(PHV_BRIDGE_PENDING_HWBP_REQUEST)inputBuffer;
+        PHV_BRIDGE_PENDING_HWBP_RESULT result =
+            (PHV_BRIDGE_PENDING_HWBP_RESULT)outputBuffer;
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        PETHREAD targetThread = NULL;
+        NTSTATUS operationStatus = STATUS_INVALID_PARAMETER;
+        UINT64 dr6Mask = 0;
+        ULONG64 generation = request.Generation;
+
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsDebuggerPid(caller) ||
+                   !HvHookIsBoundTargetForDebugger(
+                       request.TargetPid,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else if (!request.TargetPid || !request.ThreadId ||
+                   (request.Operation != HV_BRIDGE_PENDING_HWBP_QUERY &&
+                    request.Operation != HV_BRIDGE_PENDING_HWBP_RETIRE)) {
+            operationStatus = STATUS_INVALID_PARAMETER;
+        } else {
+            operationStatus = PsLookupThreadByThreadId(
+                (HANDLE)(ULONG_PTR)request.ThreadId,
+                &targetThread);
+            if (NT_SUCCESS(operationStatus)) {
+                if (PsGetThreadProcessId(targetThread) !=
+                    (HANDLE)(ULONG_PTR)request.TargetPid) {
+                    operationStatus = STATUS_INVALID_CID;
+                } else if (request.Operation ==
+                           HV_BRIDGE_PENDING_HWBP_QUERY) {
+                    operationStatus =
+                        HvVwatchQueryPendingHardwareHitOwned(
+                            targetThread,
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            &dr6Mask,
+                            &generation)
+                            ? STATUS_SUCCESS
+                            : STATUS_NOT_FOUND;
+                } else {
+                    operationStatus =
+                        HvVwatchRetirePendingHardwareHitOwned(
+                            targetThread,
+                            caller,
+                            (HANDLE)(ULONG_PTR)request.TargetPid,
+                            request.Generation)
+                            ? STATUS_SUCCESS
+                            : STATUS_NOT_FOUND;
+                }
+                ObDereferenceObject(targetThread);
+            }
+        }
+
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = operationStatus;
+        result->Generation = generation;
+        result->Dr6Mask = dr6Mask & 0xFULL;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
         break;
     }
 
     case IOCTL_HV_DBG_WAIT_EVENT:
     {
-        HANDLE caller = PsGetCurrentProcessId();
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
         if (!HvHookIsDebuggerPid(caller)) {
             DbgPrint("[HV] DBG_WAIT_EVENT: access denied (PID=%llu)\n",
                 (ULONG64)(ULONG_PTR)caller);
@@ -1867,38 +2998,249 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             break;
         }
 
-        if (inputLength < sizeof(HV_DBG_WAIT_REQUEST) ||
-            outputLength < sizeof(HV_DBG_WAIT_RESULT)) {
+        if (inputLength < sizeof(HV_BRIDGE_PRIVATE_WAIT_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_PRIVATE_WAIT_RESULT)) {
             status = STATUS_BUFFER_TOO_SMALL;
             break;
         }
 
-        PHV_DBG_WAIT_REQUEST pReq = (PHV_DBG_WAIT_REQUEST)inputBuffer;
-        ULONG timeoutMs = pReq->TimeoutMs;
+        HV_BRIDGE_PRIVATE_WAIT_REQUEST request =
+            *(PHV_BRIDGE_PRIVATE_WAIT_REQUEST)inputBuffer;
         // DebuggerPid 强制使用 caller
 
-        PHV_DBG_WAIT_RESULT pResult = (PHV_DBG_WAIT_RESULT)outputBuffer;
-        RtlZeroMemory(pResult, sizeof(HV_DBG_WAIT_RESULT));
+        PHV_BRIDGE_PRIVATE_WAIT_RESULT result =
+            (PHV_BRIDGE_PRIVATE_WAIT_RESULT)outputBuffer;
+        HV_DEBUG_EVENT event;
+        RtlZeroMemory(result, sizeof(*result));
+        RtlZeroMemory(&event, sizeof(event));
 
         // METHOD_BUFFERED 阻塞 IOCTL: 在 KernelMode 等待没问题,IRP 待在内核态
-        NTSTATUS st = HvDbgWaitDequeueEvent(caller, &pResult->Event, timeoutMs);
+        NTSTATUS st = request.Version == HV_BRIDGE_PROTOCOL_VERSION
+            ? HvDbgWaitDequeueEvent(caller, &event, request.TimeoutMs)
+            : STATUS_REVISION_MISMATCH;
 
-        if (NT_SUCCESS(st)) {
-            pResult->Status = HV_STATUS_SUCCESS;
-        } else if (st == STATUS_TIMEOUT) {
-            pResult->Status = HV_STATUS_NOT_FOUND;  // 无事件
+        if (st == STATUS_TIMEOUT) {
+            result->Status = HV_BRIDGE_STATUS_NOT_FOUND;
+        } else if (NT_SUCCESS(st)) {
+            if (event.Kind == HV_DBG_EVT_SWBP && event.Cr3 != 0 &&
+                HvPrivateDebugObjectIsBound(caller, event.Pid)) {
+                NTSTATUS adoptStatus = HvVtRootAdoptObservedUserCr3(
+                    (ULONG)(ULONG_PTR)event.Pid,
+                    event.Cr3);
+                if (NT_SUCCESS(adoptStatus)) {
+                    NTSTATUS cloakStatus = HvPebCloakRefreshTargetCr3(
+                        event.Pid,
+                        event.Cr3);
+                    if (!NT_SUCCESS(cloakStatus) &&
+                        cloakStatus != STATUS_NOT_FOUND &&
+                        cloakStatus != STATUS_NOT_SUPPORTED) {
+                        DbgPrint("[HV] Private SWBP PEB cloak CR3 refresh failed: target=%u cr3=0x%llX status=0x%X\n",
+                            (ULONG)(ULONG_PTR)event.Pid,
+                            event.Cr3,
+                            cloakStatus);
+                    }
+                } else {
+                    DbgPrint("[HV] Private SWBP observed CR3 adoption failed: target=%u cr3=0x%llX status=0x%X\n",
+                        (ULONG)(ULONG_PTR)event.Pid,
+                        event.Cr3,
+                        adoptStatus);
+                }
+            }
+            result->Status = HV_BRIDGE_STATUS_SUCCESS;
+            result->Event.Sequence = event.Sequence;
+            result->Event.ThreadId = (ULONG)(ULONG_PTR)event.Tid;
+            result->Event.ProcessId = (ULONG)(ULONG_PTR)event.Pid;
+            result->Event.Cr3 = event.Cr3;
+            result->Event.Rip = event.Rip;
+            result->Event.Rsp = event.Rsp;
+            result->Event.Rflags = event.Rflags;
+            RtlCopyMemory(result->Event.Gpr, event.Gpr, sizeof(event.Gpr));
+            result->Event.Dr6 = event.Dr6;
+            result->Event.HitSlot = event.HitSlot;
+            result->Event.Kind = event.Kind;
+            result->Event.ThreadToken = (ULONG64)(ULONG_PTR)event.ThreadToken;
         } else {
-            pResult->Status = HV_STATUS_ERROR;
+            result->Status = HV_STATUS_ERROR;
         }
-        bytesReturned = sizeof(HV_DBG_WAIT_RESULT);
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
 
         // 不打印日志 (这个 IOCTL 可能高频)
         break;
     }
 
+    case IOCTL_HV_BRIDGE_RESOLVE_THREAD:
+    {
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        if (inputLength < sizeof(HV_BRIDGE_THREAD_RESOLVE_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_THREAD_RESOLVE_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        HV_BRIDGE_THREAD_RESOLVE_REQUEST request =
+            *(PHV_BRIDGE_THREAD_RESOLVE_REQUEST)inputBuffer;
+        PHV_BRIDGE_THREAD_RESOLVE_RESULT result =
+            (PHV_BRIDGE_THREAD_RESOLVE_RESULT)outputBuffer;
+        NTSTATUS operationStatus = STATUS_NOT_FOUND;
+        PETHREAD candidate = NULL;
+
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsDebuggerPid(caller) ||
+                   !HvHookIsBoundTargetForDebugger(
+                       request.ProcessId,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else if (!request.ProcessId || !request.ThreadId ||
+                   !request.ThreadToken) {
+            operationStatus = STATUS_INVALID_PARAMETER;
+        } else {
+            operationStatus = PsLookupThreadByThreadId(
+                (HANDLE)(ULONG_PTR)request.ThreadId,
+                &candidate);
+            if (NT_SUCCESS(operationStatus)) {
+                if (PsGetThreadProcessId(candidate) !=
+                        (HANDLE)(ULONG_PTR)request.ProcessId ||
+                    (ULONG64)(ULONG_PTR)candidate != request.ThreadToken) {
+                    operationStatus = STATUS_NOT_FOUND;
+                }
+                ObDereferenceObject(candidate);
+            }
+        }
+
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = operationStatus;
+        result->ThreadToken = request.ThreadToken;
+        if (NT_SUCCESS(operationStatus)) {
+            result->ThreadId = request.ThreadId;
+        }
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
+        break;
+    }
+
+    case IOCTL_HV_BRIDGE_DBGK_WAIT:
+    {
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        if (inputLength < sizeof(HV_BRIDGE_PRIVATE_WAIT_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_DBGK_WAIT_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        HV_BRIDGE_PRIVATE_WAIT_REQUEST request =
+            *(PHV_BRIDGE_PRIVATE_WAIT_REQUEST)inputBuffer;
+        PHV_BRIDGE_DBGK_WAIT_RESULT result =
+            (PHV_BRIDGE_DBGK_WAIT_RESULT)outputBuffer;
+        /* METHOD_BUFFERED aliases inputBuffer and outputBuffer.  Preserve the
+         * request before clearing the larger result or Version/TimeoutMs are
+         * zeroed and every external Bridge wait is rejected. */
+        RtlZeroMemory(result, sizeof(*result));
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION ||
+            !HvHookIsDebuggerPid(caller)) {
+            result->Status = STATUS_ACCESS_DENIED;
+        } else {
+            result->Status = HvPrivateDebugObjectWait(
+                caller, &result->Event, request.TimeoutMs);
+        }
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
+        break;
+    }
+
+    case IOCTL_HV_BRIDGE_DBGK_CONTINUE:
+    {
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        if (inputLength < sizeof(HV_BRIDGE_DBGK_CONTINUE_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_OPERATION_RESULT)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        PHV_BRIDGE_DBGK_CONTINUE_REQUEST request =
+            (PHV_BRIDGE_DBGK_CONTINUE_REQUEST)inputBuffer;
+        PHV_BRIDGE_OPERATION_RESULT result =
+            (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+        NTSTATUS operationStatus = STATUS_ACCESS_DENIED;
+        if (HvHookIsDebuggerPid(caller)) {
+            operationStatus = HvPrivateDebugObjectContinue(caller, request);
+        }
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = NT_SUCCESS(operationStatus)
+            ? HV_BRIDGE_STATUS_SUCCESS
+            : (operationStatus == STATUS_NOT_FOUND
+                ? HV_BRIDGE_STATUS_NOT_FOUND : HV_STATUS_ERROR);
+        result->Info = request->Sequence;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
+        break;
+    }
+
+    case IOCTL_HV_BRIDGE_DBGK_SYMBOLS:
+    {
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+        NTSTATUS operationStatus;
+        if (inputLength < sizeof(HV_BRIDGE_DBGK_SYMBOLS_REQUEST)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+        PHV_BRIDGE_DBGK_SYMBOLS_REQUEST request =
+            (PHV_BRIDGE_DBGK_SYMBOLS_REQUEST)inputBuffer;
+        HV_PRIVATE_DBGK_SYMBOLS symbols = { 0 };
+        symbols.Version = request->Version;
+        symbols.NtCreateDebugObject =
+            (PVOID)(ULONG_PTR)request->NtCreateDebugObject;
+        symbols.NtDebugActiveProcess =
+            (PVOID)(ULONG_PTR)request->NtDebugActiveProcess;
+        symbols.NtSetInformationDebugObject =
+            (PVOID)(ULONG_PTR)request->NtSetInformationDebugObject;
+        symbols.NtWaitForDebugEvent =
+            (PVOID)(ULONG_PTR)request->NtWaitForDebugEvent;
+        symbols.NtDebugContinue =
+            (PVOID)(ULONG_PTR)request->NtDebugContinue;
+        symbols.NtRemoveProcessDebug =
+            (PVOID)(ULONG_PTR)request->NtRemoveProcessDebug;
+        symbols.DbgkForwardException =
+            (PVOID)(ULONG_PTR)request->DbgkForwardException;
+        symbols.DbgkCreateThread =
+            (PVOID)(ULONG_PTR)request->DbgkCreateThread;
+        symbols.DbgkExitThread =
+            (PVOID)(ULONG_PTR)request->DbgkExitThread;
+        symbols.DbgkExitProcess =
+            (PVOID)(ULONG_PTR)request->DbgkExitProcess;
+        symbols.DbgkMapViewOfSection =
+            (PVOID)(ULONG_PTR)request->DbgkMapViewOfSection;
+        symbols.DbgkUnMapViewOfSection =
+            (PVOID)(ULONG_PTR)request->DbgkUnMapViewOfSection;
+        symbols.PsGetNextProcessThread =
+            (PVOID)(ULONG_PTR)request->PsGetNextProcessThread;
+        symbols.NtSetContextThread =
+            (PVOID)(ULONG_PTR)request->NtSetContextThread;
+        symbols.NtReadVirtualMemory =
+            (PVOID)(ULONG_PTR)request->NtReadVirtualMemory;
+        symbols.NtWriteVirtualMemory =
+            (PVOID)(ULONG_PTR)request->NtWriteVirtualMemory;
+        operationStatus = HvHookIsDebuggerPid(caller)
+            ? HvHookConfigurePrivateDebugObjectSymbols(&symbols)
+            : STATUS_ACCESS_DENIED;
+        if (outputBuffer &&
+            outputLength >= sizeof(HV_BRIDGE_OPERATION_RESULT)) {
+            PHV_BRIDGE_OPERATION_RESULT result =
+                (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+            RtlZeroMemory(result, sizeof(*result));
+            result->Status = NT_SUCCESS(operationStatus)
+                ? HV_BRIDGE_STATUS_SUCCESS : HV_STATUS_ERROR;
+            result->Info = (ULONG64)(ULONG)operationStatus;
+            bytesReturned = sizeof(*result);
+            status = STATUS_SUCCESS;
+        } else {
+            status = operationStatus;
+        }
+        break;
+    }
+
     case IOCTL_HV_DBG_CONTINUE:
     {
-        HANDLE caller = PsGetCurrentProcessId();
+        HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
         if (!HvHookIsDebuggerPid(caller)) {
             DbgPrint("[HV] DBG_CONTINUE: access denied (PID=%llu)\n",
                 (ULONG64)(ULONG_PTR)caller);
@@ -1906,26 +3248,48 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             break;
         }
 
-        if (inputLength < sizeof(HV_DBG_CONTINUE_REQUEST) ||
-            outputLength < sizeof(HV_DBG_RESULT)) {
+        if (inputLength < sizeof(HV_BRIDGE_PRIVATE_CONTINUE_REQUEST) ||
+            outputLength < sizeof(HV_BRIDGE_OPERATION_RESULT)) {
             status = STATUS_BUFFER_TOO_SMALL;
             break;
         }
 
-        PHV_DBG_CONTINUE_REQUEST pReq = (PHV_DBG_CONTINUE_REQUEST)inputBuffer;
-        UINT64 sequence = pReq->Sequence;
+        HV_BRIDGE_PRIVATE_CONTINUE_REQUEST request =
+            *(PHV_BRIDGE_PRIVATE_CONTINUE_REQUEST)inputBuffer;
+        PHV_BRIDGE_OPERATION_RESULT result =
+            (PHV_BRIDGE_OPERATION_RESULT)outputBuffer;
+        NTSTATUS operationStatus;
 
-        PHV_DBG_RESULT pResult = (PHV_DBG_RESULT)outputBuffer;
-        RtlZeroMemory(pResult, sizeof(HV_DBG_RESULT));
+        if (request.Version != HV_BRIDGE_PROTOCOL_VERSION) {
+            operationStatus = STATUS_REVISION_MISMATCH;
+        } else if (!HvHookIsBoundTargetForDebugger(
+                       request.ProcessId,
+                       (ULONG)(ULONG_PTR)caller)) {
+            operationStatus = STATUS_ACCESS_DENIED;
+        } else {
+            operationStatus = HvVwatchSwBpContinue(
+                caller,
+                (HANDLE)(ULONG_PTR)request.ProcessId,
+                (HANDLE)(ULONG_PTR)request.ThreadId,
+                (PVOID)(ULONG_PTR)request.ThreadToken,
+                request.Sequence,
+                request.ContinueStatus);
+        }
 
-        // V1: 仅 trace ack。命中后调试器用户态自己 NtSuspendThread/Resume,
-        //     无需驱动同步状态。后续若加 single-step 才需要真的 continue 副作用。
-        pResult->Status = HV_STATUS_SUCCESS;
-        pResult->Info   = sequence;
-        bytesReturned = sizeof(HV_DBG_RESULT);
+        RtlZeroMemory(result, sizeof(*result));
+        result->Status = NT_SUCCESS(operationStatus)
+            ? HV_BRIDGE_STATUS_SUCCESS
+            : (operationStatus == STATUS_NOT_FOUND
+                ? HV_BRIDGE_STATUS_NOT_FOUND
+                : HV_STATUS_ERROR);
+        result->Info = request.Sequence;
+        bytesReturned = sizeof(*result);
+        status = STATUS_SUCCESS;
 
-        DbgPrint("[HV] DBG_CONTINUE: Dbg=%llu Seq=%llu (ack)\n",
-            (ULONG64)(ULONG_PTR)caller, sequence);
+        DbgPrint("[HV] DBG_CONTINUE: Dbg=%llu Seq=%llu NT=0x%X\n",
+            (ULONG64)(ULONG_PTR)caller,
+            request.Sequence,
+            operationStatus);
         break;
     }
 
@@ -1938,6 +3302,7 @@ static NTSTATUS NetrDispatchDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     Irp->IoStatus.Status = status;
     Irp->IoStatus.Information = bytesReturned;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    HvReleaseDeviceIoRundown();
     return status;
 #endif // !HV_MINIMAL_MODE
 }
@@ -2101,6 +3466,7 @@ static NTSTATUS CreateDeviceAndSymlink(PDRIVER_OBJECT DriverObject)
         g_DeviceObject = NULL;
         return status;
     }
+    g_SymbolicLinkCreated = TRUE;
     
     // 设置派发函数
     DriverObject->MajorFunction[IRP_MJ_CREATE] = NetrDispatchCreateClose;
@@ -2123,7 +3489,10 @@ static NTSTATUS CreateDeviceAndSymlink(PDRIVER_OBJECT DriverObject)
 static VOID DeleteDeviceAndSymlink(VOID)
 {
     if (g_DeviceCreated) {
-        IoDeleteSymbolicLink(&g_SymbolicLink);
+        if (g_SymbolicLinkCreated) {
+            IoDeleteSymbolicLink(&g_SymbolicLink);
+            g_SymbolicLinkCreated = FALSE;
+        }
         
         if (g_DeviceObject) {
             IoDeleteDevice(g_DeviceObject);
@@ -2179,6 +3548,27 @@ static VOID HvWriteDiagnosticsToFile(VOID)
                 "MSR Read: %llu\r\n"
                 "MSR Write: %llu\r\n"
                 "EPT Violations: %llu\r\n"
+                "Vwatch Entries: %ld\r\n"
+                "Vwatch Violation Hits: %lld\r\n"
+                "Vwatch True Hits: %lld\r\n"
+                "Vwatch Injected #DB: %lld\r\n"
+                "Vwatch Pending Hit Publishes: %lld\r\n"
+                "Vwatch Pending Hit Reads: %lld\r\n"
+                "Vwatch Pending Hit Clears: %lld\r\n"
+                "Vwatch Pending Hit Overwrites: %lld\r\n"
+                "Vwatch Pending Hit Publish Failures: %lld\r\n"
+                "Real DR References: %ld\r\n"
+                "Vwatch CR3 References: %ld\r\n"
+                "Debugger Intercept Mode: 0x%lX\r\n"
+                "Debugger Intercept Publish Failures: %ld\r\n"
+                "Private SWBP Hits: %lld\r\n"
+                "Private SWBP Data Passes: %lld\r\n"
+                "Private SWBP Rearms: %lld\r\n"
+                "Private SWBP Main Slot Publishes: %lld\r\n"
+                "Private SWBP Overlay Slot Publishes: %lld\r\n"
+                "PEB EPT Main Switches: %lld\r\n"
+                "PEB EPT Overlay Switches: %lld\r\n"
+                "Private Dbgk Kernel Main Switches: %lld\r\n"
                 "==========================================\r\n",
                 g_VmExitCounter,
                 g_AsmDebugFlag,
@@ -2188,7 +3578,28 @@ static VOID HvWriteDiagnosticsToFile(VOID)
                 g_ExitCountVmcall,
                 g_ExitCountMsrRead,
                 g_ExitCountMsrWrite,
-                g_ExitCountEptViolation);
+                g_ExitCountEptViolation,
+                g_VwatchManager.EntryCount,
+                g_VwatchManager.ViolationHits,
+                g_VwatchManager.TrueHits,
+                g_VwatchManager.InjectedDbCount,
+                g_VwatchManager.PendingHitPublishes,
+                g_VwatchManager.PendingHitReads,
+                g_VwatchManager.PendingHitClears,
+                g_VwatchManager.PendingHitOverwrites,
+                g_VwatchManager.PendingHitPublishFailures,
+                g_GlobalHwbpRefCount,
+                g_VwatchCr3InterceptRefCount,
+                g_DebugInterceptPublishedMode,
+                g_DebugInterceptPublishFailures,
+                g_VwatchManager.SwBpHits,
+                g_VwatchManager.SwBpDataPasses,
+                g_VwatchManager.SwBpRearms,
+                g_VwatchManager.SwBpMainSlotPublishes,
+                g_VwatchManager.SwBpOverlaySlotPublishes,
+                g_PebCloakManager.SwitchCountMain,
+                g_PebCloakManager.SwitchCountPebSpoof,
+                g_PebCloakManager.PrivateDbgkKernelMainSwitches);
         }
         else if (cpuVendor == CPU_VENDOR_AMD) {
             RtlStringCbPrintfA(buffer, sizeof(buffer),
@@ -2201,6 +3612,10 @@ static VOID HvWriteDiagnosticsToFile(VOID)
                 "MSR Exits: %llu\r\n"
                 "NPF Exits: %llu\r\n"
                 "Other Exits: %llu\r\n"
+                "Real DR References: %ld\r\n"
+                "Vwatch CR3 References: %ld\r\n"
+                "Debugger Intercept Mode: 0x%lX\r\n"
+                "Debugger Intercept Publish Failures: %ld\r\n"
                 "=========================================\r\n",
                 g_SvmExitCounter,
                 g_SvmDebugFlag,
@@ -2209,7 +3624,11 @@ static VOID HvWriteDiagnosticsToFile(VOID)
                 g_SvmExitCountVmmcall,
                 g_SvmExitCountMsr,
                 g_SvmExitCountNpf,
-                g_SvmExitCountOther);
+                g_SvmExitCountOther,
+                g_GlobalHwbpRefCount,
+                g_VwatchCr3InterceptRefCount,
+                g_DebugInterceptPublishedMode,
+                g_DebugInterceptPublishFailures);
         }
         else {
             RtlStringCbPrintfA(buffer, sizeof(buffer),
@@ -2231,30 +3650,45 @@ static VOID HvWaitImageObfuscation(VOID);  // forward decl, body at end of file
 // 2026-06-20: unload 卡死诊断 — 每个 stage 入口写一行到 C:\HvUnloadTrace.log
 // 用 FILE_WRITE_THROUGH 同步落盘, 文件 OPEN_IF (existing append 不可靠), 每次重新创建 +
 // 追加上一次内容? 太复杂 — 改成 OVERWRITE_IF + 每次写整个轨迹字符串. 内存里维护轨迹缓冲.
-static CHAR  g_UnloadTrace[2048];
+static CHAR  g_UnloadTrace[8192];
 static ULONG g_UnloadTraceLen = 0;
+static LARGE_INTEGER g_UnloadTraceStart;
+static LARGE_INTEGER g_UnloadTraceFrequency;
 
 static VOID HvUnloadStageLog(_In_ PCSTR Tag)
 {
+    CHAR line[256];
     HANDLE fileHandle;
     OBJECT_ATTRIBUTES objAttr;
     UNICODE_STRING filePath;
     IO_STATUS_BLOCK ioStatus;
     NTSTATUS status;
+    LARGE_INTEGER now = KeQueryPerformanceCounter(NULL);
+    LONGLONG elapsedMs = 0;
+    ULONG lineLength;
+
+    if (g_UnloadTraceFrequency.QuadPart > 0) {
+        elapsedMs = ((now.QuadPart - g_UnloadTraceStart.QuadPart) * 1000) /
+                    g_UnloadTraceFrequency.QuadPart;
+    }
+    if (!NT_SUCCESS(RtlStringCbPrintfA(
+            line,
+            sizeof(line),
+            "+%lldms %s\r\n",
+            elapsedMs,
+            Tag))) {
+        return;
+    }
+    lineLength = (ULONG)strlen(line);
 
     // append 到内存缓冲
-    if (g_UnloadTraceLen < sizeof(g_UnloadTrace) - 64) {
+    if (g_UnloadTraceLen + lineLength < sizeof(g_UnloadTrace)) {
         SIZE_T remain = sizeof(g_UnloadTrace) - g_UnloadTraceLen;
-        NTSTATUS rs = RtlStringCbPrintfA(
-            g_UnloadTrace + g_UnloadTraceLen, remain,
-            "%s\r\n", Tag);
-        if (NT_SUCCESS(rs)) {
-            for (ULONG i = g_UnloadTraceLen; i < sizeof(g_UnloadTrace); i++) {
-                if (g_UnloadTrace[i] == '\0') {
-                    g_UnloadTraceLen = i;
-                    break;
-                }
-            }
+        if (NT_SUCCESS(RtlStringCbCopyA(
+                g_UnloadTrace + g_UnloadTraceLen,
+                remain,
+                line))) {
+            g_UnloadTraceLen += lineLength;
         }
     }
 
@@ -2273,7 +3707,7 @@ static VOID HvUnloadStageLog(_In_ PCSTR Tag)
         FILE_ATTRIBUTE_NORMAL,
         FILE_SHARE_READ,
         FILE_OVERWRITE_IF,
-        FILE_SYNCHRONOUS_IO_NONALERT | FILE_WRITE_THROUGH,
+        FILE_SYNCHRONOUS_IO_NONALERT,
         NULL, 0);
     if (NT_SUCCESS(status)) {
         ZwWriteFile(fileHandle, NULL, NULL, NULL, &ioStatus,
@@ -2282,8 +3716,32 @@ static VOID HvUnloadStageLog(_In_ PCSTR Tag)
     }
 }
 
+static VOID
+HvUnloadStageLogStatus(
+    _In_ PCSTR Stage,
+    _In_ NTSTATUS Status
+)
+{
+    CHAR tag[160];
+
+    if (NT_SUCCESS(RtlStringCbPrintfA(
+            tag,
+            sizeof(tag),
+            "%s status=0x%08X",
+            Stage,
+            Status))) {
+        HvUnloadStageLog(tag);
+    } else {
+        HvUnloadStageLog(Stage);
+    }
+}
+
 VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 {
+#if !HV_MINIMAL_MODE && ENABLE_INJECTION_FRAMEWORK
+    NTSTATUS injectionShutdownStatus = STATUS_SUCCESS;
+#endif
+
     UNREFERENCED_PARAMETER(DriverObject);
 
     DbgPrint("[HV] DriverUnload called\n");
@@ -2294,36 +3752,135 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject)
     // 立刻写第一行: "ENTER" — 如果卡死在 unload 第一句之前, 文件里只有 ENTER
     g_UnloadTraceLen = 0;
     g_UnloadTrace[0] = '\0';
+    g_UnloadTraceStart = KeQueryPerformanceCounter(&g_UnloadTraceFrequency);
     HvUnloadStageLog("S00 ENTER DriverUnload");
 
-    HvUnloadStageLog("S01 BEFORE HvVmExitCleanup");
-    HvVmExitCleanup();
-    HvUnloadStageLog("S01 AFTER  HvVmExitCleanup");
+    HvUnloadStageLog("S00.5 BEFORE DeviceIo admission close");
+    HvBeginDeviceIoShutdown();
+    HvUnloadStageLog("S00.5 AFTER  DeviceIo admission close");
+    HvPowerCleanup();
 
 #if !HV_MINIMAL_MODE
-    HvUnloadStageLog("S02 BEFORE HvWaitImageObfuscation");
-    HvWaitImageObfuscation();
-    HvUnloadStageLog("S02 AFTER  HvWaitImageObfuscation");
+    HvUnloadStageLog("S00.6 BEFORE Hook admission close");
+    HvHookBeginShutdown();
+    HvUnloadStageLog("S00.6 AFTER  Hook admission close");
+    HvUnloadStageLog("S00.7 BEFORE PEB cloak admission close");
+    HvPebCloakBeginShutdown();
+    HvUnloadStageLog("S00.7 AFTER  PEB cloak admission close");
+#if ENABLE_INJECTION_FRAMEWORK
+    /* Close injection admission and detach process notification before
+     * debugger termination generates process-exit traffic. */
+    HvUnloadStageLog("S02a BEFORE HvInjectionBeginShutdown");
+    injectionShutdownStatus = HvInjectionBeginShutdown();
+    HvUnloadStageLogStatus(
+        "S02a AFTER  HvInjectionBeginShutdown",
+        injectionShutdownStatus);
+    if (!NT_SUCCESS(injectionShutdownStatus)) {
+        HvUnloadStageLogStatus(
+            "S02a FATAL process-notify ownership retained",
+            injectionShutdownStatus);
+        DbgPrint("[HV] FATAL: injection process-notify detach retained ownership: 0x%X\n",
+                 injectionShutdownStatus);
 
-    // 2026-06-20 方案 A: 卸载前 terminate 所有注册的 debugger 进程, 防止它们
-    // 在驱动卸载后失去保护时被反作弊 / CE / Spy++ 看穿真名。必须在 HvHookCleanup
-    // (卸 ObCallback) 和 DeleteDeviceAndSymlink 之前 — 此时 hypervisor + hook 还在,
-    // PsSetCreateProcessNotifyRoutineEx 回调还能跑, HvDbgClearAllForDebugger 会
-    // 自动清 HWBP 列表。
-    HvUnloadStageLog("S02b BEFORE HvHookTerminateAllDebuggers");
-    HvHookTerminateAllDebuggers();
-    HvUnloadStageLog("S02b AFTER  HvHookTerminateAllDebuggers");
+        /* Returning would unload the callback's code while the kernel still
+         * owns its address.  Do not retry an unexpected unregister failure
+         * and do not release any callback backing state: fail-stop with a
+         * dump instead of creating a delayed use-after-unload. */
+        KeBugCheckEx(
+            DRIVER_UNLOADED_WITHOUT_CANCELLING_PENDING_OPERATIONS,
+            (ULONG_PTR)DriverObject->DriverStart,
+            (ULONG_PTR)injectionShutdownStatus,
+            (ULONG_PTR)'jnIH',
+            0);
+    }
+#endif
+
+    /* Detach the debugger process-notify callback before terminating any
+     * registered debugger.  PsSet...Remove synchronously drains callbacks,
+     * so HvHookCleanup cannot race their debugger/target list teardown. */
+    HvUnloadStageLog("S02a.5 BEFORE HvDbgBeginShutdown");
+    {
+        NTSTATUS debuggerShutdownStatus = HvDbgBeginShutdown();
+        HvUnloadStageLogStatus(
+            "S02a.5 AFTER  HvDbgBeginShutdown",
+            debuggerShutdownStatus);
+        if (!NT_SUCCESS(debuggerShutdownStatus)) {
+            HvUnloadStageLogStatus(
+                "S02a.5 FATAL debugger notify ownership retained",
+                debuggerShutdownStatus);
+            KeBugCheckEx(
+                DRIVER_UNLOADED_WITHOUT_CANCELLING_PENDING_OPERATIONS,
+                (ULONG_PTR)DriverObject->DriverStart,
+                (ULONG_PTR)debuggerShutdownStatus,
+                (ULONG_PTR)'gbDH',
+                0);
+        }
+    }
+
+    HvUnloadStageLog("S02a.6 BEFORE HvPrivateDebugObjectBeginShutdown");
+    {
+        NTSTATUS privateObjectShutdownStatus =
+            HvPrivateDebugObjectBeginShutdown();
+        HvUnloadStageLogStatus(
+            "S02a.6 AFTER HvPrivateDebugObjectBeginShutdown",
+            privateObjectShutdownStatus);
+    }
+
+    /* No asynchronous hook worker may retain debugger/private-DebugObject or
+     * overlay state once teardown proceeds past this point. */
+    HvUnloadStageLog("S02a.7 BEFORE hook worker drain");
+    HvHookDrainAsyncWorkers();
+    HvUnloadStageLog("S02a.7 AFTER  hook worker drain");
+
+    HvUnloadStageLog("S02b debugger processes preserved; cleanup owns detach");
+#endif
+
+    HvUnloadStageLog("S02.9 BEFORE DeviceIo rundown drain");
+    HvWaitDeviceIoDrain();
+    HvUnloadStageLog("S02.9 AFTER  DeviceIo rundown drain");
+
+    HvUnloadStageLog("S02.95 BEFORE HvWaitImageObfuscation");
+    HvWaitImageObfuscation();
+    HvUnloadStageLog("S02.95 AFTER  HvWaitImageObfuscation");
+
+    HvUnloadStageLog("S02.96 BEFORE HvVmExitCleanup");
+    HvVmExitCleanup();
+    HvUnloadStageLog("S02.96 AFTER  HvVmExitCleanup");
+
+#if !HV_MINIMAL_MODE
+    HvUnloadStageLog("S02.97 BEFORE HvNestedQuiesce");
+    {
+        ULONG nestedAttempt = 0;
+        for (;;) {
+            NTSTATUS nestedQuiesceStatus = HvNestedQuiesce();
+            if (NT_SUCCESS(nestedQuiesceStatus)) {
+                break;
+            }
+
+            if ((nestedAttempt++ & 0x3F) == 0) {
+                DbgPrint("[HV] Nested quiesce still pending: 0x%X (attempt %lu)\n",
+                         nestedQuiesceStatus, nestedAttempt);
+            }
+
+            {
+                LARGE_INTEGER delay;
+                delay.QuadPart = -100000;
+                KeDelayExecutionThread(KernelMode, FALSE, &delay);
+            }
+        }
+    }
+    HvUnloadStageLog("S02.97 AFTER  HvNestedQuiesce");
 #endif
 
     HvUnloadStageLog("S03 BEFORE DeleteDeviceAndSymlink");
     DeleteDeviceAndSymlink();
     HvUnloadStageLog("S03 AFTER  DeleteDeviceAndSymlink");
 
-#if !HV_MINIMAL_MODE
     HvUnloadStageLog("S04 BEFORE HvUnpublishDeviceName");
     HvUnpublishDeviceName();
     HvUnloadStageLog("S04 AFTER  HvUnpublishDeviceName");
 
+#if !HV_MINIMAL_MODE
     HvUnloadStageLog("S05 BEFORE HvWriteDiagnosticsToFile");
     HvWriteDiagnosticsToFile();
     HvUnloadStageLog("S05 AFTER  HvWriteDiagnosticsToFile");
@@ -2367,59 +3924,204 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject)
     //DbgPrint("[HV] Cleaning up Power Management...\n");
     //HvPowerCleanup();
 
-    HvUnloadStageLog("S07 BEFORE HvHookRemoveDriverHideHook");
-    HvHookRemoveDriverHideHook();
-    HvUnloadStageLog("S07 AFTER  HvHookRemoveDriverHideHook");
-
-    // 清理文件隐藏 Hook（必须在 Hypervisor 关闭之前）
-#if ENABLE_FILE_HIDE_HOOK
-    // DbgPrint("[HV] Cleaning up File Hide Hook...\n");
-    // HvHookRemoveFileHideHook();
+    /* Optional hooks are torn down in strict reverse publication order.
+     * A failed remove keeps its manager state intact; HvHookCleanup remains
+     * the final backend safety net while SLAT is still active. */
+#if ENABLE_NETWORK_HOOK
+    if (g_OptionalSubsystems.NetworkInitialized) {
+        HvUnloadStageLog("S07 BEFORE NetworkHook cleanup");
+        HvNetHookCleanup();
+        if (!HvNetHookIsInitialized()) {
+            g_OptionalSubsystems.NetworkInitialized = FALSE;
+        } else {
+            DbgPrint("[HV] Network hook cleanup incomplete; backend cleanup will retry tracked hooks\n");
+        }
+        HvUnloadStageLog("S07 AFTER  NetworkHook cleanup");
+    }
 #endif
 
-    // 清理网卡流量伪造模块
-    //DbgPrint("[HV] Cleaning up Network Hook Module...\n");
-    //HvNetHookCleanup();
+#if ENABLE_REGISTRY_HIDE_HOOK
+    if (g_OptionalSubsystems.RegistryInitialized) {
+        HvUnloadStageLog("S08 BEFORE RegistryHook cleanup");
+        if (g_OptionalSubsystems.RegistryInstalled) {
+            NTSTATUS removeStatus = HvRegHookUninstall();
+            if (NT_SUCCESS(removeStatus)) {
+                g_OptionalSubsystems.RegistryInstalled = FALSE;
+            } else {
+                DbgPrint("[HV] Registry hook uninstall failed: 0x%X\n",
+                         removeStatus);
+            }
+        }
+        {
+            NTSTATUS cleanupStatus = HvRegHookCleanup();
+            if (NT_SUCCESS(cleanupStatus)) {
+                g_OptionalSubsystems.RegistryInstalled = FALSE;
+                g_OptionalSubsystems.RegistryInitialized = FALSE;
+            } else {
+                DbgPrint("[HV] Registry hook cleanup retained ownership: 0x%X\n",
+                         cleanupStatus);
+            }
+        }
+        if (!g_OptionalSubsystems.RegistryInitialized) {
+            g_OptionalSubsystems.RegistryInstalled = FALSE;
+        }
+        HvUnloadStageLog("S08 AFTER  RegistryHook cleanup");
+    }
+#endif
+
+#if ENABLE_FILE_HIDE_HOOK
+    if (g_OptionalSubsystems.FileHideInstalled) {
+        NTSTATUS removeStatus;
+        HvUnloadStageLog("S09 BEFORE FileHide cleanup");
+        removeStatus = HvHookRemoveFileHideHook();
+        if (NT_SUCCESS(removeStatus)) {
+            g_OptionalSubsystems.FileHideInstalled = FALSE;
+        } else {
+            DbgPrint("[HV] File-hide hook removal failed: 0x%X\n",
+                     removeStatus);
+        }
+        HvUnloadStageLog("S09 AFTER  FileHide cleanup");
+    }
+#endif
+
+#if ENABLE_DRIVER_HIDE_HOOK
+    if (g_OptionalSubsystems.DriverSelfHidden) {
+        NTSTATUS unhideStatus = HvHookUnhideDriverSafe(DriverObject);
+        if (NT_SUCCESS(unhideStatus)) {
+            g_OptionalSubsystems.DriverSelfHidden = FALSE;
+        } else {
+            DbgPrint("[HV] Driver self-unhide failed: 0x%X\n", unhideStatus);
+        }
+    }
+    if (g_OptionalSubsystems.DriverHideInstalled) {
+        NTSTATUS removeStatus;
+        HvUnloadStageLog("S09.5 BEFORE DriverHide cleanup");
+        removeStatus = HvHookRemoveDriverHideHook();
+        if (NT_SUCCESS(removeStatus)) {
+            g_OptionalSubsystems.DriverHideInstalled = FALSE;
+        } else {
+            DbgPrint("[HV] Driver-hide hook removal failed: 0x%X\n",
+                     removeStatus);
+        }
+        HvUnloadStageLog("S09.5 AFTER  DriverHide cleanup");
+    }
+#endif
 
     // 清理注入框架（先移除内存隐藏 Hook）
 #if ENABLE_INJECTION_FRAMEWORK
     DbgPrint("[HV] Removing Memory Hide Hook...\n");
     HvRemoveMemoryHideHook();
-
-    DbgPrint("[HV] Cleaning up Injection Framework...\n");
-    HvInjectionCleanup();
 #endif
 
     HvUnloadStageLog("S10 BEFORE HvHookCleanup");
-    HvHookCleanup();
+    {
+        ULONG cleanupAttempt = 0;
+        while (HvHookIsInitialized()) {
+            NTSTATUS cleanupStatus = HvHookShutdownAndDrain();
+            if (!HvHookIsInitialized() && NT_SUCCESS(cleanupStatus)) {
+                break;
+            }
+
+            if ((cleanupAttempt++ & 0x3F) == 0) {
+                DbgPrint("[HV] Hook rundown still pending: 0x%X (attempt %lu)\n",
+                         cleanupStatus, cleanupAttempt);
+            }
+
+            LARGE_INTEGER delay;
+            delay.QuadPart = -100000; /* 10 ms */
+            KeDelayExecutionThread(KernelMode, FALSE, &delay);
+        }
+    }
     HvUnloadStageLog("S10 AFTER  HvHookCleanup");
 
-    HvUnloadStageLog("S11 BEFORE HvDbgCleanup");
-    HvDbgCleanup();
-    HvUnloadStageLog("S11 AFTER  HvDbgCleanup");
+#if ENABLE_INJECTION_FRAMEWORK
+    /* The NtQueryVirtualMemory handler participates in the global hook
+     * rundown.  Its hidden-region/module backing lists cannot be freed until
+     * every callback that entered before unhook has left. */
+    DbgPrint("[HV] Cleaning up Injection Framework after hook rundown...\n");
+    {
+        NTSTATUS injectionCleanupStatus;
 
-    HvUnloadStageLog("S12 BEFORE HvPhysAccessCleanup");
-    HvPhysAccessCleanup();
-    HvUnloadStageLog("S12 AFTER  HvPhysAccessCleanup");
-
-    HvUnloadStageLog("S13 BEFORE HvVtRootCleanupAll");
-    HvVtRootCleanupAll();
-    HvUnloadStageLog("S13 AFTER  HvVtRootCleanupAll");
-#else
-    DbgPrint("[HV] HV_MINIMAL_MODE: skipping all subsystem cleanups (nothing was initialized)\n");
+        HvUnloadStageLog("S10.1 BEFORE HvInjectionFinalizeCleanup");
+        injectionCleanupStatus = HvInjectionFinalizeCleanup();
+        HvUnloadStageLogStatus(
+            "S10.1 AFTER  HvInjectionFinalizeCleanup",
+            injectionCleanupStatus);
+        if (!NT_SUCCESS(injectionCleanupStatus)) {
+            HvUnloadStageLogStatus(
+                "S10.1 FATAL injection backing ownership retained",
+                injectionCleanupStatus);
+            DbgPrint("[HV] FATAL: injection final cleanup retained ownership: 0x%X\n",
+                     injectionCleanupStatus);
+            KeBugCheckEx(
+                DRIVER_UNLOADED_WITHOUT_CANCELLING_PENDING_OPERATIONS,
+                (ULONG_PTR)DriverObject->DriverStart,
+                (ULONG_PTR)injectionCleanupStatus,
+                (ULONG_PTR)'FInH',
+                1);
+        }
+    }
 #endif
 
-    HvUnloadStageLog("S14 BEFORE HvCleanup (VMXOFF all CPUs)");
-    HvCleanup();
-    HvUnloadStageLog("S14 AFTER  HvCleanup");
-
-    HvUnloadStageLog("S15 BEFORE HvPebCloakShutdown");
-    HvPebCloakShutdown();
-    HvUnloadStageLog("S15 AFTER  HvPebCloakShutdown");
-
-    HvUnloadStageLog("S15.5 BEFORE HvVwatchShutdown");
+    HvUnloadStageLog("S11 BEFORE HvVwatchShutdown");
     HvVwatchShutdown();
-    HvUnloadStageLog("S15.5 AFTER  HvVwatchShutdown");
+    HvUnloadStageLog("S11 AFTER  HvVwatchShutdown");
+
+    HvUnloadStageLog("S12 BEFORE HvPebCloakShutdown");
+    HvPebCloakShutdown();
+    HvUnloadStageLog("S12 AFTER  HvPebCloakShutdown");
+
+    HvUnloadStageLog("S12.5 BEFORE HvPrivateDebugObjectCleanup");
+    HvPrivateDebugObjectCleanup();
+    HvUnloadStageLog("S12.5 AFTER  HvPrivateDebugObjectCleanup");
+
+    HvUnloadStageLog("S13 BEFORE HvDbgCleanup");
+    HvDbgCleanup();
+    HvUnloadStageLog("S13 AFTER  HvDbgCleanup");
+
+    HvUnloadStageLog("S14 BEFORE HvPhysAccessCleanup");
+    HvPhysAccessCleanup();
+    HvUnloadStageLog("S14 AFTER  HvPhysAccessCleanup");
+
+    HvUnloadStageLog("S14.5 BEFORE HvNestedCleanup");
+    {
+        ULONG nestedCleanupAttempt = 0;
+        for (;;) {
+            NTSTATUS nestedCleanupStatus = HvNestedCleanup();
+            if (NT_SUCCESS(nestedCleanupStatus)) {
+                break;
+            }
+
+            if ((nestedCleanupAttempt++ & 0x3F) == 0) {
+                DbgPrint("[HV] Nested cleanup still pending: 0x%X (attempt %lu)\n",
+                         nestedCleanupStatus, nestedCleanupAttempt);
+            }
+            {
+                LARGE_INTEGER delay;
+                delay.QuadPart = -100000; /* 10 ms */
+                KeDelayExecutionThread(KernelMode, FALSE, &delay);
+            }
+        }
+    }
+    HvUnloadStageLog("S14.5 AFTER  HvNestedCleanup");
+
+    HvUnloadStageLog("S15 BEFORE HvVtRootCleanupAll");
+    HvVtRootCleanupAll();
+    HvUnloadStageLog("S15 AFTER  HvVtRootCleanupAll");
+#else
+    DbgPrint("[HV] HV_MINIMAL_MODE: skipping all subsystem cleanups (nothing was initialized)\n");
+    HvUnloadStageLog("S11 BEFORE HvVwatchShutdown");
+    HvVwatchShutdown();
+    HvUnloadStageLog("S11 AFTER  HvVwatchShutdown");
+    HvUnloadStageLog("S12 BEFORE HvPebCloakShutdown");
+    HvPebCloakShutdown();
+    HvUnloadStageLog("S12 AFTER  HvPebCloakShutdown");
+    HvPrivateDebugObjectCleanup();
+#endif
+
+    HvUnloadStageLog("S15.5 BEFORE HvCleanup (VMXOFF all CPUs)");
+    HvCleanup();
+    HvUnloadStageLog("S15.5 AFTER  HvCleanup");
 
     HvUnloadStageLog("S16 BEFORE HvUtilsCleanupHostTssAll");
     HvUtilsCleanupHostTssAll();
@@ -2593,6 +4295,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     DbgPrint("[HV] ========================================\n");
 
     DriverObject->DriverUnload = DriverUnload;
+    ExInitializeRundownProtection(&g_DeviceIoRundown);
+    g_DeviceIoRundownInitialized = TRUE;
+    InterlockedExchange(&g_DeviceIoClosing, FALSE);
 
     // 优先初始化全局 OS 版本 (其他模块的 Win11 24H2/KVAS/CR4.CET 兼容判断都依赖此)
     (VOID)HvUtilsInitializeOsVersion();
@@ -2634,20 +4339,24 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     // 路径: \\.\<random-16-chars> (阶段 8.4 动态命名)
     // GUI 通过 HKLM\Software\NetrSvc\DeviceName 解析
     // ========================================
+#if ENABLE_INJECTION_FRAMEWORK
+    status = HvInjectionInitialize();
+    if (!NT_SUCCESS(status)) {
+        DbgPrint("[HV] Injection allocation tracking unavailable: 0x%X\n", status);
+    }
+#endif
+
     DbgPrint("[HV] Creating communication device...\n");
     status = CreateDeviceAndSymlink(DriverObject);
     if (NT_SUCCESS(status)) {
         DbgPrint("[HV] Communication device created: \\\\.\\%ls\n", g_DeviceLeafBuf);
-#if !HV_MINIMAL_MODE
-        // 注册表发布与 RegistryHook 隐藏列表 — minimal mode 全部跳过
         if (NT_SUCCESS(HvPublishDeviceName())) {
-            HvRegHookAddHiddenKeyName(HV_DEVICE_REG_SUBKEY);
-            DbgPrint("[HV] Device name published; '%ls' key hidden from enumeration\n",
-                     HV_DEVICE_REG_SUBKEY);
-        }
+#if !HV_MINIMAL_MODE
+            DbgPrint("[HV] Device name published; registry hiding will be published after its manager is ready\n");
 #else
-        DbgPrint("[HV] HV_MINIMAL_MODE: registry publish skipped (device only)\n");
+            DbgPrint("[HV] HV_MINIMAL_MODE: device name published without registry hiding\n");
 #endif
+        }
     } else {
         DbgPrint("[HV] Failed to create communication device: 0x%X\n", status);
     }
@@ -2735,12 +4444,21 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
         //   - 在系统唤醒后自动恢复 Hypervisor 和 Hook
         //   - 防止睡眠唤醒后 EPT/NPT Hook 导致蓝屏
         // ========================================
+        /* Register the documented global kernel power notifications before
+         * publishing optional VT-backed subsystems.  Failure is fail-closed:
+         * leaving VT active without the primary display transition guard is
+         * not a safe runtime configuration. */
         DbgPrint("[HV] Initializing Power Management...\n");
- /*       if (NT_SUCCESS(HvPowerInitialize(DriverObject))) {
-            DbgPrint("[HV] Power Management initialized - Sleep/Resume safe!\n");
-        } else {
-            DbgPrint("[HV] WARNING: Power Management init failed - Sleep may cause BSOD!\n");
-        }*/
+        {
+            NTSTATUS powerStatus = HvPowerInitialize();
+            if (!NT_SUCCESS(powerStatus)) {
+                DbgPrint("[HV] power lifecycle registration failed: 0x%X\n",
+                         powerStatus);
+                DriverUnload(DriverObject);
+                return powerStatus;
+            }
+            DbgPrint("[HV] Power Management initialized\n");
+        }
         
         // 初始化 Hook 管理器（使用统一抽象层，自动检测 CPU 类型）
 #if HV_MINIMAL_MODE
@@ -2772,18 +4490,43 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
             //   PFN 反向映射中,MM zero-page worker 看不见 → 不会再覆写
             //   nt 代码页。
             //
-            // 失败不致命:fallback 路径 (HvPhysAccess 的 MmMapIoSpace + 自管
-            // 页表 walk) 在 g_VtRootEnabled=FALSE 时自动接管。严禁回落到
-            // KeStackAttachProcess / ZwReadVirtualMemory / MmCopyVirtualMemory
-            // 任何 Ps*/Ke*Attach* API —— 会被反作弊 hook 检测。
+            // 失败不致命，但物理访问能力会保持未发布。PID->CR3 ownership、
+            // 页表 walk 和最终物理复制不允许回退到 Windows MmMapIoSpace/
+            // attach-process 请求热路径；调用方必须收到明确的不可用状态。
             DbgPrint("[HV] Initializing HvVtRoot V2 (Independent PT Island)...\n");
             {
                 NTSTATUS vtStatus = HvVtRootInitializeAll();
-                if (NT_SUCCESS(vtStatus)) {
+                if (NT_SUCCESS(vtStatus) && g_VtRootEnabled) {
                     DbgPrint("[HV] HvVtRoot V2 enabled\n");
+
+                    // Nested VMX/SVM is compiled in, but its VM-exit gate is
+                    // published only after every shared manager and every
+                    // per-CPU root physical window is ready.  Initialization
+                    // failure is fail-closed and leaves ordinary L1 running.
+                    {
+                        NTSTATUS nestedStatus = HvNestedInitialize();
+                        if (NT_SUCCESS(nestedStatus)) {
+                            HvNestedSetEnabled(TRUE);
+                            if (HvNestedIsEnabled()) {
+                                DbgPrint("[HV] Nested VMX/SVM enabled\n");
+                            } else {
+                                DbgPrint("[HV] Nested init completed but runtime publication was rejected\n");
+                            }
+                        } else {
+                            HvNestedSetEnabled(FALSE);
+                            DbgPrint("[HV] Nested VMX/SVM initialization failed: 0x%X\n",
+                                     nestedStatus);
+                        }
+                    }
                 } else {
-                    DbgPrint("[HV] HvVtRoot V2 init failed 0x%X (fallback path active)\n",
-                             vtStatus);
+                    HvNestedSetEnabled(FALSE);
+                    DbgPrint("[HV] HvVtRoot V2 unavailable 0x%X\n",
+                              vtStatus);
+                    if (!HvAreAllProcessorsVirtualized()) {
+                        DbgPrint("[HV] Fatal: all-CPU VMX/SVM health was lost before VT feature publication\n");
+                        DriverUnload(DriverObject);
+                        return vtStatus;
+                    }
                 }
             }
 
@@ -2791,7 +4534,25 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
             DbgPrint("[HV] CR3 snoop ring enabled\n");
 
             DbgPrint("[HV] Initializing HvDebugger module...\n");
-            HvDbgInitialize();
+            {
+                NTSTATUS debuggerStatus = HvDbgInitialize();
+                if (!NT_SUCCESS(debuggerStatus)) {
+                    // Debugger capabilities are negotiated from
+                    // HvDbgIsInitialized(), so a missing lifetime callback
+                    // fails closed without disabling the rest of VT.
+                    DbgPrint("[HV] HvDebugger disabled: init failed 0x%X\n",
+                             debuggerStatus);
+                }
+            }
+
+            {
+                NTSTATUS privateObjectStatus =
+                    HvPrivateDebugObjectInitialize();
+                if (!NT_SUCCESS(privateObjectStatus)) {
+                    DbgPrint("[HV] Private DebugObject disabled: 0x%X\n",
+                             privateObjectStatus);
+                }
+            }
             
             // 示例：隐藏进程
             // HvHookHideProcessByName(L"explorer.exe");
@@ -2807,50 +4568,35 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
             // ========================================
             DbgPrint("[HV] Initializing Driver Hide Module (EPT/NPT Hook)...\n");
 
-            // ========================================
-            // 2026-05-31 临时禁用 driver hide hook (Win11 真机验证 P1)
-            // 见 [[netr_win11_hang_root_cause]] / [[netr_hyperdbg_compare_pt_sharing]]:
-            //   Win11 NtQSI ~50-200/s (Defender+DiagTrack+Widgets+Search) +
-            //   EPT split PT 跨核策略冲突 → ~10 秒内全核 root mode 死循环 → 卡死。
-            //
-            // P1-3 per-CPU EPT split PT 已实现但未在此机充分验证, 先关掉这个 hook
-            // 让其余 hypervisor 功能跑稳。要重新启用: 把 #if 0 改回 #if 1。
-            // ========================================
-            // 安装驱动隐藏 Hook
-#if 0  // 2026-05-31 临时禁用,Win11 卡死隔离
-            if (NT_SUCCESS(HvHookInstallDriverHideHook())) {
-                DbgPrint("[HV] Driver Hide Hooks installed (EPT/NPT method)\n");
-
+#if ENABLE_DRIVER_HIDE_HOOK
+            {
+                NTSTATUS featureStatus = HvHookInstallDriverHideHook();
+                if (NT_SUCCESS(featureStatus)) {
+                    g_OptionalSubsystems.DriverHideInstalled = TRUE;
+                    DbgPrint("[HV] Driver Hide hook published (EPT/NPT backend)\n");
 #if ENABLE_DRIVER_SELF_HIDE
-                // 隐藏自身驱动（使用安全的 EPT/NPT Hook 方式）
-                DbgPrint("[HV] ========================================\n");
-                DbgPrint("[HV] HIDING DRIVER (EPT/NPT Hook Method)\n");
-                DbgPrint("[HV] - No PsLoadedModuleList modification\n");
-                DbgPrint("[HV] - PatchGuard safe\n");
-                DbgPrint("[HV] - Anti-cheat resistant\n");
-                DbgPrint("[HV] ========================================\n");
-
-                // 使用 EPT/NPT Hook 方式隐藏驱动
-                if (NT_SUCCESS(HvHookHideDriverSafe(DriverObject))) {
-                    DbgPrint("[HV] Driver hidden successfully!\n");
-
-                    // 通知电源管理模块：驱动隐藏已启用
-                    // 这样在唤醒后会自动重新隐藏驱动
-
-                    // 同时隐藏驱动文件
-                    //HvHookHideDriverFile(L"Netr.sys");
-
-                    // 打印隐藏状态
-                    EptHookPrintHiddenDrivers();
-                } else {
-                    DbgPrint("[HV] Driver hiding failed\n");
-                }
+                    featureStatus = HvHookHideDriverSafe(DriverObject);
+                    if (NT_SUCCESS(featureStatus)) {
+                        g_OptionalSubsystems.DriverSelfHidden = TRUE;
+                        DbgPrint("[HV] Current driver added to hidden-module set\n");
+                    } else {
+                        NTSTATUS rollbackStatus;
+                        DbgPrint("[HV] Driver self-hide failed: 0x%X; rolling back hook owner\n",
+                                 featureStatus);
+                        rollbackStatus = HvHookRemoveDriverHideHook();
+                        if (NT_SUCCESS(rollbackStatus)) {
+                            g_OptionalSubsystems.DriverHideInstalled = FALSE;
+                        } else {
+                            DbgPrint("[HV] Driver-hide rollback failed: 0x%X\n",
+                                     rollbackStatus);
+                        }
+                    }
 #endif
-            } else {
-                DbgPrint("[HV] Driver Hide Hooks installation failed\n");
+                } else {
+                    DbgPrint("[HV] Driver Hide hook not published: 0x%X\n",
+                             featureStatus);
+                }
             }
-#else
-            DbgPrint("[HV] Driver Hide Hooks DISABLED (Win11 P1 isolation, see netr_win11_hang_root_cause)\n");
 #endif
 
             // ========================================
@@ -2861,36 +4607,83 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
             //   - 在文件浏览器中隐藏 .sys 文件
             // ========================================
 #if ENABLE_FILE_HIDE_HOOK
-            // 阶段 8.1 重启：cmpxchg64/INVEPT root-mode/MTF active 三处修复已落地，
-            // 之前 NtQueryDirectoryFile hook 卡死风险已消除，可重新启用。
-            DbgPrint("[HV] Initializing File Hide Hook...\n");
-            if (NT_SUCCESS(HvHookInstallFileHideHook())) {
-                DbgPrint("[HV] File Hide Hook installed successfully\n");
-                HvHookHideDriverFile(L"Netr.sys");
-            } else {
-                DbgPrint("[HV] File Hide Hook installation failed\n");
+            {
+                NTSTATUS featureStatus = HvHookInstallFileHideHook();
+                if (NT_SUCCESS(featureStatus)) {
+                    WCHAR imageName[64] = L"GuardMetaCore.sys";
+                    PKLDR_DATA_TABLE_ENTRY entry =
+                        (PKLDR_DATA_TABLE_ENTRY)DriverObject->DriverSection;
+
+                    g_OptionalSubsystems.FileHideInstalled = TRUE;
+                    if (entry && entry->BaseDllName.Buffer &&
+                        entry->BaseDllName.Length != 0) {
+                        USHORT chars = entry->BaseDllName.Length / sizeof(WCHAR);
+                        if (chars >= RTL_NUMBER_OF(imageName)) {
+                            chars = RTL_NUMBER_OF(imageName) - 1;
+                        }
+                        RtlCopyMemory(imageName, entry->BaseDllName.Buffer,
+                                      chars * sizeof(WCHAR));
+                        imageName[chars] = L'\0';
+                    }
+
+                    featureStatus = HvHookHideDriverFile(imageName);
+                    if (NT_SUCCESS(featureStatus)) {
+                        DbgPrint("[HV] File Hide hook published for %ls\n", imageName);
+                    } else {
+                        NTSTATUS rollbackStatus;
+                        DbgPrint("[HV] File-hide filter publication failed: 0x%X\n",
+                                 featureStatus);
+                        rollbackStatus = HvHookRemoveFileHideHook();
+                        if (NT_SUCCESS(rollbackStatus)) {
+                            g_OptionalSubsystems.FileHideInstalled = FALSE;
+                        } else {
+                            DbgPrint("[HV] File-hide rollback failed: 0x%X\n",
+                                     rollbackStatus);
+                        }
+                    }
+                } else {
+                    DbgPrint("[HV] File Hide hook not published: 0x%X\n",
+                             featureStatus);
+                }
             }
 #endif
 
             // ========================================
             // 阶段 8.2 注册表枚举隐藏
             // ========================================
-            // BISECT 2026-05-21 #78: services.exe 启动期 BSOD 0x1E
-            // (0xC0000096 在 NonPagedPool RIP),栈极浅 KiPageFault → 野指针。
-            // 高度怀疑 NtEnumerateKey trampoline 损坏(ZwEnumerateKey 是 SSDT
-            // 短 stub,EPT-hook 完整模式可能解码越界)。先禁用本阶段确认。
-#if 0
-            DbgPrint("[HV] Initializing Registry Hook...\n");
-            if (NT_SUCCESS(HvRegHookInitialize())) {
-                if (NT_SUCCESS(HvRegHookInstall())) {
-                    HvRegHookAddHiddenKeyName(L"Netr");
-                    DbgPrint("[HV] Registry hook installed; hiding 'Netr' key\n");
+#if ENABLE_REGISTRY_HIDE_HOOK
+            {
+                NTSTATUS featureStatus = HvRegHookInitialize();
+                if (NT_SUCCESS(featureStatus)) {
+                    g_OptionalSubsystems.RegistryInitialized = TRUE;
+                    featureStatus =
+                        HvRegHookAddHiddenKeyName(HV_DEVICE_REG_SUBKEY);
+                    if (NT_SUCCESS(featureStatus)) {
+                        featureStatus = HvRegHookInstall();
+                    }
+
+                    if (NT_SUCCESS(featureStatus)) {
+                        g_OptionalSubsystems.RegistryInstalled = TRUE;
+                        DbgPrint("[HV] Registry hook published; hiding '%ls'\n",
+                                 HV_DEVICE_REG_SUBKEY);
+                    } else {
+                        DbgPrint("[HV] Registry hook not published: 0x%X\n",
+                                 featureStatus);
+                        {
+                            NTSTATUS cleanupStatus = HvRegHookCleanup();
+                            if (NT_SUCCESS(cleanupStatus)) {
+                                g_OptionalSubsystems.RegistryInitialized = FALSE;
+                            } else {
+                                DbgPrint("[HV] Registry rollback retained ownership: 0x%X\n",
+                                         cleanupStatus);
+                            }
+                        }
+                    }
                 } else {
-                    DbgPrint("[HV] Registry hook install failed\n");
+                    DbgPrint("[HV] Registry manager initialization failed: 0x%X\n",
+                             featureStatus);
                 }
             }
-#else
-            DbgPrint("[HV] Registry Hook DISABLED (BISECT #78)\n");
 #endif
             
             // ========================================
@@ -2942,45 +4735,18 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 //             }
 // #endif
             
-            // 初始化网卡流量伪造模块（注释掉）
-            //DbgPrint("[HV] Initializing Network Hook Module...\n");
-            //if (NT_SUCCESS(HvNetHookInitialize())) {
-            //    DbgPrint("[HV] Network Hook Module initialized successfully\n");
-            //    
-            //    // ========================================
-            //    // 使用示例：伪造网卡流量
-            //    // 注意：这些函数会互相覆盖，只选择一种模式！
-            //    // ========================================
-            //    
-            //    // 方式1：设置固定的流量值（所有网卡显示相同的值）
-            //     HvNetSetFakeTrafficFixed(
-            //         1024ULL * 1024 * 100,   // 发送: 100 MB
-            //         1024ULL * 1024 * 200    // 接收: 200 MB
-            //     );
-            //    
-            //    // 方式2：按比例缩小显示（显示真实值的 10%）
-            //    //HvNetSetFakeTrafficScale(10, 10);
-            //    
-            //    // 方式3：从真实值中减去指定量
-            //    // HvNetSetFakeTrafficSubtract(
-            //    //     1024ULL * 1024 * 500,   // 减去发送 500 MB
-            //    //     1024ULL * 1024 * 500    // 减去接收 500 MB
-            //    // );
-            //    
-            //    // 方式4：伪造网卡速率（Mbps）
-            //    // HvNetSetFakeSpeed(100, 100);  // 显示 100 Mbps
-            //    
-            //    // 启用伪造（先注释掉测试 Hook 是否正常）
-            //    // HvNetEnableFake();
-            //    
-            //    // 打印当前配置信息
-            //    //HvNetPrintInfo();
-            //    
-            //    DbgPrint("[HV] NOTE: Fake is DISABLED for testing. Uncomment HvNetEnableFake() to enable.\n");
-            //    
-            //} else {
-            //    DbgPrint("[HV] Network Hook Module initialization failed\n");
-            //}
+#if ENABLE_NETWORK_HOOK
+            {
+                NTSTATUS featureStatus = HvNetHookInitialize();
+                if (NT_SUCCESS(featureStatus) && HvNetHookIsInitialized()) {
+                    g_OptionalSubsystems.NetworkInitialized = TRUE;
+                    DbgPrint("[HV] Network hook published; traffic rewriting remains disabled until configured\n");
+                } else {
+                    DbgPrint("[HV] Network hook not published: 0x%X\n",
+                             featureStatus);
+                }
+            }
+#endif
         } else {
             DbgPrint("[HV] Hook Manager initialization failed\n");
         }
@@ -3022,19 +4788,22 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     // (NtQuerySystemInformation 会看见一个无 PE header 的驱动, 比正常更显眼),
     // 而且在虚拟化失败的退化路径上更容易触发 0x7E (访问已被回收的 image region)。
 #if !HV_MINIMAL_MODE
-    // 2026-05-31 临时禁用 PE header obfuscation (Win11 真机验证 P1)
-    // 怀疑此功能 +10s 触发后写 nt 内核镜像区域时与 Win11 PatchGuard / Defender
-    // 内存扫描并发触发卡死。隔离 driver hide hook + PE obf 两个模块后,
-    // 余下的 hypervisor 骨架应能稳定运行。
-#if 0
+#if ENABLE_PE_IMAGE_OBFUSCATION
     if (NT_SUCCESS(status) && HvIsHypervisorRunning()) {
         HvScheduleImageObfuscation(DriverObject);
     } else {
         DbgPrint("[HV] PE obfuscation skipped (virtualization not active)\n");
     }
 #else
-    DbgPrint("[HV] PE obfuscation DISABLED (Win11 P1 isolation)\n");
+    DbgPrint("[HV] PE live-image obfuscation gated: VT read-shadow/rollback not implemented\n");
 #endif
+#endif
+
+#if HV_MINIMAL_MODE
+    if (!NT_SUCCESS(status)) {
+        DriverUnload(DriverObject);
+        return status;
+    }
 #endif
 
     return STATUS_SUCCESS;

@@ -1,0 +1,826 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-24_fault.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Windows\System32
+OK                                             C:\Windows\System32\drivers
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols
+OK                                             C:\SymCache
+OK                                             E:\Symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols;C:\SymCache;E:\Symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Windows\System32;C:\Windows\System32\drivers;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff802`93600000 PsLoadedModuleList = 0xfffff802`944f5350
+Debug session time: Fri Jul 24 15:37:08.917 2026 (UTC + 8:00)
+System Uptime: 0 days 16:29:40.649
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+.............................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 00000084`ebb9a018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+12: kd> .lines -e
+Line number information will be loaded
+12: kd> .reload /f nt
+12: kd> .reload /f GuardMetaCore.sys
+12: kd> .echo === CPU12_TRAP ===
+=== CPU12_TRAP ===
+12: kd> ~12s
+12: kd> .trap ffffa80a887ff700
+NOTE: The trap frame does not contain all registers.
+Some register values may be zeroed or incorrect.
+Unable to load image \SystemRoot\System32\win32kfull.sys, Win32 error 0n2
+rax=fffff8029363ac30 rbx=0000000000000000 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802651168aa rsp=ffffa80a887ff890 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei ng nz na po nc
+win32kfull!NtUserBuildHwndList+0x23a:
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8] ds:00007fff`ffff0000=????????
+12: kd> r
+Last set context:
+rax=fffff8029363ac30 rbx=0000000000000000 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802651168aa rsp=ffffa80a887ff890 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei ng nz na po nc
+cs=0010  ss=0018  ds=0000  es=0000  fs=0000  gs=0000             efl=00050286
+win32kfull!NtUserBuildHwndList+0x23a:
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8] ds:00007fff`ffff0000=????????
+12: kd> r cr2
+Last set context:
+cr2=ffff80c060203618
+12: kd> kv 100
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 ffffa80a`887ff890 fffff802`6642e017     : 00000000`00000001 00000000`00000000 00000000`00000000 00000000`000005dc : win32kfull!NtUserBuildHwndList+0x23a
+Unable to load image \SystemRoot\System32\win32k.sys, Win32 error 0n2
+01 ffffa80a`887ff950 fffff802`254637ac     : 00000000`00000001 00000000`00000000 00000000`00000000 00007ff8`0325b340 : GuardMetaCore!HookedNtUserBuildHwndList+0xb3 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2562] 
+02 ffffa80a`887ff9d0 fffff802`93cbf258     : ffff9808`21ab1080 ffffa80a`887ffb20 00000084`83fff0a8 00006564`01f97120 : win32k!EngReleaseSemaphore+0x33c
+03 ffffa80a`887ffa30 00007ff8`02821604     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiSystemServiceCopyEnd+0x28 (TrapFrame @ ffffa80a`887ffaa0)
+04 00000084`83fff088 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : 0x00007ff8`02821604
+12: kd> .echo === FAULT_DISASM ===
+=== FAULT_DISASM ===
+12: kd> ub @rip L30
+win32kfull!NtUserBuildHwndList+0x16b:
+fffff802`651167db 488b8424c8000000 mov     rax,qword ptr [rsp+0C8h]
+fffff802`651167e3 488b4808        mov     rcx,qword ptr [rax+8]
+fffff802`651167e7 488b4118        mov     rax,qword ptr [rcx+18h]
+fffff802`651167eb 488b4070        mov     rax,qword ptr [rax+70h]
+fffff802`651167ef 4885c0          test    rax,rax
+fffff802`651167f2 752b            jne     win32kfull!NtUserBuildHwndList+0x1af (fffff802`6511681f)
+fffff802`651167f4 4839b424c8000000 cmp     qword ptr [rsp+0C8h],rsi
+fffff802`651167fc 7532            jne     win32kfull!NtUserBuildHwndList+0x1c0 (fffff802`65116830)
+fffff802`651167fe 498bcf          mov     rcx,r15
+fffff802`65116801 e83aeef3ff      call    win32kfull!XDCOBJ_vCleanupColorTransformWrap+0x3e0 (fffff802`65055640)
+fffff802`65116806 4885c0          test    rax,rax
+fffff802`65116809 7521            jne     win32kfull!NtUserBuildHwndList+0x1bc (fffff802`6511682c)
+fffff802`6511680b bb080000c0      mov     ebx,0C0000008h
+fffff802`65116810 b957000000      mov     ecx,57h
+fffff802`65116815 e88a49deff      call    win32kfull!NtUserSetTimer+0x894 (fffff802`64efb1a4)
+fffff802`6511681a e908010000      jmp     win32kfull!NtUserBuildHwndList+0x2b7 (fffff802`65116927)
+fffff802`6511681f 39b424d0000000  cmp     dword ptr [rsp+0D0h],esi
+fffff802`65116826 7408            je      win32kfull!NtUserBuildHwndList+0x1c0 (fffff802`65116830)
+fffff802`65116828 4183ce01        or      r14d,1
+fffff802`6511682c 488b4070        mov     rax,qword ptr [rax+70h]
+fffff802`65116830 4533c9          xor     r9d,r9d
+fffff802`65116833 4d8bc7          mov     r8,r15
+fffff802`65116836 418bd6          mov     edx,r14d
+fffff802`65116839 488bc8          mov     rcx,rax
+fffff802`6511683c e8bff0dfff      call    win32kfull!BuildHwndList (fffff802`64f15900)
+fffff802`65116841 488bf0          mov     rsi,rax
+fffff802`65116844 4889442438      mov     qword ptr [rsp+38h],rax
+fffff802`65116849 4885c0          test    rax,rax
+fffff802`6511684c 750d            jne     win32kfull!NtUserBuildHwndList+0x1eb (fffff802`6511685b)
+fffff802`6511684e bb080000c0      mov     ebx,0C0000008h
+fffff802`65116853 8d4808          lea     ecx,[rax+8]
+fffff802`65116856 e976ffffff      jmp     win32kfull!NtUserBuildHwndList+0x161 (fffff802`651167d1)
+fffff802`6511685b 488b5808        mov     rbx,qword ptr [rax+8]
+fffff802`6511685f 482bde          sub     rbx,rsi
+fffff802`65116862 4883eb20        sub     rbx,20h
+fffff802`65116866 48c1fb03        sar     rbx,3
+fffff802`6511686a ffc3            inc     ebx
+fffff802`6511686c 8b9424e8000000  mov     edx,dword ptr [rsp+0E8h]
+fffff802`65116873 48c1e203        shl     rdx,3
+fffff802`65116877 41b804000000    mov     r8d,4
+fffff802`6511687d 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff802`65116885 4c8b151c241800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21278 (fffff802`65298ca8)]
+fffff802`6511688c e8af76da2e      call    nt!ProbeForWrite (fffff802`93ebdf40)
+fffff802`65116891 4c8b8424f8000000 mov     r8,qword ptr [rsp+0F8h]
+fffff802`65116899 488b0508251800  mov     rax,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21378 (fffff802`65298da8)]
+fffff802`651168a0 488b10          mov     rdx,qword ptr [rax]
+fffff802`651168a3 4c3bc2          cmp     r8,rdx
+fffff802`651168a6 4c0f43c2        cmovae  r8,rdx
+12: kd> u @rip L30
+win32kfull!NtUserBuildHwndList+0x23a:
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8]
+fffff802`651168ad 418900          mov     dword ptr [r8],eax
+fffff802`651168b0 3b9c24e8000000  cmp     ebx,dword ptr [rsp+0E8h]
+fffff802`651168b7 7722            ja      win32kfull!NtUserBuildHwndList+0x26b (fffff802`651168db)
+fffff802`651168b9 448bc3          mov     r8d,ebx
+fffff802`651168bc 49c1e003        shl     r8,3
+fffff802`651168c0 488d5620        lea     rdx,[rsi+20h]
+fffff802`651168c4 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff802`651168cc e8af851000      call    win32kfull!NtGdiSwapBuffers+0x36f0 (fffff802`6521ee80)
+fffff802`651168d1 c744242000000000 mov     dword ptr [rsp+20h],0
+fffff802`651168d9 eb08            jmp     win32kfull!NtUserBuildHwndList+0x273 (fffff802`651168e3)
+fffff802`651168db c7442420230000c0 mov     dword ptr [rsp+20h],0C0000023h
+fffff802`651168e3 488b8424f8000000 mov     rax,qword ptr [rsp+0F8h]
+fffff802`651168eb 8918            mov     dword ptr [rax],ebx
+fffff802`651168ed 8b5c2420        mov     ebx,dword ptr [rsp+20h]
+fffff802`651168f1 eb0e            jmp     win32kfull!NtUserBuildHwndList+0x291 (fffff802`65116901)
+fffff802`651168f3 bb080000c0      mov     ebx,0C0000008h
+fffff802`651168f8 895c2420        mov     dword ptr [rsp+20h],ebx
+fffff802`651168fc 488b742438      mov     rsi,qword ptr [rsp+38h]
+fffff802`65116901 4885f6          test    rsi,rsi
+fffff802`65116904 7408            je      win32kfull!NtUserBuildHwndList+0x29e (fffff802`6511690e)
+fffff802`65116906 488bce          mov     rcx,rsi
+fffff802`65116909 e832f5dfff      call    win32kfull!FreeHwndList (fffff802`64f15e40)
+fffff802`6511690e 488b8c24c8000000 mov     rcx,qword ptr [rsp+0C8h]
+fffff802`65116916 4885c9          test    rcx,rcx
+fffff802`65116919 740c            je      win32kfull!NtUserBuildHwndList+0x2b7 (fffff802`65116927)
+fffff802`6511691b 4c8b1576251800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21468 (fffff802`65298e98)]
+fffff802`65116922 e8e9787b2e      call    nt!ObfDereferenceObject (fffff802`938ce210)
+fffff802`65116927 488d8c2480000000 lea     rcx,[rsp+80h]
+fffff802`6511692f e82041deff      call    win32kfull!NtUserSetTimer+0x144 (fffff802`64efaa54)
+fffff802`65116934 4c8b15fd4d1800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x23d08 (fffff802`6529b738)]
+Unable to load image \SystemRoot\System32\win32kbase.sys, Win32 error 0n2
+fffff802`6511693b e850c9aaff      call    win32kbase!UserSessionSwitchLeaveCritWithNonPaged (fffff802`64bc3290)
+fffff802`65116940 8bc3            mov     eax,ebx
+fffff802`65116942 488b9c24c0000000 mov     rbx,qword ptr [rsp+0C0h]
+fffff802`6511694a 4881c490000000  add     rsp,90h
+fffff802`65116951 415f            pop     r15
+fffff802`65116953 415e            pop     r14
+fffff802`65116955 415d            pop     r13
+fffff802`65116957 415c            pop     r12
+fffff802`65116959 5e              pop     rsi
+fffff802`6511695a c3              ret
+fffff802`6511695b cc              int     3
+fffff802`6511695c cc              int     3
+fffff802`6511695d cc              int     3
+fffff802`6511695e cc              int     3
+fffff802`6511695f cc              int     3
+fffff802`65116960 cc              int     3
+fffff802`65116961 cc              int     3
+12: kd> .echo === FAULT_PTES ===
+=== FAULT_PTES ===
+12: kd> !pte 00007fffffff0000
+                                           VA 00007fffffff0000
+PXE at FFFF80C0603017F8    PPE at FFFF80C0602FFFF8    PDE at FFFF80C05FFFFFF8    PTE at FFFF80BFFFFFFF80
+Page 4b5abb not present in the dump file. Type ".hh dbgerr004" for details
+Unable to get PXE FFFF80C0602FFFF8
+12: kd> !pte ffff80c060203618
+                                           VA ffff80c0406c3000
+PXE at FFFF80C060301808    PPE at FFFF80C060301808    PDE at FFFF80C060301018    PTE at FFFF80C060203618
+contains 8A0000060FFAF863  contains 8A0000060FFAF863  contains 0000000000000000
+pfn 60ffaf    ---DA--KW-V  pfn 60ffaf    ---DA--KW-V  contains 0000000000000000
+not valid
+
+12: kd> .echo === FAULT_ADDRESS ===
+=== FAULT_ADDRESS ===
+12: kd> !address 00007fffffff0000
+
+
+Usage:                  
+Base Address:           00007fff`ffff0000
+End Address:            ffff8000`00000000
+Region Size:            ffff0000`00010000
+VA Type:                UserProbeArea
+12: kd> !address ffff80c060203618
+
+
+Usage:                  
+Base Address:           ffff8080`00000000
+End Address:            ffff8100`00000000
+Region Size:            00000080`00000000
+VA Type:                PageTables
+12: kd> .echo === TRAP_STACK ===
+=== TRAP_STACK ===
+12: kd> dq @rsp-80 L60
+ffffa80a`887ff810  00000000`00000000 fffff802`65148578
+ffffa80a`887ff820  ffffbc8b`ff453b60 00000000`00000000
+ffffa80a`887ff830  00000000`00000000 00000000`00000000
+ffffa80a`887ff840  ffffe583`e2dba5e0 fffff802`64f159cd
+ffffa80a`887ff850  ffffe583`e2dba5e0 00000000`00000000
+ffffa80a`887ff860  00000000`00000000 fffff802`651168aa
+ffffa80a`887ff870  00000000`00000010 00000000`00050286
+ffffa80a`887ff880  ffffa80a`887ff890 00000000`00000018
+ffffa80a`887ff890  00000000`00000001 00000000`00000000
+ffffa80a`887ff8a0  00000000`00000000 00000000`00000000
+ffffa80a`887ff8b0  00000000`00000000 00000000`00000000
+ffffa80a`887ff8c0  00000000`00000000 ffffe583`e2dba5e0
+ffffa80a`887ff8d0  00000000`00000000 00000000`00000000
+ffffa80a`887ff8e0  00000000`00000000 00000000`00000000
+ffffa80a`887ff8f0  00000000`00000000 00000000`00000000
+ffffa80a`887ff900  ffffe584`002067e0 00000000`00000000
+ffffa80a`887ff910  00000000`00000001 ffff9808`12ec5bf0
+ffffa80a`887ff920  00000000`00000000 00000000`00000000
+ffffa80a`887ff930  fffff802`00000147 0000024c`1cbb8be8
+ffffa80a`887ff940  00000000`00000000 fffff802`6642e017
+ffffa80a`887ff950  00000000`00000001 00000000`00000000
+ffffa80a`887ff960  00000000`00000000 00000000`000005dc
+ffffa80a`887ff970  00000000`00000000 fffff802`00000147
+ffffa80a`887ff980  0000024c`1cbb8be8 fffff802`254760bd
+ffffa80a`887ff990  00000000`00000000 00000000`00000000
+ffffa80a`887ff9a0  00000000`00000000 ffffa80a`887ff950
+ffffa80a`887ff9b0  00006564`01f7c938 00000000`000b07c2
+ffffa80a`887ff9c0  00000000`00000001 fffff802`254637ac
+ffffa80a`887ff9d0  00000000`00000001 00000000`00000000
+ffffa80a`887ff9e0  00000000`00000000 00007ff8`0325b340
+ffffa80a`887ff9f0  ffff9808`00000000 fffff802`00000147
+ffffa80a`887ffa00  0000024c`1cbb8be8 0000024c`1cbb8be4
+ffffa80a`887ffa10  ffff9807`00000000 00000000`00000001
+ffffa80a`887ffa20  ffffa80a`887ffa48 fffff802`93cbf258
+ffffa80a`887ffa30  ffff9808`21ab1080 ffffa80a`887ffb20
+ffffa80a`887ffa40  00000084`83fff0a8 00006564`01f97120
+ffffa80a`887ffa50  00000084`00000000 00006564`00000147
+ffffa80a`887ffa60  0000024c`1cbb8be8 0000024c`1cbb8be4
+ffffa80a`887ffa70  ffffa80a`887ffaa8 00000000`00000000
+ffffa80a`887ffa80  00006564`01f97120 00000000`00000000
+ffffa80a`887ffa90  00000084`83fff180 fffff802`93cbf03b
+ffffa80a`887ffaa0  ffff9808`21ab1080 00000084`83fff790
+ffffa80a`887ffab0  ffff9808`21ab1080 00006564`01e0bd70
+ffffa80a`887ffac0  00000000`00000000 00001fa0`02000001
+ffffa80a`887ffad0  00000000`0000101a 00000000`00000000
+ffffa80a`887ffae0  00000000`00000000 00000000`00000000
+ffffa80a`887ffaf0  00000000`00000001 00000000`00000000
+ffffa80a`887ffb00  00000000`00000000 00000084`ebbfb000
+12: kd> .trap
+Resetting default scope
+12: kd> .echo === WRAPPER ===
+=== WRAPPER ===
+12: kd> uf GuardMetaCore!HookedNtUserBuildHwndList
+GuardMetaCore!HookedNtUserBuildHwndList [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2556]:
+ 2556 fffff802`6642df64 488bc4          mov     rax,rsp
+ 2556 fffff802`6642df67 48895808        mov     qword ptr [rax+8],rbx
+ 2556 fffff802`6642df6b 48897010        mov     qword ptr [rax+10h],rsi
+ 2556 fffff802`6642df6f 48897818        mov     qword ptr [rax+18h],rdi
+ 2556 fffff802`6642df73 4c896020        mov     qword ptr [rax+20h],r12
+ 2556 fffff802`6642df77 4155            push    r13
+ 2556 fffff802`6642df79 4156            push    r14
+ 2556 fffff802`6642df7b 4157            push    r15
+ 2556 fffff802`6642df7d 4883ec60        sub     rsp,60h
+ 2556 fffff802`6642df81 4889642458      mov     qword ptr [rsp+58h],rsp
+ 2556 fffff802`6642df86 418bd9          mov     ebx,r9d
+ 2556 fffff802`6642df89 418bf0          mov     esi,r8d
+ 2556 fffff802`6642df8c 4c8bf2          mov     r14,rdx
+ 2556 fffff802`6642df8f 4c8bf9          mov     r15,rcx
+ 2557 fffff802`6642df92 33ff            xor     edi,edi
+ 2557 fffff802`6642df94 33c0            xor     eax,eax
+ 2557 fffff802`6642df96 f00fb13d72da0a00 lock cmpxchg dword ptr [GuardMetaCore!g_HvHookCallbackRundownActive (fffff802`664dba10)],edi
+ 2557 fffff802`6642df9e 0f846a020000    je      GuardMetaCore!HookedNtUserBuildHwndList+0x2aa (fffff802`6642e20e)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x40 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2557]:
+ 2557 fffff802`6642dfa4 488d0d5dda0a00  lea     rcx,[GuardMetaCore!g_HvHookCallbackRundown (fffff802`664dba08)]
+ 2557 fffff802`6642dfab ff15bf910300    call    qword ptr [GuardMetaCore!_imp_ExAcquireRundownProtection (fffff802`66467170)]
+ 2557 fffff802`6642dfb1 84c0            test    al,al
+ 2557 fffff802`6642dfb3 0f8455020000    je      GuardMetaCore!HookedNtUserBuildHwndList+0x2aa (fffff802`6642e20e)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x55 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2558]:
+ 2558 fffff802`6642dfb9 488b0d98da0a00  mov     rcx,qword ptr [GuardMetaCore!g_HookNtUserBuildHwndList (fffff802`664dba58)]
+ 2558 fffff802`6642dfc0 e823300000      call    GuardMetaCore!HvHookGetTrampoline (fffff802`66430fe8)
+ 2560 fffff802`6642dfc5 4885c0          test    rax,rax
+ 2560 fffff802`6642dfc8 751a            jne     GuardMetaCore!HookedNtUserBuildHwndList+0x80 (fffff802`6642dfe4)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x66 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2560]:
+ 2560 fffff802`6642dfca 488d1509000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0x76 (fffff802`6642dfda)]
+ 2560 fffff802`6642dfd1 488bcc          mov     rcx,rsp
+ 2560 fffff802`6642dfd4 e8e1400200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2560 fffff802`6642dfd9 90              nop
+ 2560 fffff802`6642dfda b8010000c0      mov     eax,0C0000001h
+ 2560 fffff802`6642dfdf e92c020000      jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x80 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2562]:
+ 2562 fffff802`6642dfe4 4c8ba424b0000000 mov     r12,qword ptr [rsp+0B0h]
+ 2562 fffff802`6642dfec 4c89642430      mov     qword ptr [rsp+30h],r12
+ 2562 fffff802`6642dff1 4c8bac24a8000000 mov     r13,qword ptr [rsp+0A8h]
+ 2562 fffff802`6642dff9 4c896c2428      mov     qword ptr [rsp+28h],r13
+ 2562 fffff802`6642dffe 8bbc24a0000000  mov     edi,dword ptr [rsp+0A0h]
+ 2562 fffff802`6642e005 897c2420        mov     dword ptr [rsp+20h],edi
+ 2562 fffff802`6642e009 448bcb          mov     r9d,ebx
+ 2562 fffff802`6642e00c 448bc6          mov     r8d,esi
+ 2562 fffff802`6642e00f 498bd6          mov     rdx,r14
+ 2562 fffff802`6642e012 498bcf          mov     rcx,r15
+ 2562 fffff802`6642e015 ffd0            call    rax
+ 2562 fffff802`6642e017 89442440        mov     dword ptr [rsp+40h],eax
+ 2564 fffff802`6642e01b 4533ff          xor     r15d,r15d
+ 2564 fffff802`6642e01e 85c0            test    eax,eax
+ 2564 fffff802`6642e020 791d            jns     GuardMetaCore!HookedNtUserBuildHwndList+0xdb (fffff802`6642e03f)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0xbe [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2564]:
+ 2564 fffff802`6642e022 488d150d000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0xd2 (fffff802`6642e036)]
+ 2564 fffff802`6642e029 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2564 fffff802`6642e02e e887400200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2564 fffff802`6642e033 0faee8          lfence
+ 2564 fffff802`6642e036 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2564 fffff802`6642e03a e9d1010000      jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0xdb [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2566]:
+ 2566 fffff802`6642e03f 0faee8          lfence
+ 2566 fffff802`6642e042 ff1530900300    call    qword ptr [GuardMetaCore!_imp_KeGetCurrentIrql (fffff802`66467078)]
+ 2566 fffff802`6642e048 3c01            cmp     al,1
+ 2566 fffff802`6642e04a 761b            jbe     GuardMetaCore!HookedNtUserBuildHwndList+0x103 (fffff802`6642e067)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0xe8 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2566]:
+ 2566 fffff802`6642e04c 488d150b000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0xfa (fffff802`6642e05e)]
+ 2566 fffff802`6642e053 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2566 fffff802`6642e058 e85d400200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2566 fffff802`6642e05d 90              nop
+ 2566 fffff802`6642e05e 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2566 fffff802`6642e062 e9a9010000      jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x103 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2568]:
+ 2568 fffff802`6642e067 ff1573910300    call    qword ptr [GuardMetaCore!_imp_PsGetCurrentProcessId (fffff802`664671e0)]
+ 2568 fffff802`6642e06d 488bd8          mov     rbx,rax
+ 2570 fffff802`6642e070 488bc8          mov     rcx,rax
+ 2570 fffff802`6642e073 e87c380000      call    GuardMetaCore!HvHookIsDebuggerPid (fffff802`664318f4)
+ 2570 fffff802`6642e078 84c0            test    al,al
+ 2570 fffff802`6642e07a 0f8574010000    jne     GuardMetaCore!HookedNtUserBuildHwndList+0x290 (fffff802`6642e1f4)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x11c [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2570]:
+ 2570 fffff802`6642e080 488bcb          mov     rcx,rbx
+ 2570 fffff802`6642e083 e8b47c0000      call    GuardMetaCore!HvHookpIsShellHostCaller (fffff802`66435d3c)
+ 2570 fffff802`6642e088 84c0            test    al,al
+ 2570 fffff802`6642e08a 0f8564010000    jne     GuardMetaCore!HookedNtUserBuildHwndList+0x290 (fffff802`6642e1f4)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x12c [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2572]:
+ 2572 fffff802`6642e090 4d85ed          test    r13,r13
+ 2572 fffff802`6642e093 0f8441010000    je      GuardMetaCore!HookedNtUserBuildHwndList+0x276 (fffff802`6642e1da)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x135 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2572]:
+ 2572 fffff802`6642e099 4d85e4          test    r12,r12
+ 2572 fffff802`6642e09c 0f8438010000    je      GuardMetaCore!HookedNtUserBuildHwndList+0x276 (fffff802`6642e1da)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x13e [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2572]:
+ 2572 fffff802`6642e0a2 85ff            test    edi,edi
+ 2572 fffff802`6642e0a4 0f8430010000    je      GuardMetaCore!HookedNtUserBuildHwndList+0x276 (fffff802`6642e1da)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x146 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2575]:
+ 2575 fffff802`6642e0aa 44897c2444      mov     dword ptr [rsp+44h],r15d
+ 2576 fffff802`6642e0af ff151b920300    call    qword ptr [GuardMetaCore!_imp_ExGetPreviousMode (fffff802`664672d0)]
+ 2576 fffff802`6642e0b5 448af0          mov     r14b,al
+ 2578 fffff802`6642e0b8 bb04000000      mov     ebx,4
+ 2578 fffff802`6642e0bd 3c01            cmp     al,1
+ 2578 fffff802`6642e0bf 750e            jne     GuardMetaCore!HookedNtUserBuildHwndList+0x16b (fffff802`6642e0cf)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x15d [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2579]:
+ 2579 fffff802`6642e0c1 448bc3          mov     r8d,ebx
+ 2579 fffff802`6642e0c4 8bd3            mov     edx,ebx
+ 2579 fffff802`6642e0c6 498bcc          mov     rcx,r12
+ 2579 fffff802`6642e0c9 ff15e9910300    call    qword ptr [GuardMetaCore!_imp_ProbeForRead (fffff802`664672b8)]
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x16b [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2581]:
+ 2581 fffff802`6642e0cf 418b3424        mov     esi,dword ptr [r12]
+ 2581 fffff802`6642e0d3 89742444        mov     dword ptr [rsp+44h],esi
+ 2582 fffff802`6642e0d7 3bf7            cmp     esi,edi
+ 2582 fffff802`6642e0d9 0f47f7          cmova   esi,edi
+ 2582 fffff802`6642e0dc 89742444        mov     dword ptr [rsp+44h],esi
+ 2586 fffff802`6642e0e0 85f6            test    esi,esi
+ 2586 fffff802`6642e0e2 751b            jne     GuardMetaCore!HookedNtUserBuildHwndList+0x19b (fffff802`6642e0ff)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x180 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2586]:
+ 2586 fffff802`6642e0e4 488d150b000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0x192 (fffff802`6642e0f6)]
+ 2586 fffff802`6642e0eb 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2586 fffff802`6642e0f0 e8c53f0200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2586 fffff802`6642e0f5 90              nop
+ 2586 fffff802`6642e0f6 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2586 fffff802`6642e0fa e911010000      jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x19b [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2589]:
+ 2589 fffff802`6642e0ff 4180fe01        cmp     r14b,1
+ 2589 fffff802`6642e103 7524            jne     GuardMetaCore!HookedNtUserBuildHwndList+0x1c5 (fffff802`6642e129)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1a1 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2590]:
+ 2590 fffff802`6642e105 8bd6            mov     edx,esi
+ 2590 fffff802`6642e107 48c1e203        shl     rdx,3
+ 2590 fffff802`6642e10b 41b808000000    mov     r8d,8
+ 2590 fffff802`6642e111 498bcd          mov     rcx,r13
+ 2590 fffff802`6642e114 ff15a6910300    call    qword ptr [GuardMetaCore!_imp_ProbeForWrite (fffff802`664672c0)]
+ 2591 fffff802`6642e11a 448bc3          mov     r8d,ebx
+ 2591 fffff802`6642e11d 488bd3          mov     rdx,rbx
+ 2591 fffff802`6642e120 498bcc          mov     rcx,r12
+ 2591 fffff802`6642e123 ff1597910300    call    qword ptr [GuardMetaCore!_imp_ProbeForWrite (fffff802`664672c0)]
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1c5 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2594]:
+ 2594 fffff802`6642e129 418bdf          mov     ebx,r15d
+ 2594 fffff802`6642e12c 895c244c        mov     dword ptr [rsp+4Ch],ebx
+ 2595 fffff802`6642e130 458bf7          mov     r14d,r15d
+ 2595 fffff802`6642e133 44897c2448      mov     dword ptr [rsp+48h],r15d
+ 2596 fffff802`6642e138 418bff          mov     edi,r15d
+ 2596 fffff802`6642e13b 44897c2450      mov     dword ptr [rsp+50h],r15d
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1dc [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2596]:
+ 2596 fffff802`6642e140 3bfe            cmp     edi,esi
+ 2596 fffff802`6642e142 733b            jae     GuardMetaCore!HookedNtUserBuildHwndList+0x21b (fffff802`6642e17f)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1e0 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2597]:
+ 2597 fffff802`6642e144 8bc7            mov     eax,edi
+ 2597 fffff802`6642e146 4d8b7cc500      mov     r15,qword ptr [r13+rax*8]
+ 2598 fffff802`6642e14b 4d85ff          test    r15,r15
+ 2598 fffff802`6642e14e 7416            je      GuardMetaCore!HookedNtUserBuildHwndList+0x202 (fffff802`6642e166)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1ec [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2598]:
+ 2598 fffff802`6642e150 498bcf          mov     rcx,r15
+ 2598 fffff802`6642e153 e86c7a0000      call    GuardMetaCore!HvHookpIsDebuggerHwnd (fffff802`66435bc4)
+ 2598 fffff802`6642e158 84c0            test    al,al
+ 2598 fffff802`6642e15a 740a            je      GuardMetaCore!HookedNtUserBuildHwndList+0x202 (fffff802`6642e166)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x1f8 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2599]:
+ 2599 fffff802`6642e15c 41ffc6          inc     r14d
+ 2599 fffff802`6642e15f 4489742448      mov     dword ptr [rsp+48h],r14d
+ 2600 fffff802`6642e164 eb11            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x213 (fffff802`6642e177)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x202 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2602]:
+ 2602 fffff802`6642e166 3bdf            cmp     ebx,edi
+ 2602 fffff802`6642e168 7407            je      GuardMetaCore!HookedNtUserBuildHwndList+0x20d (fffff802`6642e171)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x206 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2602]:
+ 2602 fffff802`6642e16a 8bc3            mov     eax,ebx
+ 2602 fffff802`6642e16c 4d897cc500      mov     qword ptr [r13+rax*8],r15
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x20d [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2603]:
+ 2603 fffff802`6642e171 ffc3            inc     ebx
+ 2603 fffff802`6642e173 895c244c        mov     dword ptr [rsp+4Ch],ebx
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x213 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2596]:
+ 2596 fffff802`6642e177 ffc7            inc     edi
+ 2596 fffff802`6642e179 897c2450        mov     dword ptr [rsp+50h],edi
+ 2596 fffff802`6642e17d ebc1            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x1dc (fffff802`6642e140)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x21b [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2606]:
+ 2606 fffff802`6642e17f 8bcb            mov     ecx,ebx
+ 2606 fffff802`6642e181 895c2454        mov     dword ptr [rsp+54h],ebx
+ 2606 fffff802`6642e185 4533ff          xor     r15d,r15d
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x224 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2606]:
+ 2606 fffff802`6642e188 3bce            cmp     ecx,esi
+ 2606 fffff802`6642e18a 730f            jae     GuardMetaCore!HookedNtUserBuildHwndList+0x237 (fffff802`6642e19b)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x228 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2606]:
+ 2606 fffff802`6642e18c 8bc1            mov     eax,ecx
+ 2606 fffff802`6642e18e 4d897cc500      mov     qword ptr [r13+rax*8],r15
+ 2606 fffff802`6642e193 ffc1            inc     ecx
+ 2606 fffff802`6642e195 894c2454        mov     dword ptr [rsp+54h],ecx
+ 2606 fffff802`6642e199 ebed            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x224 (fffff802`6642e188)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x237 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2608]:
+ 2608 fffff802`6642e19b 4585f6          test    r14d,r14d
+ 2608 fffff802`6642e19e 7404            je      GuardMetaCore!HookedNtUserBuildHwndList+0x240 (fffff802`6642e1a4)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x23c [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2609]:
+ 2609 fffff802`6642e1a0 41891c24        mov     dword ptr [r12],ebx
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x240 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2612]:
+ 2612 fffff802`6642e1a4 eb00            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x242 (fffff802`6642e1a6)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x242 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2615]:
+ 2615 fffff802`6642e1a6 488d150d000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0x256 (fffff802`6642e1ba)]
+ 2615 fffff802`6642e1ad 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2615 fffff802`6642e1b2 e8033f0200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2615 fffff802`6642e1b7 0faee8          lfence
+ 2615 fffff802`6642e1ba 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2615 fffff802`6642e1be eb50            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x276 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2572]:
+ 2572 fffff802`6642e1da 488d150d000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0x28a (fffff802`6642e1ee)]
+ 2572 fffff802`6642e1e1 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2572 fffff802`6642e1e6 e8cf3e0200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2572 fffff802`6642e1eb 0faee8          lfence
+ 2572 fffff802`6642e1ee 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2572 fffff802`6642e1f2 eb1c            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x290 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2570]:
+ 2570 fffff802`6642e1f4 488d150d000000  lea     rdx,[GuardMetaCore!HookedNtUserBuildHwndList+0x2a4 (fffff802`6642e208)]
+ 2570 fffff802`6642e1fb 488b4c2458      mov     rcx,qword ptr [rsp+58h]
+ 2570 fffff802`6642e200 e8b53e0200      call    GuardMetaCore!local_unwind (fffff802`664520ba)
+ 2570 fffff802`6642e205 0faee8          lfence
+ 2570 fffff802`6642e208 8b442440        mov     eax,dword ptr [rsp+40h]
+ 2570 fffff802`6642e20c eb02            jmp     GuardMetaCore!HookedNtUserBuildHwndList+0x2ac (fffff802`6642e210)  Branch
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x2aa [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2557]:
+ 2557 fffff802`6642e20e 33c0            xor     eax,eax
+
+GuardMetaCore!HookedNtUserBuildHwndList+0x2ac [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2617]:
+ 2617 fffff802`6642e210 4c8d5c2460      lea     r11,[rsp+60h]
+ 2617 fffff802`6642e215 498b5b20        mov     rbx,qword ptr [r11+20h]
+ 2617 fffff802`6642e219 498b7328        mov     rsi,qword ptr [r11+28h]
+ 2617 fffff802`6642e21d 498b7b30        mov     rdi,qword ptr [r11+30h]
+ 2617 fffff802`6642e221 4d8b6338        mov     r12,qword ptr [r11+38h]
+ 2617 fffff802`6642e225 498be3          mov     rsp,r11
+ 2617 fffff802`6642e228 415f            pop     r15
+ 2617 fffff802`6642e22a 415e            pop     r14
+ 2617 fffff802`6642e22c 415d            pop     r13
+ 2617 fffff802`6642e22e c3              ret
+12: kd> x GuardMetaCore!g_HookNtUserBuildHwndList
+fffff802`664dba58 GuardMetaCore!g_HookNtUserBuildHwndList = 0xffff9808`12ed06f0
+12: kd> dq GuardMetaCore!g_HookNtUserBuildHwndList L1
+fffff802`664dba58  ffff9808`12ed06f0
+12: kd> dt -r2 GuardMetaCore!_NPT_HOOK_ENTRY poi(GuardMetaCore!g_HookNtUserBuildHwndList)
+   +0x000 ListEntry        : _LIST_ENTRY [ 0xffff9808`12ed3270 - 0xffff9808`12ece170 ]
+      +0x000 Flink            : 0xffff9808`12ed3270 _LIST_ENTRY [ 0xffff9808`12ed8df0 - 0xffff9808`12ed06f0 ]
+         +0x000 Flink            : 0xffff9808`12ed8df0 _LIST_ENTRY [ 0xffff9808`12eda0b0 - 0xffff9808`12ed3270 ]
+         +0x008 Blink            : 0xffff9808`12ed06f0 _LIST_ENTRY [ 0xffff9808`12ed3270 - 0xffff9808`12ece170 ]
+      +0x008 Blink            : 0xffff9808`12ece170 _LIST_ENTRY [ 0xffff9808`12ed06f0 - 0xffff9808`12ecd330 ]
+         +0x000 Flink            : 0xffff9808`12ed06f0 _LIST_ENTRY [ 0xffff9808`12ed3270 - 0xffff9808`12ece170 ]
+         +0x008 Blink            : 0xffff9808`12ecd330 _LIST_ENTRY [ 0xffff9808`12ece170 - 0xffff9808`12ece530 ]
+   +0x010 PageListEntry    : _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+      +0x000 Flink            : 0xffff9808`3454baa0 _LIST_ENTRY [ 0xffff9808`12ed0700 - 0xffff9808`12ed0700 ]
+         +0x000 Flink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+         +0x008 Blink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+      +0x008 Blink            : 0xffff9808`3454baa0 _LIST_ENTRY [ 0xffff9808`12ed0700 - 0xffff9808`12ed0700 ]
+         +0x000 Flink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+         +0x008 Blink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+   +0x020 State            : 1 ( NptHookStateActive )
+   +0x024 Type             : 0 ( NptHookTypeInline )
+   +0x028 TargetVirtualAddress : 0xfffff802`65116670 Void
+   +0x030 TargetPhysicalAddress : 0x00000001`125b7000
+   +0x038 OffsetInPage     : 0x670
+   +0x040 PageOwner        : 0xffff9808`3454ba90 _NPT_HOOK_PAGE
+      +0x000 ListEntry        : _LIST_ENTRY [ 0xffff9808`1e217660 - 0xffff9808`34b384e0 ]
+         +0x000 Flink            : 0xffff9808`1e217660 _LIST_ENTRY [ 0xffff9808`34b38010 - 0xffff9808`3454ba90 ]
+         +0x008 Blink            : 0xffff9808`34b384e0 _LIST_ENTRY [ 0xffff9808`3454ba90 - 0xffff9808`1ebbca80 ]
+      +0x010 SiteList         : _LIST_ENTRY [ 0xffff9808`12ed0700 - 0xffff9808`12ed0700 ]
+         +0x000 Flink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+         +0x008 Blink            : 0xffff9808`12ed0700 _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+      +0x020 State            : 1 ( NptHookStateActive )
+      +0x028 TargetPhysicalAddress : 0x00000001`125b7000
+      +0x030 TargetPageVirtualAddress : 0xfffff802`65116000 Void
+      +0x038 FakePageVirtual  : 0xffff8502`0bd51000 Void
+      +0x040 FakePagePhysical : 0x00000006`11a21000
+      +0x048 TargetPte        : [64] 0xffff8502`0bb9fdb8 _NPT_PTE
+         +0x000 Value            : 0x80000001`125b7027
+         +0x000 Present          : 0y1
+         +0x000 Write            : 0y1
+         +0x000 User             : 0y1
+         +0x000 WriteThrough     : 0y0
+         +0x000 CacheDisable     : 0y0
+         +0x000 Accessed         : 0y1
+         +0x000 Dirty            : 0y0
+         +0x000 Pat              : 0y0
+         +0x000 Global           : 0y0
+         +0x000 Ignored1         : 0y000
+         +0x000 PageFrameNumber  : 0y0000000000000000000100010010010110110111 (0x1125b7)
+         +0x000 Ignored2         : 0y00000000000 (0)
+         +0x000 NoExecute        : 0y1
+      +0x248 TargetPteCount   : 0x10
+      +0x250 OriginalPteValue : [64] 0x00000001`125b7007
+      +0x450 SiteCount        : 1
+      +0x454 ActiveSiteCount  : 1
+      +0x458 AccountingSite   : 0xffff9808`12ed06f0 _NPT_HOOK_ENTRY
+         +0x000 ListEntry        : _LIST_ENTRY [ 0xffff9808`12ed3270 - 0xffff9808`12ece170 ]
+         +0x010 PageListEntry    : _LIST_ENTRY [ 0xffff9808`3454baa0 - 0xffff9808`3454baa0 ]
+         +0x020 State            : 1 ( NptHookStateActive )
+         +0x024 Type             : 0 ( NptHookTypeInline )
+         +0x028 TargetVirtualAddress : 0xfffff802`65116670 Void
+         +0x030 TargetPhysicalAddress : 0x00000001`125b7000
+         +0x038 OffsetInPage     : 0x670
+         +0x040 PageOwner        : 0xffff9808`3454ba90 _NPT_HOOK_PAGE
+         +0x048 PatchBytes       : [14]  "???"
+         +0x056 PatchInstalled   : 0x1 ''
+         +0x057 OriginalBytes    : [32]  "H???"
+         +0x078 OriginalBytesLength : 0xe
+         +0x07c TrampolineWriteLength : 0xe
+         +0x080 TrampolineInstCount : 5
+         +0x088 HookFunction     : 0xfffff802`6642df64 Void
+         +0x090 TrampolineAddress : 0xffff9807`f62132b0 Void
+         +0x098 HitCount         : 0n570924
+         +0x0a0 Removing         : 0n0
+      +0x460 MutationSite     : (null) 
+      +0x468 MutationKind     : 0 ( NptHookPageMutationNone )
+      +0x46c RootDrainPending : 0n0
+      +0x470 RootDrainEpoch   : 0
+   +0x048 PatchBytes       : [14]  "???"
+   +0x056 PatchInstalled   : 0x1 ''
+   +0x057 OriginalBytes    : [32]  "H???"
+   +0x078 OriginalBytesLength : 0xe
+   +0x07c TrampolineWriteLength : 0xe
+   +0x080 TrampolineInstCount : 5
+   +0x088 HookFunction     : 0xfffff802`6642df64 Void
+   +0x090 TrampolineAddress : 0xffff9807`f62132b0 Void
+   +0x098 HitCount         : 0n570924
+   +0x0a0 Removing         : 0n0
+12: kd> .echo === HYPERVISOR ===
+=== HYPERVISOR ===
+12: kd> dq GuardMetaCore!g_HypervisorContext L3
+fffff802`664a7480  00000000`00000010 ffff9808`1a8d7000
+fffff802`664a7490  00000000`00000001
+12: kd> r @$t0=poi(GuardMetaCore!g_HypervisorContext+8)
+12: kd> r @$t1=@$t0+(0xc*0x948)
+12: kd> dt GuardMetaCore!_VCPU_DATA @$t1
+   +0x000 ProcessorNumber  : 0xc
+   +0x004 IsVirtualized    : 0x1 ''
+   +0x005 IsVmxOn          : 0 ''
+   +0x008 VmExitStack      : 0xffff9808`1e054000 Void
+   +0x010 VmExitStackPhysical : 0
+   +0x018 VmxonRegion      : (null) 
+   +0x020 VmxonRegionPhysical : _LARGE_INTEGER 0x0
+   +0x028 VmcsRegion       : (null) 
+   +0x030 VmcsRegionPhysical : _LARGE_INTEGER 0x0
+   +0x038 MsrBitmap        : (null) 
+   +0x040 MsrBitmapPhysical : _LARGE_INTEGER 0x0
+   +0x048 EptTables        : (null) 
+   +0x050 Vpid             : 0
+   +0x058 EptPebSpoof      : (null) 
+   +0x060 EptpMain         : 0
+   +0x068 EptpPebSpoof     : 0
+   +0x070 ActiveEptpIsPebSpoof : 0n0
+   +0x078 LastSnoopedCr3   : 0
+   +0x080 LastCallerClass  : 0
+   +0x088 Vmcb             : 0xffff8502`05381000 _VMCB
+   +0x090 VmcbPhysical     : _LARGE_INTEGER 0x00000006`11af8000
+   +0x098 HostSaveArea     : 0xffff8502`05380000 Void
+   +0x0a0 HostSaveAreaPhysical : _LARGE_INTEGER 0x00000006`11af9000
+   +0x0a8 MsrPermissionMap : 0xffff8502`05382000 Void
+   +0x0b0 MsrPermissionMapPhysical : _LARGE_INTEGER 0x00000006`11af6000
+   +0x0b8 NptTables        : 0xffff94fa`51400000 _NPT_TABLES
+   +0x0c0 NestedVmx        : _NESTED_VMX_STATE
+   +0x5c0 NestedSvm        : _NESTED_SVM_STATE
+   +0x7f0 IsInL2           : 0 ''
+   +0x7f8 GuestState       : _VCPU_STATE
+   +0x8b0 HostRsp          : 0
+   +0x8b8 HostRip          : 0
+   +0x8c0 RestoreRsp       : 0
+   +0x8c8 RestoreRip       : 0
+   +0x8d0 RestoreRbx       : 0
+   +0x8d8 RestoreRbp       : 0
+   +0x8e0 RestoreRsi       : 0
+   +0x8e8 RestoreRdi       : 0
+   +0x8f0 RestoreR12       : 0
+   +0x8f8 RestoreR13       : 0
+   +0x900 RestoreR14       : 0
+   +0x908 RestoreR15       : 0
+   +0x910 VtRootGadget     : <unnamed-tag>
+   +0x930 LastVmExitHostTsc : 0
+   +0x938 TscOffsetCompensation : 0n0
+   +0x940 SvmSingleStepBlockInterrupts : 0n0
+12: kd> r @$t2=poi(@$t1+88)
+12: kd> .echo === VMCB12_CONTROL ===
+=== VMCB12_CONTROL ===
+12: kd> dt GuardMetaCore!_VMCB_CONTROL_AREA @$t2
+   +0x000 InterceptCrRead  : 0
+   +0x002 InterceptCrWrite : 0
+   +0x004 InterceptDrRead  : 0
+   +0x006 InterceptDrWrite : 0
+   +0x008 InterceptExceptions : 0
+   +0x00c InterceptMisc1   : 0x90040000
+   +0x010 InterceptMisc2   : 0x203f
+   +0x014 InterceptMisc3   : 0
+   +0x018 Reserved1        : [36]  ""
+   +0x03c PauseFilterThreshold : 0
+   +0x03e PauseFilterCount : 0
+   +0x040 IopmBasePa       : 0
+   +0x048 MsrpmBasePa      : 0x00000006`11af6000
+   +0x050 TscOffset        : 0
+   +0x058 GuestAsid        : 0xd
+   +0x05c TlbControl       : 0
+   +0x060 VIntr            : 0xf
+   +0x068 InterruptShadow  : 0
+   +0x070 ExitCode         : 0x72
+   +0x078 ExitInfo1        : 0
+   +0x080 ExitInfo2        : 0
+   +0x088 ExitIntInfo      : 0
+   +0x090 NpEnable         : 1
+   +0x098 AvicApicBar      : 0
+   +0x0a0 GhcbPa           : 0
+   +0x0a8 EventInj         : 0
+   +0x0b0 NCr3             : 0x00000006`0dc35000
+   +0x0b8 LbrVirtualizationEnable : 0
+   +0x0c0 VmcbCleanBits    : 0
+   +0x0c8 NRip             : 0xfffff802`5d164659
+   +0x0d0 NumOfBytesFetched : 0 ''
+   +0x0d1 GuestInstructionBytes : [15]  "A???"
+   +0x0e0 AvicApicBackingPagePtr : 0
+   +0x0e8 Reserved3        : 0
+   +0x0f0 AvicLogicalTablePtr : 0
+   +0x0f8 AvicPhysicalTablePtr : 0
+   +0x100 Reserved4        : [768]  ""
+12: kd> .echo === VMCB12_STATE ===
+=== VMCB12_STATE ===
+12: kd> dt GuardMetaCore!_VMCB_STATE_SAVE_AREA @$t2+400
+   +0x000 Es               : _SVM_SEGMENT_REGISTER
+   +0x010 Cs               : _SVM_SEGMENT_REGISTER
+   +0x020 Ss               : _SVM_SEGMENT_REGISTER
+   +0x030 Ds               : _SVM_SEGMENT_REGISTER
+   +0x040 Fs               : _SVM_SEGMENT_REGISTER
+   +0x050 Gs               : _SVM_SEGMENT_REGISTER
+   +0x060 Gdtr             : _SVM_SEGMENT_REGISTER
+   +0x070 Ldtr             : _SVM_SEGMENT_REGISTER
+   +0x080 Idtr             : _SVM_SEGMENT_REGISTER
+   +0x090 Tr               : _SVM_SEGMENT_REGISTER
+   +0x0a0 Reserved1        : [43]  ""
+   +0x0cb Cpl              : 0 ''
+   +0x0cc Reserved2        : [4]  ""
+   +0x0d0 Efer             : 0x5d01
+   +0x0d8 Reserved3        : [112]  ""
+   +0x148 Cr4              : 0xb50ef8
+   +0x150 Cr3              : 0x00000006`0ffaf000
+   +0x158 Cr0              : 0x80050031
+   +0x160 Dr7              : 0x400
+   +0x168 Dr6              : 0xffff0ff0
+   +0x170 Rflags           : 0x40046
+   +0x178 Rip              : 0xfffff802`5d164659
+   +0x180 Reserved4        : [88]  ""
+   +0x1d8 Rsp              : 0xffffa80a`887fe760
+   +0x1e0 SCet             : 0
+   +0x1e8 Ssp              : 0x0000003e`20f3efb0
+   +0x1f0 IsstAddr         : 0
+   +0x1f8 Rax              : 0
+   +0x200 Star             : 0x00230010`00000000
+   +0x208 LStar            : 0xfffff802`93cbed40
+   +0x210 CStar            : 0xfffff802`93cbe800
+   +0x218 SfMask           : 0x4700
+   +0x220 KernelGsBase     : 0x00000084`ebbfb000
+   +0x228 SysenterCs       : 0
+   +0x230 SysenterEsp      : 0
+   +0x238 SysenterEip      : 0
+   +0x240 Cr2              : 0xffff80c0`60203618
+   +0x248 Reserved6        : [32]  ""
+   +0x268 GPat             : 0x00070106`00070106
+   +0x270 DbgCtl           : 0
+   +0x278 BrFrom           : 0
+   +0x280 BrTo             : 0
+   +0x288 LastExcepFrom    : 0
+   +0x290 LastExcepTo      : 0
+   +0x298 Reserved7        : [2408]  ""
+12: kd> .echo === STEP12 ===
+=== STEP12 ===
+12: kd> dt GuardMetaCore!_NPT_STEP_CONTEXT GuardMetaCore!g_NptHookManager+0xc8+(0xc*0x210)
+Cannot find specified field members.
+12: kd> .echo === MANAGER ===
+=== MANAGER ===
+12: kd> dt GuardMetaCore!_NPT_HOOK_MANAGER GuardMetaCore!g_NptHookManager
+Cannot find specified field members.
+12: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

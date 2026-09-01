@@ -6,6 +6,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ProcessPicker } from "@/components/common/ProcessPicker";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { injectIpc, type ProcessInfo } from "@/ipc";
 export default function Inject() {
   const [target, setTarget] = useState<ProcessInfo | null>(null);
   const [dllPath, setDllPath] = useState("");
+  const [manualMap, setManualMap] = useState(false);
   const [shellcodeHex, setShellcodeHex] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,19 +35,13 @@ export default function Inject() {
     if (typeof r === "string") setDllPath(r);
   }
 
-  async function readDllBytes(path: string): Promise<number[]> {
-    void path;
-    throw new Error("DLL 注入暂未启用前端文件直读;请改用 shellcode 模式,或后续版本接入 fs:read。");
-  }
-
   async function onInjectDll() {
     const p = parsePid();
     if (p === null) return;
     if (!dllPath) return toast.error("请选择 DLL");
     setBusy(true);
     try {
-      const bytes = await readDllBytes(dllPath);
-      await injectIpc.dll(p, bytes);
+      await injectIpc.dll(p, dllPath, manualMap);
       toast.success(`DLL 已注入 PID ${p}`);
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e);
@@ -110,6 +106,20 @@ export default function Inject() {
               </Button>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="inj-manual-map"
+              checked={manualMap}
+              onCheckedChange={(value) => setManualMap(Boolean(value))}
+              disabled={busy}
+            />
+            <Label htmlFor="inj-manual-map">
+              实验性手动映射（原生 x64；自动加载并持有 DLL 依赖）
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            默认关闭时由 Windows loader 管理整个 DLL；开启时仅父映像手动映射，直接和传递依赖仍由目标 loader 解析，卸载时逆序释放。受 ACG 保护的目标会拒绝手动映射。
+          </p>
           <Button onClick={onInjectDll} disabled={busy}>
             <Syringe className="h-4 w-4" /> 注入 DLL
           </Button>

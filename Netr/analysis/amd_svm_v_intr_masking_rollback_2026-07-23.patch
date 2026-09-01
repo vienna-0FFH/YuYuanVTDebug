@@ -1,0 +1,42 @@
+diff --git a/Netr/HvVmcb.c b/Netr/HvVmcb.c
+--- a/Netr/HvVmcb.c
++++ b/Netr/HvVmcb.c
+@@ -7,8 +7,6 @@
+ #include "HvCompat.h"
+ #include "HvCpu.h"
+ 
+-#define SVM_V_INTR_MASKING_MASK (1ULL << 24)
+-
+ C_ASSERT(FIELD_OFFSET(VCPU_DATA, VmExitStack) == 0x08);
+ C_ASSERT(FIELD_OFFSET(VCPU_DATA, Vmcb) == 0x88);
+ C_ASSERT(FIELD_OFFSET(VCPU_DATA, VmcbPhysical) == 0x90);
+@@ -427,7 +425,8 @@ NTSTATUS SvmSetupVmcbControlArea(PVCPU_DATA VcpuData)
+     control->TlbControl = SVM_TLB_CONTROL_FLUSH_ALL;
+     
+     // 虚拟中断配置
+-    control->VIntr = 0;
++    // 虚拟中断控制: bit 24 = V_INTR_MASKING
++    control->VIntr = (1ULL << 24);  // 启用虚拟中断掩码
+     
+     DbgPrint("[SVM] CPU %d: Control Area configured\n", VcpuData->ProcessorNumber);
+     DbgPrint("[SVM]   InterceptMisc1: 0x%08X\n", control->InterceptMisc1);
+@@ -651,8 +650,6 @@ NTSTATUS SvmLaunchVm(PVCPU_DATA VcpuData)
+         (VcpuData->Vmcb->ControlArea.InterceptMisc1 & requiredMisc1) != requiredMisc1 ||
+         (VcpuData->Vmcb->ControlArea.InterceptMisc2 & requiredMisc2) != requiredMisc2 ||
+         VcpuData->Vmcb->ControlArea.InterceptMisc3 != 0 ||
+-        ((VcpuData->Vmcb->ControlArea.VIntr & SVM_V_INTR_MASKING_MASK) != 0 &&
+-         (VcpuData->Vmcb->ControlArea.InterceptMisc1 & SVM_INTERCEPT_INTR) == 0) ||
+         (VcpuData->Vmcb->StateSaveArea.Cs.Attributes & 0x80u) == 0 ||
+         (VcpuData->Vmcb->StateSaveArea.Ss.Attributes & 0x80u) == 0 ||
+         (VcpuData->Vmcb->StateSaveArea.Tr.Attributes & 0x80u) == 0 ||
+diff --git a/Netr/README.md b/Netr/README.md
+--- a/Netr/README.md
++++ b/Netr/README.md
+@@ -264,6 +264,6 @@ KVAS 与物理访问
+ | MSR Permission Map | 拦截 EFER / VM_CR / HSAVE_PA / FEATURE_CONTROL | |
+ | Intercepts | CPUID / MSR / VMRUN / VMMCALL / VMLOAD / VMSAVE / STGI / CLGI / XSETBV / SHUTDOWN | |
+ | TLB control | FLUSH_ALL（启动期）+ FLUSH_GUEST（按需） | |
+-| V_INTR_MASKING | 禁用（直通中断由 guest IF/CR8/interrupt shadow 控制） | |
++| V_INTR_MASKING | 启用（bit 24） | |
+ 
+ `HV_ENABLE_SVM_HARDENING` 当前默认值为 1；AMD 真机矩阵尚未完成，运行结果必须按实验性能力处理。

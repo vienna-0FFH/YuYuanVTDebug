@@ -1,0 +1,132 @@
+@'
+from pathlib import Path
+
+path = Path(r"E:\project_learning\YuYuanVTDebug\Netr\HvVwatch.c")
+text = path.read_text(encoding="utf-8", errors="replace")
+
+old_armed = '''    LONG state = InterlockedCompareExchange(&entry->State, 0, 0);
+    if (state == HvPrivateSwBpArmed) {
+        if (entry->StepThreadToken == threadToken &&
+            InterlockedCompareExchange(
+                &entry->StepState,
+                HV_VWATCH_STEP_ARMED,
+                HV_VWATCH_STEP_ARMED) == HV_VWATCH_STEP_ARMED &&
+            InterlockedCompareExchange(
+                &entry->State,
+                HvPrivateSwBpContinueArmed,
+                HvPrivateSwBpArmed) == HvPrivateSwBpArmed) {
+            entry->HitTid = entry->StepTid;
+            entry->HitThreadToken = threadToken;
+            if (HvVwatchpArmSwBpStepOverRoot(VcpuData, entry)) return TRUE;
+            entry->HitTid = NULL;
+            entry->HitThreadToken = NULL;
+            InterlockedCompareExchange(
+                &entry->State,
+                HvPrivateSwBpArmed,
+                HvPrivateSwBpContinueArmed);
+        }
+        if (InterlockedCompareExchange(
+                &entry->State,
+                HvPrivateSwBpHitPending,
+                HvPrivateSwBpArmed) == HvPrivateSwBpArmed) {'''
+
+new_armed = '''    LONG state = InterlockedCompareExchange(&entry->State, 0, 0);
+    if (state == HvPrivateSwBpArmed) {
+        /*
+         * VT single-step owns this SWBP gate.  If MTF arm fails, keep the
+         * ContinueArmed hold and re-exit; never demote the gate into a user
+         * SWBP hit.  Delivering a gate SWBP to the debugger free-runs the
+         * target after CONTINUE because no EXCEPTION_SINGLE_STEP follows.
+         */
+        if (entry->StepThreadToken == threadToken &&
+            InterlockedCompareExchange(
+                &entry->StepState,
+                HV_VWATCH_STEP_ARMED,
+                HV_VWATCH_STEP_ARMED) == HV_VWATCH_STEP_ARMED &&
+            InterlockedCompareExchange(
+                &entry->State,
+                HvPrivateSwBpContinueArmed,
+                HvPrivateSwBpArmed) == HvPrivateSwBpArmed) {
+            entry->HitTid = entry->StepTid;
+            entry->HitThreadToken = threadToken;
+            if (HvVwatchpArmSwBpStepOverRoot(VcpuData, entry)) return TRUE;
+            HvVwatchpReleaseRootRundown(&entry->RootRundown);
+            return TRUE;
+        }
+        if (InterlockedCompareExchange(
+                &entry->State,
+                HvPrivateSwBpHitPending,
+                HvPrivateSwBpArmed) == HvPrivateSwBpArmed) {'''
+
+if old_armed not in text:
+    raise SystemExit("ARMED block not found")
+text = text.replace(old_armed, new_armed, 1)
+
+old_complete = '''        InterlockedExchange(&mtf->Active, HV_VWATCH_MTF_IDLE);
+        InterlockedIncrement64(&g_VwatchManager.MtfCompletions);
+        if (debuggerStepCompleted) {
+            (void)HvVwatchpTryInjectPrivateStepDb();
+        }
+        return TRUE;
+    }'''
+
+new_complete = '''        InterlockedExchange(&mtf->Active, HV_VWATCH_MTF_IDLE);
+        InterlockedIncrement64(&g_VwatchManager.MtfCompletions);
+        if (debuggerStepCompleted && swBpEntry) {
+            /*
+             * Always enqueue HV_DBG_EVT_STEP so Bridge can stop the external
+             * debugger with EXCEPTION_SINGLE_STEP.  Inject #DB only if the
+             * private ring is full/unavailable; inject alone is silent when
+             * private mode has no DebugPort, which free-runs the target.
+             */
+            HV_DEBUG_EVENT stepEvent;
+            NTSTATUS stepStatus;
+            RtlZeroMemory(&stepEvent, sizeof(stepEvent));
+            stepEvent.Sequence = HvDbgReserveEventSequence();
+            stepEvent.Tid = swBpEntry->StepTid;
+            stepEvent.Pid = swBpEntry->TargetPid;
+            stepEvent.ThreadToken = swBpEntry->StepThreadToken
+                ? swBpEntry->StepThreadToken
+                : HvVwatchpCurrentThreadToken();
+            stepEvent.Kind = HV_DBG_EVT_STEP;
+            RtlCopyMemory(stepEvent.Gpr, Ctx, sizeof(stepEvent.Gpr));
+            if (HvGetCpuVendor() == CPU_VENDOR_AMD) {
+                stepEvent.Rip = VcpuData->Vmcb->StateSaveArea.Rip;
+                stepEvent.Rsp = VcpuData->Vmcb->StateSaveArea.Rsp;
+                stepEvent.Rflags = VcpuData->Vmcb->StateSaveArea.Rflags;
+                stepEvent.Cr3 = VcpuData->Vmcb->StateSaveArea.Cr3;
+            } else {
+                SIZE_T value = 0;
+                __vmx_vmread(GUEST_RIP, &value);
+                stepEvent.Rip = value;
+                __vmx_vmread(GUEST_RSP, &value);
+                stepEvent.Rsp = value;
+                __vmx_vmread(GUEST_RFLAGS, &value);
+                stepEvent.Rflags = value;
+                __vmx_vmread(GUEST_CR3, &value);
+                stepEvent.Cr3 = value;
+            }
+
+            stepStatus = HvDbgEnqueuePrivateSwBpEventRootNoSignal(
+                cpu,
+                swBpEntry->DebuggerPid,
+                &stepEvent);
+            if (!NT_SUCCESS(stepStatus)) {
+                (void)HvVwatchpTryInjectPrivateStepDb();
+            }
+
+            InterlockedExchange(&swBpEntry->StepState, HV_VWATCH_STEP_IDLE);
+            KeMemoryBarrier();
+            swBpEntry->StepTid = NULL;
+            swBpEntry->StepThreadToken = NULL;
+        }
+        return TRUE;
+    }'''
+
+if old_complete not in text:
+    raise SystemExit("complete block not found")
+text = text.replace(old_complete, new_complete, 1)
+
+path.write_text(text, encoding="utf-8")
+print("HvVwatch.c patched OK")
+'@ | python -

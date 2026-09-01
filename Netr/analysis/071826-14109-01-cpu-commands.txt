@@ -1,0 +1,6 @@
+.symopt+ 0x40
+~
+~* kv
+!dpcwatchdog
+!cpuinfo
+q

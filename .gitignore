@@ -1,6 +1,7 @@
 # 只追踪 Netr 子项目, 其他兄弟项目和根目录文件全部忽略
 /*
 !/.gitignore
+!/AGENTS.md
 !/Netr/
 
 # ===== Netr 内部排除 build artifacts =====
@@ -78,3 +79,29 @@ backup/
 *.gmproj
 Netr/tools/netr-gui-rs/sessions/
 Netr/tools/netr-gui-rs/.gmproj/
+
+# ===== 本机签名、交付和敏感文件 =====
+Netr/cert/
+Netr/test-package/
+*.pfx
+*.pvk
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# ===== 转储、符号缓存和生成分析结果 =====
+*.dmp
+*.dump
+Netr/analysis/symbols/
+Netr/analysis/symcache/
+Netr/analysis/checkpoints/**/ambiguity_audit/summary.json
+
+# ===== TypeScript 增量构建缓存 =====
+*.tsbuildinfo
+
+# ===== 本地 AI/代理工作区配置 =====
+**/.claude/
+**/.codex/
+**/.agents/

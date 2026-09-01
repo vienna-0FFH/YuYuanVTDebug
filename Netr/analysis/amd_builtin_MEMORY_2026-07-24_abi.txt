@@ -1,0 +1,506 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-24_abi.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Windows\System32
+OK                                             C:\Windows\System32\drivers
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols
+OK                                             C:\SymCache
+OK                                             E:\Symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols;C:\SymCache;E:\Symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Windows\System32;C:\Windows\System32\drivers;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff802`93600000 PsLoadedModuleList = 0xfffff802`944f5350
+Debug session time: Fri Jul 24 15:37:08.917 2026 (UTC + 8:00)
+System Uptime: 0 days 16:29:40.649
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+.............................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 00000084`ebb9a018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+12: kd> .lines -e
+Line number information will be loaded
+12: kd> .reload /f nt
+12: kd> .reload /f GuardMetaCore.sys
+12: kd> ~12s
+12: kd> .trap ffffa80a887ff700
+NOTE: The trap frame does not contain all registers.
+Some register values may be zeroed or incorrect.
+Unable to load image \SystemRoot\System32\win32kfull.sys, Win32 error 0n2
+rax=fffff8029363ac30 rbx=0000000000000000 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802651168aa rsp=ffffa80a887ff890 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei ng nz na po nc
+win32kfull!NtUserBuildHwndList+0x23a:
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8] ds:00007fff`ffff0000=????????
+12: kd> .echo === WRAPPER_FRAME ===
+=== WRAPPER_FRAME ===
+12: kd> .frame /r 1
+Unable to load image \SystemRoot\System32\win32k.sys, Win32 error 0n2
+01 ffffa80a`887ff950 fffff802`254637ac     GuardMetaCore!HookedNtUserBuildHwndList+0xb3 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2562] 
+rax=fffff8029363ac30 rbx=0000000000000001 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff8026642e017 rsp=ffffa80a887ff950 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=0000024c1cbb8be8 r13=fffff80200000147
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei ng nz na po nc
+cs=0010  ss=0018  ds=0000  es=0000  fs=0000  gs=0000             efl=00050286
+GuardMetaCore!HookedNtUserBuildHwndList+0xb3:
+fffff802`6642e017 89442440        mov     dword ptr [rsp+40h],eax ss:0018:ffffa80a`887ff990=00000000
+12: kd> dv /t /v
+@r15              void * Desktop = 0x00000000`00000000
+@r14              void * StartHwnd = 0x00000000`00000000
+@esi              unsigned long EnumChildren = 0
+@ebx              unsigned long dwThreadId = 1
+@edi              unsigned long cHwnd = 0
+@r13              void ** phwndList = 0xfffff802`00000147
+@r12              unsigned long * pcHwndNeeded = 0x0000024c`1cbb8be8
+ffffa80a`887ff990 unsigned long ret = 0
+<unavailable>     char prevMode = <value unavailable>
+<unavailable>     void * caller = <value unavailable>
+ffffa80a`887ff994 unsigned long actualCount = 0
+<unavailable>     <function> * Original = <value unavailable>
+ffffa80a`887ff99c unsigned long writeIdx = 0
+ffffa80a`887ff998 unsigned long removed = 0
+ffffa80a`887ff9a0 unsigned long readIdx = 0
+<unavailable>     void * h = <value unavailable>
+ffffa80a`887ff9a4 unsigned long i = 0
+12: kd> .echo === CALLER_FRAME ===
+=== CALLER_FRAME ===
+12: kd> .frame /r 2
+02 ffffa80a`887ff9d0 fffff802`93cbf258     win32k!EngReleaseSemaphore+0x33c
+rax=fffff8029363ac30 rbx=0000000000000001 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802254637ac rsp=ffffa80a887ff9d0 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=00007ff80325b340 r13=0000000000000001
+r14=00000000000b07c2 r15=0000656401f7c938
+iopl=0         nv up ei ng nz na po nc
+cs=0010  ss=0018  ds=0000  es=0000  fs=0000  gs=0000             efl=00050286
+win32k!EngReleaseSemaphore+0x33c:
+fffff802`254637ac 488b5c2460      mov     rbx,qword ptr [rsp+60h] ss:0018:ffffa80a`887ffa30=ffff980821ab1080
+12: kd> dv /t /v
+Unable to enumerate locals, Win32 error 0n318
+Private symbols (symbols.pri) are required for locals.
+Type ".hh dbgerr005" for details.
+12: kd> .echo === TARGET_FULL ===
+=== TARGET_FULL ===
+12: kd> uf fffff80265116670
+Unable to load image \SystemRoot\System32\win32kbase.sys, Win32 error 0n2
+win32kfull!NtUserBuildHwndList:
+fffff802`65116670 488bc4          mov     rax,rsp
+fffff802`65116673 48895808        mov     qword ptr [rax+8],rbx
+fffff802`65116677 44894018        mov     dword ptr [rax+18h],r8d
+fffff802`6511667b 56              push    rsi
+fffff802`6511667c 4154            push    r12
+fffff802`6511667e 4155            push    r13
+fffff802`65116680 4156            push    r14
+fffff802`65116682 4157            push    r15
+fffff802`65116684 4881ec90000000  sub     rsp,90h
+fffff802`6511668b 418bd9          mov     ebx,r9d
+fffff802`6511668e 4c8be2          mov     r12,rdx
+fffff802`65116691 4c8be9          mov     r13,rcx
+fffff802`65116694 4883601000      and     qword ptr [rax+10h],0
+fffff802`65116699 33f6            xor     esi,esi
+fffff802`6511669b 48217088        and     qword ptr [rax-78h],rsi
+fffff802`6511669f 48217090        and     qword ptr [rax-70h],rsi
+fffff802`651166a3 21709c          and     dword ptr [rax-64h],esi
+fffff802`651166a6 8d5601          lea     edx,[rsi+1]
+fffff802`651166a9 488d48b8        lea     rcx,[rax-48h]
+fffff802`651166ad e85aea0400      call    win32kfull!ZombieCursor+0x9c (fffff802`6516510c)
+fffff802`651166b2 488d8c2480000000 lea     rcx,[rsp+80h]
+fffff802`651166ba e8b143deff      call    win32kfull!NtUserSetTimer+0x160 (fffff802`64efaa70)
+fffff802`651166bf 4c8b15aa191800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x20640 (fffff802`65298070)]
+fffff802`651166c6 e8552936c0      call    win32k!W32GetUserSessionState (fffff802`25479020)
+fffff802`651166cb 488b88304e0000  mov     rcx,qword ptr [rax+4E30h]
+fffff802`651166d2 448b39          mov     r15d,dword ptr [rcx]
+fffff802`651166d5 4183e704        and     r15d,4
+fffff802`651166d9 4183cf01        or      r15d,1
+fffff802`651166dd 4503ff          add     r15d,r15d
+fffff802`651166e0 458bf7          mov     r14d,r15d
+fffff802`651166e3 85db            test    ebx,ebx
+fffff802`651166e5 740d            je      win32kfull!NtUserBuildHwndList+0x84 (fffff802`651166f4)  Branch
+
+win32kfull!NtUserBuildHwndList+0x77:
+fffff802`651166e7 e81cceffff      call    win32kfull!DestroyDpiMetricsCache+0x5b8 (fffff802`65113508)
+fffff802`651166ec 85c0            test    eax,eax
+fffff802`651166ee 7504            jne     win32kfull!NtUserBuildHwndList+0x84 (fffff802`651166f4)  Branch
+
+win32kfull!NtUserBuildHwndList+0x80:
+fffff802`651166f0 4183ce10        or      r14d,10h
+
+win32kfull!NtUserBuildHwndList+0x84:
+fffff802`651166f4 4d85e4          test    r12,r12
+fffff802`651166f7 741e            je      win32kfull!NtUserBuildHwndList+0xa7 (fffff802`65116717)  Branch
+
+win32kfull!NtUserBuildHwndList+0x89:
+fffff802`651166f9 498bcc          mov     rcx,r12
+fffff802`651166fc 4c8b15a54f1800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x23c78 (fffff802`6529b6a8)]
+fffff802`65116703 e818bfb3ff      call    win32kbase!ValidateHwnd (fffff802`64c52620)
+fffff802`65116708 4885c0          test    rax,rax
+fffff802`6511670b 750c            jne     win32kfull!NtUserBuildHwndList+0xa9 (fffff802`65116719)  Branch
+
+win32kfull!NtUserBuildHwndList+0x9d:
+fffff802`6511670d bb080000c0      mov     ebx,0C0000008h
+fffff802`65116712 e910020000      jmp     win32kfull!NtUserBuildHwndList+0x2b7 (fffff802`65116927)  Branch
+
+win32kfull!NtUserBuildHwndList+0xa7:
+fffff802`65116717 33c0            xor     eax,eax
+
+win32kfull!NtUserBuildHwndList+0xa9:
+fffff802`65116719 8b8c24e0000000  mov     ecx,dword ptr [rsp+0E0h]
+fffff802`65116720 85c9            test    ecx,ecx
+fffff802`65116722 7436            je      win32kfull!NtUserBuildHwndList+0xea (fffff802`6511675a)  Branch
+
+win32kfull!NtUserBuildHwndList+0xb4:
+fffff802`65116724 4c8b1515491800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x23610 (fffff802`6529b040)]
+fffff802`6511672b e8900fb6ff      call    win32kbase!PtiFromThreadId (fffff802`64c776c0)
+fffff802`65116730 4c8bf8          mov     r15,rax
+fffff802`65116733 4885c0          test    rax,rax
+fffff802`65116736 0f84cf000000    je      win32kfull!NtUserBuildHwndList+0x19b (fffff802`6511680b)  Branch
+
+win32kfull!NtUserBuildHwndList+0xcc:
+fffff802`6511673c 488b80f0010000  mov     rax,qword ptr [rax+1F0h]
+fffff802`65116743 4885c0          test    rax,rax
+fffff802`65116746 0f84bf000000    je      win32kfull!NtUserBuildHwndList+0x19b (fffff802`6511680b)  Branch
+
+win32kfull!NtUserBuildHwndList+0xdc:
+fffff802`6511674c 488b4008        mov     rax,qword ptr [rax+8]
+fffff802`65116750 488b4818        mov     rcx,qword ptr [rax+18h]
+fffff802`65116754 488b4170        mov     rax,qword ptr [rcx+70h]
+fffff802`65116758 eb03            jmp     win32kfull!NtUserBuildHwndList+0xed (fffff802`6511675d)  Branch
+
+win32kfull!NtUserBuildHwndList+0xea:
+fffff802`6511675a 4533ff          xor     r15d,r15d
+
+win32kfull!NtUserBuildHwndList+0xed:
+fffff802`6511675d 4d85ed          test    r13,r13
+fffff802`65116760 0f8489000000    je      win32kfull!NtUserBuildHwndList+0x17f (fffff802`651167ef)  Branch
+
+win32kfull!NtUserBuildHwndList+0xf6:
+fffff802`65116766 4c8d8c24c8000000 lea     r9,[rsp+0C8h]
+fffff802`6511676e 41b801000000    mov     r8d,1
+fffff802`65116774 418ad0          mov     dl,r8b
+fffff802`65116777 498bcd          mov     rcx,r13
+fffff802`6511677a 4c8b15b72e1800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21c08 (fffff802`65299638)]
+fffff802`65116781 e80aeabeff      call    win32kbase!ValidateHdesk (fffff802`64d05190)
+fffff802`65116786 85c0            test    eax,eax
+fffff802`65116788 7883            js      win32kfull!NtUserBuildHwndList+0x9d (fffff802`6511670d)  Branch
+
+win32kfull!NtUserBuildHwndList+0x11a:
+fffff802`6511678a 21742468        and     dword ptr [rsp+68h],esi
+fffff802`6511678e 2174246c        and     dword ptr [rsp+6Ch],esi
+fffff802`65116792 488b8424c8000000 mov     rax,qword ptr [rsp+0C8h]
+fffff802`6511679a 4889442460      mov     qword ptr [rsp+60h],rax
+fffff802`6511679f c744245001000000 mov     dword ptr [rsp+50h],1
+fffff802`651167a7 4c8b152a261800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x213a8 (fffff802`65298dd8)]
+fffff802`651167ae e8ad428f2e      call    nt!PsGetCurrentProcess (fffff802`93a0aa60)
+fffff802`651167b3 4889442458      mov     qword ptr [rsp+58h],rax
+fffff802`651167b8 488d4c2440      lea     rcx,[rsp+40h]
+fffff802`651167bd e88ec1edff      call    win32kfull!MapDesktop (fffff802`64ff2950)
+fffff802`651167c2 8bd8            mov     ebx,eax
+fffff802`651167c4 89442420        mov     dword ptr [rsp+20h],eax
+fffff802`651167c8 85c0            test    eax,eax
+fffff802`651167ca 790f            jns     win32kfull!NtUserBuildHwndList+0x16b (fffff802`651167db)  Branch
+
+win32kfull!NtUserBuildHwndList+0x15c:
+fffff802`651167cc b906000000      mov     ecx,6
+
+win32kfull!NtUserBuildHwndList+0x161:
+fffff802`651167d1 e8ce49deff      call    win32kfull!NtUserSetTimer+0x894 (fffff802`64efb1a4)
+fffff802`651167d6 e926010000      jmp     win32kfull!NtUserBuildHwndList+0x291 (fffff802`65116901)  Branch
+
+win32kfull!NtUserBuildHwndList+0x16b:
+fffff802`651167db 488b8424c8000000 mov     rax,qword ptr [rsp+0C8h]
+fffff802`651167e3 488b4808        mov     rcx,qword ptr [rax+8]
+fffff802`651167e7 488b4118        mov     rax,qword ptr [rcx+18h]
+fffff802`651167eb 488b4070        mov     rax,qword ptr [rax+70h]
+
+win32kfull!NtUserBuildHwndList+0x17f:
+fffff802`651167ef 4885c0          test    rax,rax
+fffff802`651167f2 752b            jne     win32kfull!NtUserBuildHwndList+0x1af (fffff802`6511681f)  Branch
+
+win32kfull!NtUserBuildHwndList+0x184:
+fffff802`651167f4 4839b424c8000000 cmp     qword ptr [rsp+0C8h],rsi
+fffff802`651167fc 7532            jne     win32kfull!NtUserBuildHwndList+0x1c0 (fffff802`65116830)  Branch
+
+win32kfull!NtUserBuildHwndList+0x18e:
+fffff802`651167fe 498bcf          mov     rcx,r15
+fffff802`65116801 e83aeef3ff      call    win32kfull!XDCOBJ_vCleanupColorTransformWrap+0x3e0 (fffff802`65055640)
+fffff802`65116806 4885c0          test    rax,rax
+fffff802`65116809 7521            jne     win32kfull!NtUserBuildHwndList+0x1bc (fffff802`6511682c)  Branch
+
+win32kfull!NtUserBuildHwndList+0x19b:
+fffff802`6511680b bb080000c0      mov     ebx,0C0000008h
+fffff802`65116810 b957000000      mov     ecx,57h
+fffff802`65116815 e88a49deff      call    win32kfull!NtUserSetTimer+0x894 (fffff802`64efb1a4)
+fffff802`6511681a e908010000      jmp     win32kfull!NtUserBuildHwndList+0x2b7 (fffff802`65116927)  Branch
+
+win32kfull!NtUserBuildHwndList+0x1af:
+fffff802`6511681f 39b424d0000000  cmp     dword ptr [rsp+0D0h],esi
+fffff802`65116826 7408            je      win32kfull!NtUserBuildHwndList+0x1c0 (fffff802`65116830)  Branch
+
+win32kfull!NtUserBuildHwndList+0x1b8:
+fffff802`65116828 4183ce01        or      r14d,1
+
+win32kfull!NtUserBuildHwndList+0x1bc:
+fffff802`6511682c 488b4070        mov     rax,qword ptr [rax+70h]
+
+win32kfull!NtUserBuildHwndList+0x1c0:
+fffff802`65116830 4533c9          xor     r9d,r9d
+fffff802`65116833 4d8bc7          mov     r8,r15
+fffff802`65116836 418bd6          mov     edx,r14d
+fffff802`65116839 488bc8          mov     rcx,rax
+fffff802`6511683c e8bff0dfff      call    win32kfull!BuildHwndList (fffff802`64f15900)
+fffff802`65116841 488bf0          mov     rsi,rax
+fffff802`65116844 4889442438      mov     qword ptr [rsp+38h],rax
+fffff802`65116849 4885c0          test    rax,rax
+fffff802`6511684c 750d            jne     win32kfull!NtUserBuildHwndList+0x1eb (fffff802`6511685b)  Branch
+
+win32kfull!NtUserBuildHwndList+0x1de:
+fffff802`6511684e bb080000c0      mov     ebx,0C0000008h
+fffff802`65116853 8d4808          lea     ecx,[rax+8]
+fffff802`65116856 e976ffffff      jmp     win32kfull!NtUserBuildHwndList+0x161 (fffff802`651167d1)  Branch
+
+win32kfull!NtUserBuildHwndList+0x1eb:
+fffff802`6511685b 488b5808        mov     rbx,qword ptr [rax+8]
+fffff802`6511685f 482bde          sub     rbx,rsi
+fffff802`65116862 4883eb20        sub     rbx,20h
+fffff802`65116866 48c1fb03        sar     rbx,3
+fffff802`6511686a ffc3            inc     ebx
+fffff802`6511686c 8b9424e8000000  mov     edx,dword ptr [rsp+0E8h]
+fffff802`65116873 48c1e203        shl     rdx,3
+fffff802`65116877 41b804000000    mov     r8d,4
+fffff802`6511687d 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff802`65116885 4c8b151c241800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21278 (fffff802`65298ca8)]
+fffff802`6511688c e8af76da2e      call    nt!ProbeForWrite (fffff802`93ebdf40)
+fffff802`65116891 4c8b8424f8000000 mov     r8,qword ptr [rsp+0F8h]
+fffff802`65116899 488b0508251800  mov     rax,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21378 (fffff802`65298da8)]
+fffff802`651168a0 488b10          mov     rdx,qword ptr [rax]
+fffff802`651168a3 4c3bc2          cmp     r8,rdx
+fffff802`651168a6 4c0f43c2        cmovae  r8,rdx
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8]
+fffff802`651168ad 418900          mov     dword ptr [r8],eax
+fffff802`651168b0 3b9c24e8000000  cmp     ebx,dword ptr [rsp+0E8h]
+fffff802`651168b7 7722            ja      win32kfull!NtUserBuildHwndList+0x26b (fffff802`651168db)  Branch
+
+win32kfull!NtUserBuildHwndList+0x249:
+fffff802`651168b9 448bc3          mov     r8d,ebx
+fffff802`651168bc 49c1e003        shl     r8,3
+fffff802`651168c0 488d5620        lea     rdx,[rsi+20h]
+fffff802`651168c4 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff802`651168cc e8af851000      call    win32kfull!NtGdiSwapBuffers+0x36f0 (fffff802`6521ee80)
+fffff802`651168d1 c744242000000000 mov     dword ptr [rsp+20h],0
+fffff802`651168d9 eb08            jmp     win32kfull!NtUserBuildHwndList+0x273 (fffff802`651168e3)  Branch
+
+win32kfull!NtUserBuildHwndList+0x26b:
+fffff802`651168db c7442420230000c0 mov     dword ptr [rsp+20h],0C0000023h
+
+win32kfull!NtUserBuildHwndList+0x273:
+fffff802`651168e3 488b8424f8000000 mov     rax,qword ptr [rsp+0F8h]
+fffff802`651168eb 8918            mov     dword ptr [rax],ebx
+fffff802`651168ed 8b5c2420        mov     ebx,dword ptr [rsp+20h]
+fffff802`651168f1 eb0e            jmp     win32kfull!NtUserBuildHwndList+0x291 (fffff802`65116901)  Branch
+
+win32kfull!NtUserBuildHwndList+0x291:
+fffff802`65116901 4885f6          test    rsi,rsi
+fffff802`65116904 7408            je      win32kfull!NtUserBuildHwndList+0x29e (fffff802`6511690e)  Branch
+
+win32kfull!NtUserBuildHwndList+0x296:
+fffff802`65116906 488bce          mov     rcx,rsi
+fffff802`65116909 e832f5dfff      call    win32kfull!FreeHwndList (fffff802`64f15e40)
+
+win32kfull!NtUserBuildHwndList+0x29e:
+fffff802`6511690e 488b8c24c8000000 mov     rcx,qword ptr [rsp+0C8h]
+fffff802`65116916 4885c9          test    rcx,rcx
+fffff802`65116919 740c            je      win32kfull!NtUserBuildHwndList+0x2b7 (fffff802`65116927)  Branch
+
+win32kfull!NtUserBuildHwndList+0x2ab:
+fffff802`6511691b 4c8b1576251800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21468 (fffff802`65298e98)]
+fffff802`65116922 e8e9787b2e      call    nt!ObfDereferenceObject (fffff802`938ce210)
+
+win32kfull!NtUserBuildHwndList+0x2b7:
+fffff802`65116927 488d8c2480000000 lea     rcx,[rsp+80h]
+fffff802`6511692f e82041deff      call    win32kfull!NtUserSetTimer+0x144 (fffff802`64efaa54)
+fffff802`65116934 4c8b15fd4d1800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x23d08 (fffff802`6529b738)]
+fffff802`6511693b e850c9aaff      call    win32kbase!UserSessionSwitchLeaveCritWithNonPaged (fffff802`64bc3290)
+fffff802`65116940 8bc3            mov     eax,ebx
+fffff802`65116942 488b9c24c0000000 mov     rbx,qword ptr [rsp+0C0h]
+fffff802`6511694a 4881c490000000  add     rsp,90h
+fffff802`65116951 415f            pop     r15
+fffff802`65116953 415e            pop     r14
+fffff802`65116955 415d            pop     r13
+fffff802`65116957 415c            pop     r12
+fffff802`65116959 5e              pop     rsi
+fffff802`6511695a c3              ret
+12: kd> .echo === TARGET_BYTES ===
+=== TARGET_BYTES ===
+12: kd> db fffff80265116670 L40
+fffff802`65116670  48 8b c4 48 89 58 08 44-89 40 18 56 41 54 41 55  H..H.X.D.@.VATAU
+fffff802`65116680  41 56 41 57 48 81 ec 90-00 00 00 41 8b d9 4c 8b  AVAWH......A..L.
+fffff802`65116690  e2 4c 8b e9 48 83 60 10-00 33 f6 48 21 70 88 48  .L..H.`..3.H!p.H
+fffff802`651166a0  21 70 90 21 70 9c 8d 56-01 48 8d 48 b8 e8 5a ea  !p.!p..V.H.H..Z.
+12: kd> .echo === TRAMPOLINE ===
+=== TRAMPOLINE ===
+12: kd> u ffff9807f62132b0 L30
+ffff9807`f62132b0 488bc4          mov     rax,rsp
+ffff9807`f62132b3 48895808        mov     qword ptr [rax+8],rbx
+ffff9807`f62132b7 44894018        mov     dword ptr [rax+18h],r8d
+ffff9807`f62132bb 56              push    rsi
+ffff9807`f62132bc 4154            push    r12
+ffff9807`f62132be ff2500000000    jmp     qword ptr [ffff9807`f62132c4]
+ffff9807`f62132c4 7e66            jle     ffff9807`f621332c
+ffff9807`f62132c6 116502          adc     dword ptr [rbp+2],esp
+ffff9807`f62132c9 f8              clc
+ffff9807`f62132ca ff              ???
+ffff9807`f62132cb ffcc            dec     esp
+ffff9807`f62132cd cc              int     3
+ffff9807`f62132ce cc              int     3
+ffff9807`f62132cf cc              int     3
+ffff9807`f62132d0 48895c2408      mov     qword ptr [rsp+8],rbx
+ffff9807`f62132d5 4889742410      mov     qword ptr [rsp+10h],rsi
+ffff9807`f62132da 57              push    rdi
+ffff9807`f62132db 4883ec20        sub     rsp,20h
+ffff9807`f62132df ff2500000000    jmp     qword ptr [ffff9807`f62132e5]
+ffff9807`f62132e5 ff0f            dec     dword ptr [rdi]
+ffff9807`f62132e7 f26402f8        xacquire add bh,al
+ffff9807`f62132eb ff              ???
+ffff9807`f62132ec ffcc            dec     esp
+ffff9807`f62132ee cc              int     3
+ffff9807`f62132ef cc              int     3
+ffff9807`f62132f0 4883ec38        sub     rsp,38h
+ffff9807`f62132f4 65488b042588010000 mov   rax,qword ptr gs:[188h]
+ffff9807`f62132fd 448a9032020000  mov     r10b,byte ptr [rax+232h]
+ffff9807`f6213304 ff2500000000    jmp     qword ptr [ffff9807`f621330a]
+ffff9807`f621330a e405            in      al,5
+ffff9807`f621330c e593            in      eax,93h
+ffff9807`f621330e 02f8            add     bh,al
+ffff9807`f6213310 ff              ???
+ffff9807`f6213311 ffcc            dec     esp
+ffff9807`f6213313 cc              int     3
+ffff9807`f6213314 cc              int     3
+ffff9807`f6213315 cc              int     3
+ffff9807`f6213316 cc              int     3
+ffff9807`f6213317 cc              int     3
+ffff9807`f6213318 cc              int     3
+ffff9807`f6213319 cc              int     3
+ffff9807`f621331a cc              int     3
+ffff9807`f621331b cc              int     3
+ffff9807`f621331c cc              int     3
+ffff9807`f621331d cc              int     3
+ffff9807`f621331e cc              int     3
+ffff9807`f621331f cc              int     3
+ffff9807`f6213320 4881ec88000000  sub     rsp,88h
+12: kd> db ffff9807f62132b0 L40
+ffff9807`f62132b0  48 8b c4 48 89 58 08 44-89 40 18 56 41 54 ff 25  H..H.X.D.@.VAT.%
+ffff9807`f62132c0  00 00 00 00 7e 66 11 65-02 f8 ff ff cc cc cc cc  ....~f.e........
+ffff9807`f62132d0  48 89 5c 24 08 48 89 74-24 10 57 48 83 ec 20 ff  H.\$.H.t$.WH.. .
+ffff9807`f62132e0  25 00 00 00 00 ff 0f f2-64 02 f8 ff ff cc cc cc  %.......d.......
+12: kd> .echo === WRAPPER_CALL_STACK_WINDOW ===
+=== WRAPPER_CALL_STACK_WINDOW ===
+12: kd> dq ffffa80a887ff930 L30
+ffffa80a`887ff930  fffff802`00000147 0000024c`1cbb8be8
+ffffa80a`887ff940  00000000`00000000 fffff802`6642e017
+ffffa80a`887ff950  00000000`00000001 00000000`00000000
+ffffa80a`887ff960  00000000`00000000 00000000`000005dc
+ffffa80a`887ff970  00000000`00000000 fffff802`00000147
+ffffa80a`887ff980  0000024c`1cbb8be8 fffff802`254760bd
+ffffa80a`887ff990  00000000`00000000 00000000`00000000
+ffffa80a`887ff9a0  00000000`00000000 ffffa80a`887ff950
+ffffa80a`887ff9b0  00006564`01f7c938 00000000`000b07c2
+ffffa80a`887ff9c0  00000000`00000001 fffff802`254637ac
+ffffa80a`887ff9d0  00000000`00000001 00000000`00000000
+ffffa80a`887ff9e0  00000000`00000000 00007ff8`0325b340
+ffffa80a`887ff9f0  ffff9808`00000000 fffff802`00000147
+ffffa80a`887ffa00  0000024c`1cbb8be8 0000024c`1cbb8be4
+ffffa80a`887ffa10  ffff9807`00000000 00000000`00000001
+ffffa80a`887ffa20  ffffa80a`887ffa48 fffff802`93cbf258
+ffffa80a`887ffa30  ffff9808`21ab1080 ffffa80a`887ffb20
+ffffa80a`887ffa40  00000084`83fff0a8 00006564`01f97120
+ffffa80a`887ffa50  00000084`00000000 00006564`00000147
+ffffa80a`887ffa60  0000024c`1cbb8be8 0000024c`1cbb8be4
+ffffa80a`887ffa70  ffffa80a`887ffaa8 00000000`00000000
+ffffa80a`887ffa80  00006564`01f97120 00000000`00000000
+ffffa80a`887ffa90  00000084`83fff180 fffff802`93cbf03b
+ffffa80a`887ffaa0  ffff9808`21ab1080 00000084`83fff790
+12: kd> .echo === TARGET_UNWIND ===
+=== TARGET_UNWIND ===
+12: kd> !unwind fffff802651168aa
+unwind is not extension gallery command
+No export unwind found
+12: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

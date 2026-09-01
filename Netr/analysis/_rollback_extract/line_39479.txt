@@ -1,0 +1,165 @@
+@'
+from pathlib import Path
+p = Path(r"E:\project_learning\YuYuanVTDebug\Netr\tools\netr-gui-rs\src-tauri\src\commands\debugger_ui.rs")
+text = p.read_text(encoding="utf-8", errors="replace")
+
+# 1) wait_for_builtin_thread_pause: accept private STEP when require_native_event
+old_wait = """        let private_pending = state
+            .pending_private
+            .lock()
+            .get(&tid)
+            .is_some_and(|event| event.process_id == pid);
+        let native_pending = super::native_debug::owns_pending_event(pid, tid);
+        if native_pending || (!require_native_event && private_pending) {
+            return Ok(());
+        }"""
+new_wait = """        let private_kind = state
+            .pending_private
+            .lock()
+            .get(&tid)
+            .filter(|event| event.process_id == pid)
+            .map(|event| event.kind);
+        let private_pending = private_kind.is_some();
+        // kind=2 is HV_BRIDGE_PRIVATE_EVENT_STEP. Built-in VT steps still arm a
+        // native #DB receiver, but dual-notify may complete via private STEP
+        // first; treat STEP as a valid pause when require_native_event is set.
+        // Do NOT treat SWBP (kind=1) as VT step completion.
+        let private_step_pending = private_kind == Some(2);
+        let native_pending = super::native_debug::owns_pending_event(pid, tid);
+        if native_pending
+            || (!require_native_event && private_pending)
+            || (require_native_event && private_step_pending)
+        {
+            return Ok(());
+        }"""
+if old_wait not in text:
+    raise SystemExit("wait block not found")
+text = text.replace(old_wait, new_wait, 1)
+
+# 2) continue_private_event: soft NOT_FOUND for STEP
+old_cont = """    if written as usize != std::mem::size_of::<OperationResult>()
+        || result.reserved != 0
+        || result.status != BRIDGE_STATUS_SUCCESS as u32
+    {
+        return Err(AppError::Internal(format!(
+            "private continue failed: bytes={written}, status={}, reserved={}",
+            result.status, result.reserved,
+        )));
+    }
+    Ok(())
+}
+
+fn drain_pending_private_events_for_pid("""
+new_cont = """    if written as usize != std::mem::size_of::<OperationResult>()
+        || result.reserved != 0
+        || result.status != BRIDGE_STATUS_SUCCESS as u32
+    {
+        // STEP completion has no HitPending SWBP entry. Driver continue returns
+        // NOT_FOUND by design; still treat as soft success so the poller can
+        // resume the suspended thread.
+        if pending.kind == 2
+            && written as usize == std::mem::size_of::<OperationResult>()
+            && result.reserved == 0
+            && result.status == BRIDGE_STATUS_NOT_FOUND as u32
+        {
+            super::native_debug::private_dbgk_entry_diag(
+                pending.process_id,
+                "private_swbp.continue.step_not_found",
+                format!(
+                    "sequence={} tid={} soft-ok",
+                    pending.sequence, pending.thread_id
+                ),
+            );
+            return Ok(());
+        }
+        return Err(AppError::Internal(format!(
+            "private continue failed: bytes={written}, status={}, reserved={}",
+            result.status, result.reserved,
+        )));
+    }
+    Ok(())
+}
+
+fn drain_pending_private_events_for_pid("""
+if old_cont not in text:
+    raise SystemExit("continue block not found")
+text = text.replace(old_cont, new_cont, 1)
+
+# 3) finish_step_transaction: clear VT receiver on success
+old_fin = """        Ok(()) => {
+            if owns_vt_gate {
+                clear_vt_step_gate(state, device, tid)?;
+            }
+            if let Some(address) = transient_address {
+                consume_transient_private_swbp(state, device, pid, address)?;
+            }
+            Ok(())
+        }"""
+new_fin = """        Ok(()) => {
+            if owns_vt_gate {
+                clear_vt_step_gate(state, device, tid)?;
+                // Dual-notify may still deliver a late inject #DB after STEP
+                // completed the wait. Clear the native/private receiver so the
+                // late SINGLE_STEP is not misclassified as a fresh user step.
+                let _ = super::native_debug::cancel_vt_step(pid, tid);
+            }
+            if let Some(address) = transient_address {
+                consume_transient_private_swbp(state, device, pid, address)?;
+            }
+            Ok(())
+        }"""
+if old_fin not in text:
+    raise SystemExit("finish_step block not found")
+text = text.replace(old_fin, new_fin, 1)
+
+# 4) poller: soft-discard late STEP when no active VT step gate for tid
+# Insert after resolve_thread success and before wrong_transient check.
+marker = """        super::native_debug::private_dbgk_entry_diag(
+            result.event.process_id,
+            "private_swbp.resolve_thread",
+            format!("sequence={} resolved_tid={tid}", result.event.sequence),
+        );
+        let wrong_transient_only_thread = handles"""
+insert = """        super::native_debug::private_dbgk_entry_diag(
+            result.event.process_id,
+            "private_swbp.resolve_thread",
+            format!("sequence={} resolved_tid={tid}", result.event.sequence),
+        );
+        // Late HV_BRIDGE_PRIVATE_EVENT_STEP after inject #DB already completed
+        // the step and finish_step_transaction cleared vt_step_gates. Soft
+        // continue + discard so the target is not left suspended on a duplicate
+        // stop. Active gates mean this STEP is the real completion path.
+        if result.event.kind == 2 {
+            let has_active_gate = handles.vt_step_gates.lock().contains_key(&tid);
+            if !has_active_gate {
+                super::native_debug::private_dbgk_entry_diag(
+                    result.event.process_id,
+                    "private_swbp.late_step_discard",
+                    format!(
+                        "sequence={} tid={} rip=0x{:X}",
+                        result.event.sequence, tid, result.event.rip
+                    ),
+                );
+                let discarded = PendingBuiltinPrivateEvent {
+                    sequence: result.event.sequence,
+                    process_id: result.event.process_id,
+                    thread_id: tid,
+                    thread_token: result.event.thread_token,
+                    rip: result.event.rip,
+                    kind: result.event.kind,
+                    thread_handle: 0,
+                    driver_continued: false,
+                    thread_resumed: false,
+                };
+                let _ = continue_private_event(device.inner(), &discarded);
+                continue;
+            }
+        }
+        let wrong_transient_only_thread = handles"""
+if marker not in text:
+    raise SystemExit("poller marker not found")
+text = text.replace(marker, insert, 1)
+
+p.write_text(text, encoding="utf-8")
+print("debugger_ui ok")
+'@ | python -

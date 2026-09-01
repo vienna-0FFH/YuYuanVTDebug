@@ -1,0 +1,16 @@
+*** Begin Patch
+*** Update File: Netr/HvCpu.h
+@@
+  * 打印CPU信息（用于调试）
+  */
+ VOID HvPrintCpuInfo(VOID);
+ 
+ /*
+- * AMD SVM: 查询 CPUID 8000000AH.EBX[31:0] 报告的 NumberOfAsids
++ * AMD SVM: 查询 CPUID 80000008H.EBX[7:0] 报告的 NumberOfAsids
+  * 返回硬件支持的最大 ASID (典型值 64..32768)；不可用时返回 0
+  */
+ ULONG HvSvmGetMaxAsid(VOID);
+ 
+ /*
+*** End Patch

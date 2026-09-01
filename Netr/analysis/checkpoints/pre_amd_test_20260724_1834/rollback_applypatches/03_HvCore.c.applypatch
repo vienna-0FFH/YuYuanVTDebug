@@ -1,0 +1,773 @@
+*** Begin Patch
+*** Update File: Netr/HvCore.c
+@@
+ 
+ static volatile LONG g_HvPowerOffline = FALSE;
+ 
+ // 内部静态变量
+ static volatile BOOLEAN s_VmLaunchContinue = FALSE;
+-static volatile ULONG64 s_LastHealthProbeResult = 0;
+-static volatile NTSTATUS s_LastHealthProbeException = STATUS_SUCCESS;
+-static volatile ULONG s_LastHealthProbeReason = 0;
+-static volatile LONG s_InactiveDiagnosticLogged = FALSE;
+-static volatile NTSTATUS s_LastInactiveStatus = STATUS_DEVICE_NOT_READY;
+-
+-typedef enum _HV_HEALTH_PROBE_REASON {
+-    HvHealthProbeNotRun = 0,
+-    HvHealthProbePowerOffline,
+-    HvHealthProbeCurrentCpuNotVirtualized,
+-    HvHealthProbeUnsupportedVendor,
+-    HvHealthProbeUnexpectedResult,
+-    HvHealthProbeException,
+-    HvHealthProbeHealthy
+-} HV_HEALTH_PROBE_REASON;
+-
+-typedef struct _HV_SVM_STARTUP_CAPTURE {
+-    ULONG RecordCount;
+-    ULONG AttemptedCount;
+-    ULONG ReadyCount;
+-    ULONG FirstFailureCpu;
+-    ULONG FirstFailurePhase;
+-    NTSTATUS FirstFailureStatus;
+-    ULONG FirstFailureException;
+-    ULONG Reserved;
+-    HV_SVM_CPU_STARTUP_DIAGNOSTIC Cpu[HV_SVM_STARTUP_DIAGNOSTIC_MAX_CPUS];
+-} HV_SVM_STARTUP_CAPTURE;
+-
+-static HV_SVM_STARTUP_CAPTURE s_SvmStartup = { 0 };
+-
+-static ULONG HvpSvmStartupPhaseFlag(_In_ HV_SVM_START_PHASE Phase)
+-{
+-    switch (Phase) {
+-    case HvSvmStartPhaseAffinityRequested:
+-        return HV_SVM_START_FLAG_AFFINITY_REQUESTED;
+-    case HvSvmStartPhaseAffinityBound:
+-        return HV_SVM_START_FLAG_AFFINITY_BOUND;
+-    case HvSvmStartPhaseSvmeEnabled:
+-        return HV_SVM_START_FLAG_SVME_ENABLED;
+-    case HvSvmStartPhaseHostSaveAllocated:
+-        return HV_SVM_START_FLAG_HOSTSAVE_ALLOCATED;
+-    case HvSvmStartPhaseVmcbAllocated:
+-        return HV_SVM_START_FLAG_VMCB_ALLOCATED;
+-    case HvSvmStartPhaseMsrpmAllocated:
+-        return HV_SVM_START_FLAG_MSRPM_ALLOCATED;
+-    case HvSvmStartPhaseExitStackAllocated:
+-        return HV_SVM_START_FLAG_EXIT_STACK_ALLOCATED;
+-    case HvSvmStartPhaseNptBegin:
+-        return HV_SVM_START_FLAG_NPT_ATTEMPTED;
+-    case HvSvmStartPhaseNptReady:
+-        return HV_SVM_START_FLAG_NPT_READY;
+-    case HvSvmStartPhaseNptBypassed:
+-        return HV_SVM_START_FLAG_NPT_BYPASSED;
+-    case HvSvmStartPhaseVmcbReady:
+-        return HV_SVM_START_FLAG_VMCB_READY;
+-    case HvSvmStartPhaseLaunchValidation:
+-        return HV_SVM_START_FLAG_LAUNCH_VALIDATED;
+-    case HvSvmStartPhaseVmrunEntered:
+-        return HV_SVM_START_FLAG_VMRUN_ENTERED;
+-    case HvSvmStartPhaseGuestReturned:
+-        return HV_SVM_START_FLAG_GUEST_RETURNED;
+-    case HvSvmStartPhaseVirtualized:
+-        return HV_SVM_START_FLAG_VIRTUALIZED;
+-    case HvSvmStartPhaseCleanup:
+-        return HV_SVM_START_FLAG_CLEANUP;
+-    default:
+-        return 0;
+-    }
+-}
+-
+-VOID HvSvmStartupDiagnosticsReset(_In_ ULONG ProcessorCount)
+-{
+-    ULONG recordCount = min(ProcessorCount, HV_SVM_STARTUP_DIAGNOSTIC_MAX_CPUS);
+-
+-    RtlZeroMemory(&s_SvmStartup, sizeof(s_SvmStartup));
+-    s_SvmStartup.RecordCount = recordCount;
+-    s_SvmStartup.FirstFailureCpu = MAXULONG;
+-    s_SvmStartup.FirstFailureStatus = STATUS_SUCCESS;
+-
+-    for (ULONG processor = 0; processor < recordCount; ++processor) {
+-        s_SvmStartup.Cpu[processor].RequestedProcessor = processor;
+-        s_SvmStartup.Cpu[processor].ActualProcessor = MAXULONG;
+-        s_SvmStartup.Cpu[processor].LastStatus = STATUS_DEVICE_NOT_READY;
+-        s_SvmStartup.Cpu[processor].FailureStatus = STATUS_SUCCESS;
+-    }
+-
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecord(
+-    _In_ ULONG RequestedProcessor,
+-    _In_ ULONG ActualProcessor,
+-    _In_ HV_SVM_START_PHASE Phase,
+-    _In_ NTSTATUS Status,
+-    _In_ BOOLEAN Fatal)
+-{
+-    PHV_SVM_CPU_STARTUP_DIAGNOSTIC record;
+-    ULONG phaseFlag;
+-    ULONG previousFlags;
+-
+-    if (RequestedProcessor >= s_SvmStartup.RecordCount ||
+-        RequestedProcessor >= HV_SVM_STARTUP_DIAGNOSTIC_MAX_CPUS) {
+-        return;
+-    }
+-
+-    record = &s_SvmStartup.Cpu[RequestedProcessor];
+-    phaseFlag = HvpSvmStartupPhaseFlag(Phase);
+-    previousFlags = record->Flags;
+-
+-    if (ActualProcessor != MAXULONG) {
+-        record->ActualProcessor = ActualProcessor;
+-    }
+-    record->LastPhase = (ULONG)Phase;
+-    record->LastStatus = Status;
+-    record->Flags |= phaseFlag;
+-
+-    if (Phase == HvSvmStartPhaseAffinityRequested &&
+-        (previousFlags & HV_SVM_START_FLAG_AFFINITY_REQUESTED) == 0) {
+-        s_SvmStartup.AttemptedCount++;
+-    }
+-    if (Phase == HvSvmStartPhaseVirtualized &&
+-        (previousFlags & HV_SVM_START_FLAG_VIRTUALIZED) == 0) {
+-        s_SvmStartup.ReadyCount++;
+-    }
+-
+-    if (Fatal && record->FailurePhase == HvSvmStartPhaseNone) {
+-        record->FailurePhase = (ULONG)Phase;
+-        record->FailureStatus = Status;
+-
+-        if (s_SvmStartup.FirstFailureCpu == MAXULONG) {
+-            s_SvmStartup.FirstFailureCpu = RequestedProcessor;
+-            s_SvmStartup.FirstFailurePhase = (ULONG)Phase;
+-            s_SvmStartup.FirstFailureStatus = Status;
+-        }
+-    }
+-
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecordVcpu(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ HV_SVM_START_PHASE Phase,
+-    _In_ NTSTATUS Status,
+-    _In_ BOOLEAN Fatal)
+-{
+-    PHV_SVM_CPU_STARTUP_DIAGNOSTIC record;
+-    ULONG processor;
+-
+-    if (VcpuData == NULL) {
+-        return;
+-    }
+-
+-    processor = VcpuData->ProcessorNumber;
+-    HvSvmStartupRecord(processor, processor, Phase, Status, Fatal);
+-    if (processor >= s_SvmStartup.RecordCount) {
+-        return;
+-    }
+-
+-    record = &s_SvmStartup.Cpu[processor];
+-    record->HostSavePa = (ULONG64)VcpuData->HostSaveAreaPhysical.QuadPart;
+-    record->VmcbPa = (ULONG64)VcpuData->VmcbPhysical.QuadPart;
+-    record->MsrpmPa = (ULONG64)VcpuData->MsrPermissionMapPhysical.QuadPart;
+-    record->Ncr3 = (VcpuData->NptTables != NULL)
+-        ? (ULONG64)VcpuData->NptTables->Pml4Physical.QuadPart
+-        : 0;
+-    record->VmcbExitCode = (VcpuData->Vmcb != NULL)
+-        ? VcpuData->Vmcb->ControlArea.ExitCode
+-        : 0;
+-    record->AsmDebugFlag = g_SvmDebugFlag;
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecordMsrs(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG64 Efer,
+-    _In_ ULONG64 VmCr)
+-{
+-    ULONG processor;
+-
+-    if (VcpuData == NULL) {
+-        return;
+-    }
+-
+-    processor = VcpuData->ProcessorNumber;
+-    if (processor >= s_SvmStartup.RecordCount) {
+-        return;
+-    }
+-
+-    s_SvmStartup.Cpu[processor].Efer = Efer;
+-    s_SvmStartup.Cpu[processor].VmCr = VmCr;
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecordLaunchValidation(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG ValidationMask)
+-{
+-    ULONG processor;
+-
+-    if (VcpuData == NULL) {
+-        return;
+-    }
+-
+-    processor = VcpuData->ProcessorNumber;
+-    if (processor >= s_SvmStartup.RecordCount) {
+-        return;
+-    }
+-
+-    s_SvmStartup.Cpu[processor].LaunchValidationMask = ValidationMask;
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecordSsState(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG SsSelector,
+-    _In_ ULONG SsAccessRights,
+-    _In_ ULONG SsVmcbAttributes,
+-    _In_ ULONG SsFlags)
+-{
+-    ULONG processor;
+-
+-    if (VcpuData == NULL) {
+-        return;
+-    }
+-
+-    processor = VcpuData->ProcessorNumber;
+-    if (processor >= s_SvmStartup.RecordCount) {
+-        return;
+-    }
+-
+-    s_SvmStartup.Cpu[processor].SsSelector = SsSelector;
+-    s_SvmStartup.Cpu[processor].SsAccessRights = SsAccessRights;
+-    s_SvmStartup.Cpu[processor].SsVmcbAttributes = SsVmcbAttributes;
+-    s_SvmStartup.Cpu[processor].SsFlags = SsFlags;
+-    KeMemoryBarrier();
+-}
+-
+-VOID HvSvmStartupRecordException(
+-    _In_ ULONG RequestedProcessor,
+-    _In_ ULONG ActualProcessor,
+-    _In_ NTSTATUS ExceptionCode)
+-{
+-    PHV_SVM_CPU_STARTUP_DIAGNOSTIC record = NULL;
+-    ULONG failurePhase = (ULONG)HvSvmStartPhaseException;
+-
+-    if (RequestedProcessor < s_SvmStartup.RecordCount) {
+-        record = &s_SvmStartup.Cpu[RequestedProcessor];
+-        if (record->LastPhase != HvSvmStartPhaseNone) {
+-            failurePhase = record->LastPhase;
+-        }
+-        if (record->FailurePhase == HvSvmStartPhaseNone) {
+-            record->FailurePhase = failurePhase;
+-            record->FailureStatus = ExceptionCode;
+-        }
+-        record->ExceptionCode = (ULONG)ExceptionCode;
+-    }
+-
+-    if (s_SvmStartup.FirstFailureCpu == MAXULONG) {
+-        s_SvmStartup.FirstFailureCpu = RequestedProcessor;
+-        s_SvmStartup.FirstFailurePhase = failurePhase;
+-        s_SvmStartup.FirstFailureStatus = ExceptionCode;
+-        s_SvmStartup.FirstFailureException = (ULONG)ExceptionCode;
+-    }
+-
+-    HvSvmStartupRecord(
+-        RequestedProcessor,
+-        ActualProcessor,
+-        HvSvmStartPhaseException,
+-        ExceptionCode,
+-        FALSE);
+-    KeMemoryBarrier();
+-}
+ 
+ // ============================================================
+ // 2026-06-20: VMXOFF / VMRUN-stop 之后描述符表恢复
+ // ============================================================
+ //
+@@
+ 
+     UNREFERENCED_PARAMETER(Context);
+     
+     vcpuData->ProcessorNumber = cpuNumber;
+     vcpuData->IsVirtualized = FALSE;
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseEntered, STATUS_SUCCESS, FALSE);
+ 
+     // Enable SVM
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseEnableBegin, STATUS_SUCCESS, FALSE);
+     status = SvmEnableOnCpu(vcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            vcpuData, HvSvmStartPhaseEnableBegin, status, TRUE);
+         DbgPrint("[SVM] CPU %d: SVM enable failed 0x%X\n", cpuNumber, status);
+         return;
+     }
+ 
+ #if HV_DISABLE_SLAT
+     // 显式跳过 NPT 设置, guest 用自己的 CR3 做 GVA→PA 翻译
+     vcpuData->NptTables = NULL;
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseNptBypassed, STATUS_NOT_SUPPORTED, FALSE);
+     DbgPrint("[SVM] CPU %d: HV_DISABLE_SLAT=1 — NPT 不分配 (no second-level translation)\n",
+              cpuNumber);
+ #else
+     // Setup NPT (Nested Page Tables) - 可选
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseNptBegin, STATUS_SUCCESS, FALSE);
+     status = SvmSetupNpt(vcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            vcpuData, HvSvmStartPhaseNptBypassed, status, FALSE);
+         DbgPrint("[SVM] CPU %d: NPT setup failed 0x%X (continuing without NPT)\n", cpuNumber, status);
+         vcpuData->NptTables = NULL;
+     } else {
+-        HvSvmStartupRecordVcpu(
+-            vcpuData, HvSvmStartPhaseNptReady, STATUS_SUCCESS, FALSE);
+         DbgPrint("[SVM] CPU %d: NPT initialized successfully\n", cpuNumber);
+     }
+ #endif
+ 
+     // Configure VMCB
+     status = SvmSetupVmcb(vcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            vcpuData, HvSvmStartPhaseVmcbReady, status, TRUE);
+         DbgPrint("[SVM] CPU %d: VMCB setup failed 0x%X\n", cpuNumber, status);
+-        SvmDisableOnCpu();
+         SvmCleanupNpt(vcpuData);
+         SvmCleanup(vcpuData);
+         return;
+     }
+ 
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseVmcbReady, STATUS_SUCCESS, FALSE);
+-
+     // Launch VM (VMRUN)
+     status = SvmLaunchVm(vcpuData);
+     if (!NT_SUCCESS(status)) {
+-        HvSvmStartupRecordVcpu(
+-            vcpuData, HvSvmStartPhaseLaunchFailed, status, TRUE);
+         DbgPrint("[SVM] CPU %d: VMRUN failed 0x%X\n", cpuNumber, status);
+         SvmCleanupNpt(vcpuData);
+         SvmCleanup(vcpuData);
+         vcpuData->IsVirtualized = FALSE;
+         return;
+     }
+-
+-    HvSvmStartupRecordVcpu(
+-        vcpuData, HvSvmStartPhaseVirtualized, STATUS_SUCCESS, FALSE);
+ 
+     DbgPrint("[SVM] CPU %d: *** NOW RUNNING IN GUEST MODE *** (NPT=%s)\n", 
+              cpuNumber, vcpuData->NptTables ? "ON" : "OFF");
+ }
+ 
+@@
+ #endif
+ 
+     g_HypervisorContext.ProcessorCount = KeQueryActiveProcessorCount(NULL);
+     DbgPrint("[HV] CPU count: %d\n", g_HypervisorContext.ProcessorCount);
+ 
+-    if (cpuVendor == CPU_VENDOR_AMD) {
+-        HvSvmStartupDiagnosticsReset(g_HypervisorContext.ProcessorCount);
+-    }
+-
+     if (g_HypervisorContext.ProcessorCount == 0) {
+         return STATUS_UNSUCCESSFUL;
+     }
+ 
+     size_t allocSize = sizeof(VCPU_DATA) * g_HypervisorContext.ProcessorCount;
+     g_HypervisorContext.VcpuData = (PVCPU_DATA)HvAllocateNonPagedZeroed(
+         allocSize, 'VCPU');
+ 
+     if (!g_HypervisorContext.VcpuData) {
+-        if (cpuVendor == CPU_VENDOR_AMD) {
+-            HvSvmStartupRecord(0, MAXULONG, HvSvmStartPhaseEntered,
+-                               STATUS_INSUFFICIENT_RESOURCES, TRUE);
+-        }
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+     RtlZeroMemory(g_HypervisorContext.VcpuData, allocSize);
+ 
+ #if !HV_MINIMAL_MODE
+@@
+ #endif
+ 
+     // 在所有CPU上串行初始化
+     for (i = 0; i < g_HypervisorContext.ProcessorCount; i++) {
+         KAFFINITY affinity = (KAFFINITY)(1ULL << i);
+-
+-        if (cpuVendor == CPU_VENDOR_AMD) {
+-            HvSvmStartupRecord(i, MAXULONG,
+-                               HvSvmStartPhaseAffinityRequested,
+-                               STATUS_SUCCESS, FALSE);
+-        }
+         
+         KeSetSystemAffinityThread(affinity);
+         
+         ULONG actualCpu = KeGetCurrentProcessorNumber();
+         if (actualCpu != i) {
+-            if (cpuVendor == CPU_VENDOR_AMD) {
+-                HvSvmStartupRecord(i, actualCpu,
+-                                   HvSvmStartPhaseAffinityMismatch,
+-                                   STATUS_UNSUCCESSFUL, TRUE);
+-            }
+             KeRevertToUserAffinityThread();
+             continue;
+-        }
+-
+-        if (cpuVendor == CPU_VENDOR_AMD) {
+-            HvSvmStartupRecord(i, actualCpu,
+-                               HvSvmStartPhaseAffinityBound,
+-                               STATUS_SUCCESS, FALSE);
+         }
+         
+         __try {
+             // 根据 CPU 厂商调用不同的启动函数
+             if (cpuVendor == CPU_VENDOR_INTEL) {
+@@
+             }
+         }
+         __except (EXCEPTION_EXECUTE_HANDLER) {
+             ULONG excCode = GetExceptionCode();
+             ULONG64 flag = g_AsmDebugFlag;
+-            if (cpuVendor == CPU_VENDOR_AMD) {
+-                HvSvmStartupRecordException(i, actualCpu, (NTSTATUS)excCode);
+-            }
+             DbgPrint("[HV] CPU %d: Exception 0x%X (g_AsmDebugFlag=%llu)\n",
+                      i, excCode, flag);
+             // 精准定位 #UD 触发点:
+             //   1  = AsmVmLaunchAndSaveState entry
+             //   2  = GPR pushed
+@@
+ BOOLEAN HvIsHypervisorRunning(VOID)
+ {
+     ULONG64 result = 0;
+     CPU_VENDOR cpuVendor = HvGetCpuVendor();
+ 
+-    s_LastHealthProbeResult = 0;
+-    s_LastHealthProbeException = STATUS_SUCCESS;
+-    s_LastHealthProbeReason = HvHealthProbeNotRun;
+-
+     if (HvIsPowerOffline()) {
+-        s_LastHealthProbeReason = HvHealthProbePowerOffline;
+         return FALSE;
+     }
+ 
+     if (!HvIsCurrentProcessorVirtualized()) {
+-        s_LastHealthProbeReason = HvHealthProbeCurrentCpuNotVirtualized;
+         return FALSE;
+     }
+     
+     __try {
+         if (cpuVendor == CPU_VENDOR_INTEL) {
+             result = AsmVmCallWithResult(1);
+         }
+         else if (cpuVendor == CPU_VENDOR_AMD) {
+             result = AsmVmmcallWithResult(1);
+         }
+-        else {
+-            s_LastHealthProbeReason = HvHealthProbeUnsupportedVendor;
+-            return FALSE;
+-        }
+-
+-        s_LastHealthProbeResult = result;
+         
+         if (result == 0xDEADBEEF) {
+-            s_LastHealthProbeReason = HvHealthProbeHealthy;
+             return TRUE;
+         }
+-
+-        s_LastHealthProbeReason = HvHealthProbeUnexpectedResult;
+     }
+     __except (EXCEPTION_EXECUTE_HANDLER) {
+-        s_LastHealthProbeException = GetExceptionCode();
+-        s_LastHealthProbeReason = HvHealthProbeException;
+         HvInvalidateCurrentProcessorVirtualization();
+     }
+     
+     return FALSE;
+-}
+-
+-VOID HvLogInactiveDiagnostics(_In_z_ PCSTR Source, _In_ NTSTATUS Status)
+-{
+-    ULONG currentProcessor = KeGetCurrentProcessorNumber();
+-    ULONG processorCount = g_HypervisorContext.ProcessorCount;
+-    ULONG virtualizedCount = 0;
+-    BOOLEAN currentProcessorVirtualized = FALSE;
+-    PVCPU_DATA vcpuData = g_HypervisorContext.VcpuData;
+-    CPU_VENDOR cpuVendor = HvGetCpuVendor();
+-    int basicFeatures[4] = { 0 };
+-    int maximumExtendedLeaf[4] = { 0 };
+-    int svmFeatures[4] = { 0 };
+-    int svmCapabilities[4] = { 0 };
+-    ULONG64 efer = 0;
+-    ULONG64 vmCr = 0;
+-    ULONG64 hostSavePa = 0;
+-    NTSTATUS amdMsrStatus = STATUS_SUCCESS;
+-    BOOLEAN amdMsrReadable = FALSE;
+-
+-    if (InterlockedCompareExchange(&s_InactiveDiagnosticLogged, TRUE, FALSE) != FALSE) {
+-        return;
+-    }
+-
+-    s_LastInactiveStatus = Status;
+-    KeMemoryBarrier();
+-
+-    KeMemoryBarrier();
+-    if (vcpuData != NULL) {
+-        for (ULONG processor = 0; processor < processorCount; ++processor) {
+-            if (vcpuData[processor].IsVirtualized) {
+-                virtualizedCount++;
+-            }
+-        }
+-
+-        if (currentProcessor < processorCount) {
+-            currentProcessorVirtualized = vcpuData[currentProcessor].IsVirtualized;
+-        }
+-    }
+-
+-    __cpuid(basicFeatures, 1);
+-    DbgPrint("[HV-DIAG] INACTIVE: source=%s status=0x%08X\n", Source, Status);
+-    DbgPrint("[HV-DIAG] state: active=%u power_offline=%u vendor=%u current_cpu=%lu current_virtualized=%u virtualized=%lu/%lu vcpu=%p\n",
+-             g_HypervisorContext.IsActive ? 1 : 0,
+-             HvIsPowerOffline() ? 1 : 0,
+-             (ULONG)cpuVendor,
+-             currentProcessor,
+-             currentProcessorVirtualized ? 1 : 0,
+-             virtualizedCount,
+-             processorCount,
+-             vcpuData);
+-    DbgPrint("[HV-DIAG] health_probe: reason=%lu result=0x%llX exception=0x%08X cpuid_1_ecx=0x%08X hypervisor_present=%u\n",
+-             s_LastHealthProbeReason,
+-             s_LastHealthProbeResult,
+-             s_LastHealthProbeException,
+-             (ULONG)basicFeatures[2],
+-             ((ULONG)basicFeatures[2] & 0x80000000u) ? 1 : 0);
+-
+-    if (cpuVendor != CPU_VENDOR_AMD) {
+-        return;
+-    }
+-
+-    __cpuid(maximumExtendedLeaf, 0x80000000);
+-    if ((ULONG)maximumExtendedLeaf[0] >= 0x80000001u) {
+-        __cpuid(svmFeatures, 0x80000001);
+-    }
+-    if ((ULONG)maximumExtendedLeaf[0] >= 0x8000000Au) {
+-        __cpuid(svmCapabilities, 0x8000000A);
+-    }
+-
+-    __try {
+-        efer = __readmsr(MSR_IA32_EFER);
+-        vmCr = __readmsr(MSR_AMD_VM_CR);
+-        hostSavePa = __readmsr(MSR_AMD_VM_HSAVE_PA);
+-        amdMsrReadable = TRUE;
+-    }
+-    __except (EXCEPTION_EXECUTE_HANDLER) {
+-        amdMsrStatus = GetExceptionCode();
+-    }
+-
+-    DbgPrint("[HV-DIAG] amd_cpuid: max_ext=0x%08X svm_ecx=0x%08X svm_revision=0x%08X max_asid=%u features_edx=0x%08X\n",
+-             (ULONG)maximumExtendedLeaf[0],
+-             (ULONG)svmFeatures[2],
+-             (ULONG)svmCapabilities[0],
+-             (ULONG)svmCapabilities[1],
+-             (ULONG)svmCapabilities[3]);
+-    if (amdMsrReadable) {
+-        DbgPrint("[HV-DIAG] amd_msr: efer=0x%llX svme=%u vm_cr=0x%llX lock=%u svmdis=%u hsave_pa=0x%llX\n",
+-                 efer,
+-                 (efer & EFER_SVME) ? 1 : 0,
+-                 vmCr,
+-                 (vmCr & VM_CR_LOCK) ? 1 : 0,
+-                 (vmCr & VM_CR_SVMDIS) ? 1 : 0,
+-                 hostSavePa);
+-    }
+-    else {
+-        DbgPrint("[HV-DIAG] amd_msr: snapshot exception=0x%08X\n", amdMsrStatus);
+-    }
+-    DbgPrint("[HV-DIAG] amd_launch: asm_flag=0x%llX vmexit_count=%llu last_exit=0x%llX\n",
+-             g_SvmDebugFlag,
+-             g_SvmExitCounter,
+-             g_SvmLastExitCode);
+-}
+-
+-VOID HvGetInactiveDiagnostics(_Out_ PHV_INACTIVE_DIAGNOSTICS Diagnostics)
+-{
+-    ULONG currentProcessor;
+-    PVCPU_DATA vcpuData;
+-    CPU_VENDOR cpuVendor;
+-    int basicFeatures[4] = { 0 };
+-    int maximumExtendedLeaf[4] = { 0 };
+-    int svmFeatures[4] = { 0 };
+-    int svmCapabilities[4] = { 0 };
+-    ULONG64 efer = 0;
+-    ULONG64 vmCr = 0;
+-    ULONG64 hostSavePa = 0;
+-    NTSTATUS amdMsrStatus = STATUS_SUCCESS;
+-    ULONG processor;
+-
+-    if (Diagnostics == NULL) {
+-        return;
+-    }
+-
+-    RtlZeroMemory(Diagnostics, sizeof(*Diagnostics));
+-    currentProcessor = KeGetCurrentProcessorNumber();
+-    vcpuData = g_HypervisorContext.VcpuData;
+-    cpuVendor = HvGetCpuVendor();
+-
+-    Diagnostics->Version = 3;
+-    Diagnostics->Size = sizeof(*Diagnostics);
+-    Diagnostics->Status = s_LastInactiveStatus;
+-    Diagnostics->HealthProbeReason = s_LastHealthProbeReason;
+-    Diagnostics->HealthProbeResult = s_LastHealthProbeResult;
+-    Diagnostics->HealthProbeException = s_LastHealthProbeException;
+-    Diagnostics->CpuVendor = (ULONG)cpuVendor;
+-    Diagnostics->CurrentProcessor = currentProcessor;
+-    Diagnostics->ProcessorCount = g_HypervisorContext.ProcessorCount;
+-    Diagnostics->GlobalActive = g_HypervisorContext.IsActive ? 1 : 0;
+-    Diagnostics->PowerOffline = HvIsPowerOffline() ? 1 : 0;
+-    Diagnostics->SvmDebugFlag = g_SvmDebugFlag;
+-    Diagnostics->SvmExitCounter = g_SvmExitCounter;
+-    Diagnostics->SvmLastExitCode = g_SvmLastExitCode;
+-    Diagnostics->SvmStartupRecordCount = s_SvmStartup.RecordCount;
+-    Diagnostics->SvmStartupAttemptedCount = s_SvmStartup.AttemptedCount;
+-    Diagnostics->SvmStartupReadyCount = s_SvmStartup.ReadyCount;
+-    Diagnostics->SvmStartupFirstFailureCpu = s_SvmStartup.FirstFailureCpu;
+-    Diagnostics->SvmStartupFirstFailurePhase = s_SvmStartup.FirstFailurePhase;
+-    Diagnostics->SvmStartupFirstFailureStatus = s_SvmStartup.FirstFailureStatus;
+-    Diagnostics->SvmStartupFirstFailureException = s_SvmStartup.FirstFailureException;
+-    RtlCopyMemory(
+-        Diagnostics->SvmStartup,
+-        s_SvmStartup.Cpu,
+-        sizeof(Diagnostics->SvmStartup));
+-
+-    if (vcpuData != NULL) {
+-        for (processor = 0;
+-             processor < Diagnostics->ProcessorCount;
+-             ++processor) {
+-            if (vcpuData[processor].IsVirtualized) {
+-                Diagnostics->VirtualizedCount++;
+-            }
+-        }
+-        if (currentProcessor < Diagnostics->ProcessorCount) {
+-            Diagnostics->CurrentProcessorVirtualized =
+-                vcpuData[currentProcessor].IsVirtualized ? 1 : 0;
+-        }
+-    }
+-
+-    __cpuid(basicFeatures, 1);
+-    Diagnostics->Cpuid1Ecx = (ULONG)basicFeatures[2];
+-    Diagnostics->HypervisorPresent =
+-        ((ULONG)basicFeatures[2] & 0x80000000u) ? 1 : 0;
+-
+-    if (cpuVendor != CPU_VENDOR_AMD) {
+-        return;
+-    }
+-
+-    __cpuid(maximumExtendedLeaf, 0x80000000);
+-    Diagnostics->MaximumExtendedLeaf = (ULONG)maximumExtendedLeaf[0];
+-    if ((ULONG)maximumExtendedLeaf[0] >= 0x80000001u) {
+-        __cpuid(svmFeatures, 0x80000001);
+-        Diagnostics->SvmFeaturesEcx = (ULONG)svmFeatures[2];
+-    }
+-    if ((ULONG)maximumExtendedLeaf[0] >= 0x8000000Au) {
+-        __cpuid(svmCapabilities, 0x8000000A);
+-        Diagnostics->SvmRevision = (ULONG)svmCapabilities[0];
+-        Diagnostics->SvmMaxAsid = (ULONG)svmCapabilities[1];
+-        Diagnostics->SvmFeaturesEdx = (ULONG)svmCapabilities[3];
+-    }
+-
+-    __try {
+-        efer = __readmsr(MSR_IA32_EFER);
+-        vmCr = __readmsr(MSR_AMD_VM_CR);
+-        hostSavePa = __readmsr(MSR_AMD_VM_HSAVE_PA);
+-    }
+-    __except (EXCEPTION_EXECUTE_HANDLER) {
+-        amdMsrStatus = GetExceptionCode();
+-    }
+-
+-    Diagnostics->Efer = efer;
+-    Diagnostics->VmCr = vmCr;
+-    Diagnostics->HostSavePa = hostSavePa;
+-    Diagnostics->AmdMsrStatus = amdMsrStatus;
+ }
+ 
+ BOOLEAN HvIsCurrentProcessorVirtualized(VOID)
+ {
+     ULONG cpuNumber = KeGetCurrentProcessorNumber();
+@@
+         }
+ 
+         __try {
+             if (cpuVendor == CPU_VENDOR_INTEL) {
+                 AsmVmCall(0x1337DEAD);
+-                vcpuData->IsVirtualized = FALSE;
+-                vcpuData->IsVmxOn = FALSE;
+             } else {
+                 AsmVmmcall(0x1337DEAD);
+-                KeMemoryBarrier();
+             }
+         }
+         __except (EXCEPTION_EXECUTE_HANDLER) {
+         }
+ 
+@@
+             AsmLoadIdtr(g_VmoffDescSave[cpuNumber].IdtrBuf);
+             AsmLoadTr(g_VmoffDescSave[cpuNumber].TrSel);
+             AsmLoadLdtr(g_VmoffDescSave[cpuNumber].LdtrSel);
+         }
+ 
++        vcpuData->IsVirtualized = FALSE;
++        vcpuData->IsVmxOn = FALSE;
+     }
+     else if (cpuVendor == CPU_VENDOR_INTEL && vcpuData->IsVmxOn) {
+         // VMXON succeeded but VMLAUNCH did not. Host descriptor state was not
+         // loaded, so a local VMXOFF is sufficient before freeing resources.
+         __try {
+@@
+     HvInputBeginShutdown();
+     HvUsbXhciBeginShutdown();
+ 
+     // 使用 IPI 同步所有 CPU 同时退出虚拟化
+     // 这确保没有 CPU 还在 VM Exit handler 中引用共享数据
+-    if (cpuVendor == CPU_VENDOR_AMD) {
+-        ULONG unloadPass = 0;
+-
+-        for (;;) {
+-            ULONG remainingVirtualized = 0;
+-
+-            g_UnloadBarrierCount = 0;
+-            KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+-            KeMemoryBarrier();
+-
+-            for (i = 0; i < g_HypervisorContext.ProcessorCount; i++) {
+-                if (g_HypervisorContext.VcpuData[i].IsVirtualized) {
+-                    remainingVirtualized++;
+-                }
+-            }
+-            if (remainingVirtualized == 0) {
+-                break;
+-            }
+-
+-            if ((unloadPass++ & 0x3F) == 0) {
+-                DbgPrint("[SVM] Waiting for %lu synthetic single-step owner(s) before devirtualization\n",
+-                         remainingVirtualized);
+-            }
+-
+-            {
+-                LARGE_INTEGER delay;
+-                delay.QuadPart = -10000;
+-                KeDelayExecutionThread(KernelMode, FALSE, &delay);
+-            }
+-        }
+-    } else {
+-        g_UnloadBarrierCount = 0;
+-        KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+-    }
++    g_UnloadBarrierCount = 0;
++    KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+ 
+     // 等待所有 CPU 完成卸载（IPI 是同步的，这里是额外保障）
+     DbgPrint("[HV] All CPUs devirtualized (%d responded)\n", g_UnloadBarrierCount);
+ 
+     /* xHCI trap state points into the per-VCPU EPT tables, while VMCS still
+*** End Patch

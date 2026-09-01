@@ -1,0 +1,357 @@
+$path = "E:\project_learning\YuYuanVTDebug\Netr\DebuggerBridge\Bridge.cpp"
+$c = [System.IO.File]::ReadAllText($path)
+
+# 1) Add atomics after g_private_dbgk_mode
+$old = @'
+std::atomic<bool> g_private_dbgk_mode{false};
+
+NtDebugActiveProcessFn g_nt_debug_active_process = nullptr;
+'@
+$new = @'
+std::atomic<bool> g_private_dbgk_mode{false};
+std::atomic<bool> g_private_dbgk_transport_dead{false};
+std::atomic<LONG> g_private_dbgk_terminal_status{0};
+
+NtDebugActiveProcessFn g_nt_debug_active_process = nullptr;
+'@
+if (-not $c.Contains($old)) { throw "anchor1 not found" }
+$c = $c.Replace($old, $new)
+
+# 2) Reset dead flag when private mode registers successfully
+$old = @'
+    if (valid) {
+        g_granted_capabilities.store(result.Flags);
+        g_private_dbgk_mode.store(
+            (result.Flags & HV_BRIDGE_STATE_PRIVATE_DEBUG_OBJECT) != 0);
+    } else {
+        g_granted_capabilities.store(0);
+        g_private_dbgk_mode.store(false);
+        SetLastError(error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+    }
+'@
+$new = @'
+    if (valid) {
+        g_granted_capabilities.store(result.Flags);
+        g_private_dbgk_mode.store(
+            (result.Flags & HV_BRIDGE_STATE_PRIVATE_DEBUG_OBJECT) != 0);
+        g_private_dbgk_transport_dead.store(false);
+        g_private_dbgk_terminal_status.store(0);
+    } else {
+        g_granted_capabilities.store(0);
+        g_private_dbgk_mode.store(false);
+        g_private_dbgk_transport_dead.store(false);
+        g_private_dbgk_terminal_status.store(0);
+        SetLastError(error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+    }
+'@
+if (-not $c.Contains($old)) { throw "anchor2 not found" }
+$c = $c.Replace($old, $new)
+
+# 3) Reset on BindTarget success
+$old = @'
+    if (ok) g_targets.insert(pid);
+    ReleaseSRWLockExclusive(&g_target_lock);
+    if (!ok) return false;
+    if (!was_tracked) Trace(L"[NetrBridge] bound target PID=%lu\n", pid);
+    return true;
+}
+'@
+$new = @'
+    if (ok) {
+        g_targets.insert(pid);
+        // A successful bind means the private Dbgk session is live again for
+        // this target; clear any previous fail-closed transport state.
+        g_private_dbgk_transport_dead.store(false);
+        g_private_dbgk_terminal_status.store(0);
+    }
+    ReleaseSRWLockExclusive(&g_target_lock);
+    if (!ok) return false;
+    if (!was_tracked) Trace(L"[NetrBridge] bound target PID=%lu\n", pid);
+    return true;
+}
+'@
+if (-not $c.Contains($old)) { throw "anchor3 not found" }
+$c = $c.Replace($old, $new)
+
+# 4) Replace enum + PollPrivateDbgkEvent block
+$old = @'
+enum class PrivateDbgkPollResult {
+    Event,
+    Empty,
+    Error
+};
+
+PrivateDbgkPollResult PollPrivateDbgkEvent(
+    HV_BRIDGE_DBGK_EVENT* event,
+    DWORD timeout)
+{
+    if (!event || g_device == INVALID_HANDLE_VALUE) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return PrivateDbgkPollResult::Error;
+    }
+    HV_BRIDGE_PRIVATE_WAIT_REQUEST request = {};
+    request.Version = HV_BRIDGE_PROTOCOL_VERSION;
+    request.TimeoutMs = timeout;
+    HV_BRIDGE_DBGK_WAIT_RESULT result = {};
+    DWORD returned = 0;
+    const BOOL ok = DeviceIoControl(
+        g_device, IOCTL_HV_BRIDGE_DBGK_WAIT,
+        &request, sizeof(request), &result, sizeof(result), &returned, nullptr);
+    const DWORD error = ok ? ERROR_SUCCESS : GetLastError();
+    if (!ok || returned < sizeof(result)) {
+        const auto sequence = g_private_dbgk_poll_error_sequence.fetch_add(1) + 1;
+        if (sequence <= 8 || (sequence & (sequence - 1)) == 0) {
+            Trace(L"[DBGK-WAIT #%llu] ioctl failed ok=%d returned=%lu win32=%lu\n",
+                  sequence, ok, returned,
+                  error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+        }
+        SetLastError(error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+        return PrivateDbgkPollResult::Error;
+    }
+    if (result.Status == static_cast<LONG>(0x00000102L)) {
+        return PrivateDbgkPollResult::Empty;
+    }
+    if (result.Status < 0 || result.Event.Sequence == 0 ||
+        result.Event.ProcessId == 0 || result.Event.ThreadId == 0) {
+        const auto sequence = g_private_dbgk_poll_error_sequence.fetch_add(1) + 1;
+        if (sequence <= 8 || (sequence & (sequence - 1)) == 0) {
+            Trace(L"[DBGK-WAIT #%llu] invalid result status=0x%08lX event_seq=%llu pid=%lu tid=%lu\n",
+                  sequence, static_cast<unsigned long>(result.Status),
+                  static_cast<unsigned long long>(result.Event.Sequence),
+                  result.Event.ProcessId, result.Event.ThreadId);
+        }
+        SetLastError(ERROR_INVALID_DATA);
+        return PrivateDbgkPollResult::Error;
+    }
+    *event = result.Event;
+    return PrivateDbgkPollResult::Event;
+}
+'@
+
+$new = @'
+enum class PrivateDbgkPollResult {
+    Event,
+    Empty,
+    Error,
+    Terminal
+};
+
+bool IsPrivateDbgkTerminalNtStatus(LONG status)
+{
+    const ULONG code = static_cast<ULONG>(status);
+    return code == 0xC0000354UL || // STATUS_DEBUGGER_INACTIVE
+           code == 0xC0000353UL || // STATUS_PROCESS_IS_TERMINATING
+           code == 0xC0000022UL || // STATUS_ACCESS_DENIED
+           code == 0xC0000008UL;   // STATUS_INVALID_HANDLE
+}
+
+DWORD MapPrivateDbgkTerminalWin32(LONG status)
+{
+    if (g_rtl_nt_status_to_dos_error) {
+        const ULONG mapped = g_rtl_nt_status_to_dos_error(status);
+        if (mapped != ERROR_MR_MID_NOT_FOUND && mapped != ERROR_SUCCESS) {
+            return static_cast<DWORD>(mapped);
+        }
+    }
+    switch (static_cast<ULONG>(status)) {
+    case 0xC0000354UL: // STATUS_DEBUGGER_INACTIVE
+    case 0xC0000008UL: // STATUS_INVALID_HANDLE
+        return ERROR_INVALID_HANDLE;
+    case 0xC0000353UL: // STATUS_PROCESS_IS_TERMINATING
+    case 0xC0000022UL: // STATUS_ACCESS_DENIED
+    default:
+        return ERROR_ACCESS_DENIED;
+    }
+}
+
+// Forward decls: defined later; used only on private Dbgk fail-closed path.
+void ReleasePendingPrivateEvents(DWORD pid);
+void ReleasePendingPrivateDbgkEvents(DWORD pid);
+
+void FailClosedPrivateDbgkTransport(LONG status)
+{
+    const bool first = !g_private_dbgk_transport_dead.exchange(true);
+    g_private_dbgk_terminal_status.store(status);
+    const DWORD win32 = MapPrivateDbgkTerminalWin32(status);
+
+    if (first) {
+        Trace(L"[DBGK-WAIT] private transport terminal status=0x%08lX win32=%lu — fail-closed cleanup\n",
+              static_cast<unsigned long>(status), win32);
+
+        // Driver session is already inactive/tearing. Do not thrash CLEAR
+        // IOCTLs; drop local VT-step bookkeeping and pending private maps so
+        // the external wait path can exit without spinning.
+        std::vector<DWORD> targets;
+        AcquireSRWLockShared(&g_target_lock);
+        targets.assign(g_targets.begin(), g_targets.end());
+        ReleaseSRWLockShared(&g_target_lock);
+        for (const DWORD pid : targets) {
+            ForgetTargetVtSteps(pid);
+            ReleasePendingPrivateDbgkEvents(pid);
+            ReleasePendingPrivateEvents(pid);
+        }
+        ForgetTargetVtSteps(0);
+        ReleasePendingPrivateDbgkEvents(0);
+        ReleasePendingPrivateEvents(0);
+    }
+
+    SetLastError(win32);
+}
+
+PrivateDbgkPollResult PollPrivateDbgkEvent(
+    HV_BRIDGE_DBGK_EVENT* event,
+    DWORD timeout)
+{
+    if (!event || g_device == INVALID_HANDLE_VALUE) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return PrivateDbgkPollResult::Error;
+    }
+    if (g_private_dbgk_transport_dead.load()) {
+        SetLastError(MapPrivateDbgkTerminalWin32(
+            g_private_dbgk_terminal_status.load()));
+        return PrivateDbgkPollResult::Terminal;
+    }
+
+    HV_BRIDGE_PRIVATE_WAIT_REQUEST request = {};
+    request.Version = HV_BRIDGE_PROTOCOL_VERSION;
+    request.TimeoutMs = timeout;
+    HV_BRIDGE_DBGK_WAIT_RESULT result = {};
+    DWORD returned = 0;
+    const BOOL ok = DeviceIoControl(
+        g_device, IOCTL_HV_BRIDGE_DBGK_WAIT,
+        &request, sizeof(request), &result, sizeof(result), &returned, nullptr);
+    const DWORD error = ok ? ERROR_SUCCESS : GetLastError();
+    if (!ok || returned < sizeof(result)) {
+        const auto sequence = g_private_dbgk_poll_error_sequence.fetch_add(1) + 1;
+        if (sequence <= 8 || (sequence & (sequence - 1)) == 0) {
+            Trace(L"[DBGK-WAIT #%llu] ioctl failed ok=%d returned=%lu win32=%lu\n",
+                  sequence, ok, returned,
+                  error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+        }
+        // Channel hard-fail after the private session is gone: treat access /
+        // invalid-handle style IOCTL errors as terminal so wait does not spin.
+        if (error == ERROR_ACCESS_DENIED || error == ERROR_INVALID_HANDLE ||
+            error == ERROR_NOT_FOUND || error == ERROR_INVALID_FUNCTION) {
+            FailClosedPrivateDbgkTransport(
+                error == ERROR_INVALID_HANDLE
+                    ? static_cast<LONG>(0xC0000008L)
+                    : static_cast<LONG>(0xC0000022L));
+            return PrivateDbgkPollResult::Terminal;
+        }
+        SetLastError(error != ERROR_SUCCESS ? error : ERROR_INVALID_DATA);
+        return PrivateDbgkPollResult::Error;
+    }
+    if (result.Status == static_cast<LONG>(0x00000102L)) {
+        return PrivateDbgkPollResult::Empty;
+    }
+    if (IsPrivateDbgkTerminalNtStatus(result.Status)) {
+        const auto sequence = g_private_dbgk_poll_error_sequence.fetch_add(1) + 1;
+        if (sequence <= 4 || (sequence & (sequence - 1)) == 0) {
+            Trace(L"[DBGK-WAIT #%llu] terminal status=0x%08lX event_seq=%llu pid=%lu tid=%lu\n",
+                  sequence, static_cast<unsigned long>(result.Status),
+                  static_cast<unsigned long long>(result.Event.Sequence),
+                  result.Event.ProcessId, result.Event.ThreadId);
+        }
+        FailClosedPrivateDbgkTransport(result.Status);
+        return PrivateDbgkPollResult::Terminal;
+    }
+    if (result.Status < 0 || result.Event.Sequence == 0 ||
+        result.Event.ProcessId == 0 || result.Event.ThreadId == 0) {
+        const auto sequence = g_private_dbgk_poll_error_sequence.fetch_add(1) + 1;
+        if (sequence <= 8 || (sequence & (sequence - 1)) == 0) {
+            Trace(L"[DBGK-WAIT #%llu] invalid result status=0x%08lX event_seq=%llu pid=%lu tid=%lu\n",
+                  sequence, static_cast<unsigned long>(result.Status),
+                  static_cast<unsigned long long>(result.Event.Sequence),
+                  result.Event.ProcessId, result.Event.ThreadId);
+        }
+        if (result.Status < 0) {
+            SetLastErrorFromNtStatus(result.Status);
+        } else {
+            SetLastError(ERROR_INVALID_DATA);
+        }
+        return PrivateDbgkPollResult::Error;
+    }
+    *event = result.Event;
+    return PrivateDbgkPollResult::Event;
+}
+'@
+
+if (-not $c.Contains($old)) { throw "anchor4 PollPrivateDbgkEvent not found" }
+$c = $c.Replace($old, $new)
+
+# 5) WaitForMergedDebugEvent private Error branch: Terminal fail-closed, no native fallback spin
+$old = @'
+            const PrivateDbgkPollResult dbgk_result =
+                DeliverPrivateDbgkEvent(event, slice);
+            if (dbgk_result == PrivateDbgkPollResult::Event) {
+                return TRUE;
+            }
+            const DWORD dbgk_error = GetLastError();
+
+            if (TryDeliverPrivateDbgkSwBpEvent(event) ==
+                    PrivateDeliveryResult::Delivered) {
+                return TRUE;
+            }
+            if (dbgk_result == PrivateDbgkPollResult::Error) {
+                // Compatibility fallback for a package whose direct Dbgk
+                // IOCTL is unavailable but whose syscall hook is installed.
+                const BOOL native_ok = native_wait(event, 0);
+                if (native_ok) {
+                    ObserveDebugEvent(event);
+                    return TRUE;
+                }
+                SetLastError(dbgk_error);
+                return FALSE;
+            }
+            if (timeout == 0) {
+                SetLastError(ERROR_SEM_TIMEOUT);
+                return FALSE;
+            }
+'@
+
+$new = @'
+            const PrivateDbgkPollResult dbgk_result =
+                DeliverPrivateDbgkEvent(event, slice);
+            if (dbgk_result == PrivateDbgkPollResult::Event) {
+                return TRUE;
+            }
+            const DWORD dbgk_error = GetLastError();
+
+            if (dbgk_result == PrivateDbgkPollResult::Terminal) {
+                // Private Dbgk session / target is gone. Do not fall back to
+                // native WaitForDebugEvent (no Windows DebugObject in this
+                // mode) and do not keep re-polling: that is the x64dbg hang.
+                SetLastError(dbgk_error != ERROR_SUCCESS
+                    ? dbgk_error : ERROR_INVALID_HANDLE);
+                return FALSE;
+            }
+
+            if (TryDeliverPrivateDbgkSwBpEvent(event) ==
+                    PrivateDeliveryResult::Delivered) {
+                return TRUE;
+            }
+            if (dbgk_result == PrivateDbgkPollResult::Error) {
+                // Compatibility fallback for a package whose direct Dbgk
+                // IOCTL is unavailable but whose syscall hook is installed.
+                // Never used for terminal session statuses (handled above).
+                const BOOL native_ok = native_wait(event, 0);
+                if (native_ok) {
+                    ObserveDebugEvent(event);
+                    return TRUE;
+                }
+                SetLastError(dbgk_error);
+                return FALSE;
+            }
+            if (timeout == 0) {
+                SetLastError(ERROR_SEM_TIMEOUT);
+                return FALSE;
+            }
+'@
+
+if (-not $c.Contains($old)) { throw "anchor5 WaitForMergedDebugEvent not found" }
+$c = $c.Replace($old, $new)
+
+[System.IO.File]::WriteAllText($path, $c)
+Write-Host "Bridge.cpp patched OK"
+# quick sanity
+Select-String -Path $path -Pattern "PrivateDbgkPollResult::Terminal|FailClosedPrivateDbgkTransport|g_private_dbgk_transport_dead" | Select-Object LineNumber,Line | Format-Table -AutoSize

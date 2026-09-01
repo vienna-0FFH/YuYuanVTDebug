@@ -1,0 +1,29 @@
+*** Begin Patch
+*** Update File: Netr/README.md
+@@
+ | **vGIF 中断门控** | 记录但不门控 | 拦截 SvmInjectEvent；GIF=0 时入队，STGI 时 flush |
+ | **嵌套 IOPM/MSRPM 合并** | "谁配置用谁的" | byte-by-byte OR 合并 L0+L1 |
+ | MSR Permission Map | 拦截 EFER / VM_CR / HSAVE_PA / FEATURE_CONTROL | |
+ | Intercepts | CPUID / MSR / VMRUN / VMMCALL / VMLOAD / VMSAVE / STGI / CLGI / XSETBV / SHUTDOWN | |
+ | TLB control | FLUSH_ALL（启动期）+ FLUSH_GUEST（按需） | |
+-| V_INTR_MASKING | 禁用（直通中断由 guest IF/CR8/interrupt shadow 控制） | |
++| V_INTR_MASKING | 启用（bit 24） | |
+ 
+ `HV_ENABLE_SVM_HARDENING` 当前默认值为 1；AMD 真机矩阵尚未完成，运行结果必须按实验性能力处理。
+ 
+ ### 5.3 嵌套虚拟化（L0-L1-L2）
+ 
+@@
+ - **跨模式 INVEPT**：`EptInveptAllContexts` 自动派发（root 直调 / PASSIVE IPI / 高 IRQL VMCALL）；root 模式判定**必须先于 IRQL 检查**（避免全核死锁）
+ - **本次新增**：`EptInvvpidAllContexts` 跨模式 INVVPID 同形派发
+ 
+ AMD NPT Hook（`NptHook.c`，4116 行）：
+ - **双页面策略**：AMD 不支持 Execute-Only，FakePage = P/W/!NX（允许执行），OriginalPage = P/W/NX（禁执行）
+-- **#DB 单步**：执行触发 NPF → 切到 FakePage + RFLAGS.TF=1 + 拦截 #DB；单指令窗口保存并临时清除 guest IF，防止 Windows 中断/调度把合成 TF 迁移到无 owner 的其他 CPU
++- **#DB 单步**：读取触发 NPF → 切到 OriginalPage + RFLAGS.TF=1 + 拦截 #DB
+ - **VMCB.TlbControl=FLUSH_GUEST** 替代 INVEPT
+ 
+ ---
+ 
+ ## 6. 功能子系统
+*** End Patch

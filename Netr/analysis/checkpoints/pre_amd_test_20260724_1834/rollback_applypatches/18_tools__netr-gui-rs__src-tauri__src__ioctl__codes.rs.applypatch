@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: Netr/tools/netr-gui-rs/src-tauri/src/ioctl/codes.rs
+@@
+ pub const IOCTL_HV_BRIDGE_DBGK_CONTINUE: u32 = ctl_code(0x10E);
+ pub const IOCTL_HV_BRIDGE_DBGK_SYMBOLS: u32 = ctl_code(0x10F);
+ 
+ // Phase 2: 网络验证 license 提交
+ pub const IOCTL_HV_SUBMIT_LICENSE: u32 = ctl_code(0x107);
+-pub const IOCTL_HV_GET_INACTIVE_DIAGNOSTICS: u32 = ctl_code(0xB1);
+*** End Patch

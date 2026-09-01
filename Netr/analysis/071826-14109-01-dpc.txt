@@ -1,0 +1,155 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\071826-14109-01-dpc.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.015 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\071826-14109-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Symbol search path is: srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff805`27600000 PsLoadedModuleList = 0xfffff805`282135f0
+Debug session time: Sat Jul 18 20:53:37.065 2026 (UTC + 8:00)
+System Uptime: 0 days 4:12:53.734
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+6: kd> .symopt+ 0x40; .reload /f GuardMetaCore.sys; !dpcs; !prcb 6; !running -it; !stacks 2; dt nt!_DPC_WATCHDOG_GLOBAL_TRIAGE_BLOCK fffff8052831d340; dq fffff8052831d340 L40; !irql; !locks; q
+Symbol options are 0xB0367:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000040 - SYMOPT_LOAD_ANYTHING
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+CPU Type      KDPC       Function
+ 6: Normal  : 0xffffb60c91103540 0xfffff80527b6bb40 nt!KiLogSingleDpcSoftTimeoutEvent
+ 6: Normal  : 0xfffff8052823c0c0 0xfffff8052793af30 nt!PpmCheckPeriodicStart
+ 6: Normal  : 0xfffff805282426a0 0xfffff80527956050 nt!KiBalanceSetManagerDeferredRoutine
+ 6: Normal  : 0xffffb60c91dde278 0xfffff805279b0b60 nt!EtwpLoggerDpc
+
+PRCB for Processor 6 at fffff780ffff0000:
+Current IRQL -- 13
+Threads--  Current ffffb60c9119d040 Next 0000000000000000 Idle ffffb60c9119d040
+Processor Index 6 Number (0, 6) GroupSetMember 40
+Interrupt Count -- 01240b1e
+Times -- Dpc    00000a2e Interrupt 00000779 
+         Kernel 000e8cd6 User      0000448d 
+GetUlongFromAddress: unable to read from fffff8052831ea40
+Couldn't find processor info
+Proc.Thread  .Thread  Ticks   ThreadState Blocker
+Unable to get value of PsActiveProcessHead.Flink
+
+Threads Processed: 0
+Symbol nt!_DPC_WATCHDOG_GLOBAL_TRIAGE_BLOCK not found.
+fffff805`2831d340  00100001`aebecede 00008200`000088a8
+fffff805`2831d350  00001388`00015f90 00000000`00015f90
+fffff805`2831d360  00000014`00000004 00000000`0000dafc
+fffff805`2831d370  00000000`00000014 00000000`0000dafc
+fffff805`2831d380  00000000`00000032 00000004`00000000
+fffff805`2831d390  00000000`00000001 24242424`00000019
+fffff805`2831d3a0  5c5c5c5c`00000000 020e01c0`00000000
+fffff805`2831d3b0  00000000`015c02b8 01160116`00000000
+fffff805`2831d3c0  00000000`01160116 00000002`00000000
+fffff805`2831d3d0  ffffb60c`913f9900 ffffb60c`913f9e80
+fffff805`2831d3e0  00000000`00001082 000032c9`000186a0
+fffff805`2831d3f0  0016e360`00004e20 00000002`00000002
+fffff805`2831d400  00000002`00000002 00000003`00000003
+fffff805`2831d410  00000003`00000003 00000002`00000002
+fffff805`2831d420  00000003`00000003 00000003`00000003
+fffff805`2831d430  00000003`00000078 0000000f`00000001
+fffff805`2831d440  00002710`ffffffff 00000011`00000bb8
+fffff805`2831d450  00000001`00000100 00006000`006c7648
+fffff805`2831d460  ffffdd80`00000000 00000000`02818e48
+fffff805`2831d470  fffff805`282698c0 ffffb60c`913f9d20
+fffff805`2831d480  01000001`00000000 01010000`01010000
+fffff805`2831d490  01010100`00010100 00000000`01010101
+fffff805`2831d4a0  01010101`01000000 00010101`01010100
+fffff805`2831d4b0  00000000`00000000 00610066`00650044
+fffff805`2831d4c0  00000074`006c0075 00000000`00000000
+fffff805`2831d4d0  fffff805`2831d2c4 fffff805`276415a0
+fffff805`2831d4e0  00000000`0000001e fffff805`2831d2c0
+fffff805`2831d4f0  fffff805`276415d0 00000000`0000000f
+fffff805`2831d500  fffff805`2831d154 fffff805`27641600
+fffff805`2831d510  00000000`00000258 fffff805`2831d2c8
+fffff805`2831d520  fffff805`27641630 00000000`00000200
+fffff805`2831d530  00000002`00000007 00000000`00000001
+Debugger saved IRQL for processor 0x6 -- 13
+**** DUMP OF ALL RESOURCE OBJECTS ****
+ERROR: reading list head at 0xfffff8052822d650
+0 total locks
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

@@ -1,0 +1,137 @@
+*** Begin Patch
+*** Update File: Netr/HvVwatch.h
+@@
+     volatile LONG64        PendingHitPublishFailures;
+     volatile LONG64        InjectedBpCount;
+     volatile LONG64        MtfCompletions;
+-    volatile LONG64        MtfMergedCollisions;
+-    volatile LONG64        MtfMergedTrueHits;
+-    volatile LONG64        MtfMergeFailures;
+     volatile LONG64        VDrCacheHits;
+*** Update File: Netr/HvVwatch.c
+@@
+-static __forceinline BOOLEAN
+-HvVwatchpCanMergeWatchIntoSwBpMtf(_In_ PHV_VWATCH_MTF_CONTEXT Mtf)
+-{
+-    SIZE_T controls = 0;
+-    if (__vmx_vmread(
+-            VMCS_CTRL_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+-            &controls) != 0 ||
+-        (controls & CPU_BASED_MONITOR_TRAP_FLAG) == 0) {
+-        return FALSE;
+-    }
+-
+-    KeMemoryBarrier();
+-    return InterlockedCompareExchange(
+-               &Mtf->Active, 0, 0) == HV_VWATCH_MTF_ARMED &&
+-           Mtf->Reason == HV_VWATCH_MTF_SWBP_REARM &&
+-           Mtf->PendingPage == NULL &&
+-           Mtf->PendingSwBpPage != NULL &&
+-           Mtf->PendingSwBpEntry != NULL;
+-}
+-
+ static __forceinline VOID
+ HvVwatchpPublishMtf(_Inout_ PHV_VWATCH_MTF_CONTEXT Mtf)
+@@
+     }
+ 
+     PHV_VWATCH_MTF_CONTEXT mtf = &g_VwatchManager.MtfContext[cpu];
+-    BOOLEAN mergedMtf = FALSE;
+     if (!HvVwatchpTryReserveMtf(mtf)) {
+-        if (!HvVwatchpCanMergeWatchIntoSwBpMtf(mtf)) {
+-            InterlockedIncrement64(&g_VwatchManager.MtfMergeFailures);
+-            HvVwatchpReleaseRootRundown(&page->RootRundown);
+-            return FALSE;
+-        }
+-        mergedMtf = TRUE;
++        HvVwatchpReleaseRootRundown(&page->RootRundown);
++        return FALSE;
+     }
+@@
+-    LONG watchReason = HV_VWATCH_MTF_PASSTHROUGH;
+     if (hitEntry) {
+@@
+-            watchReason = HV_VWATCH_MTF_HIT;
++            mtf->Reason = HV_VWATCH_MTF_HIT;
+             mtf->HitType = hitType;   // EXECUTE / WRITE / READWRITE
+@@
+         } else {
+             // 是 target 但没 attach (PASS) 或 不是 target (WRONG_PROC) —— 都透传不注异常.
++            mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
+             InterlockedIncrement64(&g_VwatchManager.PassthroughHits);
+         }
+     } else {
+         // 同页非 watch 字节访问 → 透传单步, 不注异常
++        mtf->Reason = HV_VWATCH_MTF_PASSTHROUGH;
+         InterlockedIncrement64(&g_VwatchManager.PassthroughHits);
+     }
+ 
+-    if (!mergedMtf) {
+-        mtf->Reason = watchReason;
+-        mtf->PendingSwBpPage = NULL;
+-        mtf->PendingSwBpEntry = NULL;
+-        mtf->PendingSwBpPte = NULL;
+-    }
++    mtf->PendingPage = page;
++    mtf->PendingSwBpPage = NULL;
++    mtf->PendingSwBpEntry = NULL;
++    mtf->PendingSwBpPte = NULL;
+     mtf->SwBpDataWrite = FALSE;
+     // 临时切到全 RWX (允许这条指令完成)
+     HvVwatchpWritePtSlot(slot, page->OriginalPfn, 0);
+     EptInveptAllContexts();
+-    KeMemoryBarrier();
+-    mtf->PendingPage = page;
+ 
+-    if (mergedMtf) {
+-        InterlockedIncrement64(&g_VwatchManager.MtfMergedCollisions);
+-        if (watchReason == HV_VWATCH_MTF_HIT) {
+-            InterlockedIncrement64(&g_VwatchManager.MtfMergedTrueHits);
+-        }
+-    } else {
+-        HvVwatchpPublishMtf(mtf);
+-    }
++    HvVwatchpPublishMtf(mtf);
+     return TRUE;
+ }
+@@
+     if (reason == HV_VWATCH_MTF_SWBP_DATA ||
+         reason == HV_VWATCH_MTF_SWBP_REARM) {
+         BOOLEAN debuggerStepCompleted = FALSE;
+-        BOOLEAN mergedWatchHit = page && hitType != HV_VWATCH_TYPE_NONE;
+         if (swBpPage &&
+@@
+-        if (page) {
+-            PEPT_PTE_ENTRY slot = page->CloakedPte[cpu];
+-            if (slot && InterlockedCompareExchange(&page->InUse, 0, 0)) {
+-                HvVwatchpWritePtSlot(
+-                    slot,
+-                    page->OriginalPfn,
+-                    page->CombinedTrapMask);
+-                EptInveptAllContexts();
+-            }
+-        }
+-
+         HvVwatchpSetMtf(FALSE);
+@@
+-        if (page) {
+-            HvVwatchpReleaseRootRundown(&page->RootRundown);
+-        }
+         InterlockedExchange(&mtf->Active, HV_VWATCH_MTF_IDLE);
+         InterlockedIncrement64(&g_VwatchManager.MtfCompletions);
+-        if (mergedWatchHit) {
+-            HvVwatchpDeliverCompletedWatchHit(
+-                VcpuData,
+-                Ctx,
+-                cpu,
+-                hitType,
+-                hitSlot,
+-                hitPrivateEvent,
+-                hitDebuggerPid,
+-                hitTargetPid,
+-                hitThreadToken);
+-        } else if (debuggerStepCompleted) {
++        if (debuggerStepCompleted) {
+             (void)HvVwatchpTryInjectPrivateStepDb();
+         }
+*** End Patch

@@ -10,12 +10,7 @@
 #define HV_TRACE_THIS_CAT HV_TRACE_CAT_VM
 #include "HvTrace.h"
 
-// 嵌套虚拟化全局开关; HV_MINIMAL_MODE 下默认关闭, VMX 指令注入 #UD
-#if HV_MINIMAL_MODE
 BOOLEAN g_EnableNestedVirtualization = FALSE;
-#else
-BOOLEAN g_EnableNestedVirtualization = TRUE;
-#endif
 
 // VMCS Shadowing 支持检测
 static BOOLEAN g_VmcsShadowingSupported = FALSE;
@@ -185,6 +180,8 @@ NTSTATUS HvEnableVmxOnCpu(PVOID Context)
     ULONG revisionId;
     int result;
 
+    vcpuData->IsVmxOn = FALSE;
+
     HvAdjustControlRegisters();
 
     // 检测 VMCS Shadowing 支持（只在第一个 CPU 上检测一次）
@@ -254,17 +251,20 @@ NTSTATUS HvEnableVmxOnCpu(PVOID Context)
     if (result != VMX_OK) {
         return STATUS_UNSUCCESSFUL;
     }
+    vcpuData->IsVmxOn = TRUE;
 
     // VMCLEAR + VMPTRLD
     result = __vmx_vmclear(&vcpuData->VmcsRegionPhysical.QuadPart);
     if (result != VMX_OK) {
         __vmx_off();
+        vcpuData->IsVmxOn = FALSE;
         return STATUS_UNSUCCESSFUL;
     }
 
     result = __vmx_vmptrld(&vcpuData->VmcsRegionPhysical.QuadPart);
     if (result != VMX_OK) {
         __vmx_off();
+        vcpuData->IsVmxOn = FALSE;
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -329,12 +329,14 @@ NTSTATUS HvSetupVmcsControlFields(PVCPU_DATA VcpuData)
     //   累积量不同,guest 看到 TSC 倒退,chromium TimeTicks::Now 非单调 assert 失败。
     //   要正确修复需要跨核 IPI 同步 offset,工程量大。
     //
-    //   现策略:USE_TSC_OFFSETING 仅在 HWBP 启用时由 VMCALL_TOGGLE_HWBP_INTERCEPTS
+    //   现策略:USE_TSC_OFFSETING 仅在 HWBP 启用时由统一 debugger-intercept
     //   动态打开,99% 场景 offset=0 = bare-metal 行为。
     //
     //   代价:无 HWBP 时反作弊 RDTSC 包夹 ReadProcessMemory 能看到 EPT-hook
     //   timing 抖动,Tier 1 #1 部分有效(只在 CE 注册成 debugger + HWBP 启用时
     //   才有补偿)。这是性能 / 稳定性 / 隐身的三角折中。
+    // Debugger CR3/DR exits are published lazily when the first HWBP is active.
+    // Leaving them clear preserves the ordinary Windows CR3 switch path.
     cpuBasedControls = CPU_BASED_ACTIVATE_MSR_BITMAP;
 
     // 阶段 7.10: VT 透明键鼠注入需要拦截 PS/2 端口 0x60/0x64
@@ -379,8 +381,18 @@ NTSTATUS HvSetupVmcsControlFields(PVCPU_DATA VcpuData)
         secondaryControls |= SECONDARY_EXEC_ENABLE_INVPCID;
         // 启用 XSAVES/XRSTORS 支持（如果可用）
         secondaryControls |= SECONDARY_EXEC_ENABLE_XSAVES_XRSTORS;
-        // 启用 VPID 防止每次 VM-Entry 全 TLB 刷新（必须配合 VMCS_CTRL_VIRTUAL_PROCESSOR_IDENTIFIER 写入非零值）
-        secondaryControls |= SECONDARY_EXEC_ENABLE_VPID;
+        // CR3-load exiting 会由软件模拟 MOV CR3。只有 CPU 提供可用的
+        // INVVPID context invalidation 时才启用 VPID，否则无法安全清除旧地址空间翻译。
+        {
+            ULONG64 vpidCaps = __readmsr(MSR_IA32_VMX_EPT_VPID_CAP);
+            const ULONG64 invvpidSupported = (1ULL << 32);
+            const ULONG64 usableContextTypes =
+                (1ULL << 41) | (1ULL << 42) | (1ULL << 43);
+            if ((vpidCaps & invvpidSupported) &&
+                (vpidCaps & usableContextTypes)) {
+                secondaryControls |= SECONDARY_EXEC_ENABLE_VPID;
+            }
+        }
 
         // 关键 (Win11 24H2 + Alder Lake 12 代): 启用 TPAUSE/UMONITOR/UMWAIT (WAITPKG)。
         // Win11 的 HalpTimerStallExecutionProcessor 用 TPAUSE 做省电延迟, guest 执行
@@ -524,14 +536,8 @@ NTSTATUS HvSetupVmcsControlFields(PVCPU_DATA VcpuData)
     // Other VMCS fields
     __vmx_vmwrite(VMCS_LINK_POINTER, 0xFFFFFFFFFFFFFFFF);
 
-    // Exception Bitmap：只拦截 #BP(3),不拦 #DB。
-    //   #BP: P50 软断点命中
-    //   #DB: P118+ 关掉 — hypervisor 拦 #DB 后 vm-entry re-inject 在某些 CPU 上
-    //        与 guest IDT delivery 状态不一致 (DR6 同步 / PENDING_DEBUG_EXCEPTIONS
-    //        语义差), 导致外部 debugger (CE) 设硬断后目标进程崩溃.
-    //        我们 GUI 内置调试器不再依赖 hypervisor 上报 #DB (改为 SetThreadContext 直接装 DR),
-    //        guest 自然走自己 IDT[1] handler / VEH 链处理硬件断点.
-    // EPT Hook 走 EPT Violation 不依赖此位图.
+    // #BP is intercepted for private EPT-shadow software breakpoints. Events
+    // that do not belong to the private registry are reinjected unchanged.
     __vmx_vmwrite(VMCS_CTRL_EXCEPTION_BITMAP, (1u << 3));
 
     // CR0/CR4 Guest-Host Mask 与 Read Shadow
@@ -833,10 +839,10 @@ NTSTATUS HvSetupVmcsHostState(PVCPU_DATA VcpuData)
 
     // Host RSP和RIP
     ULONG64 stackTop = (ULONG64)VcpuData->VmExitStack + 0x10000;
-    ULONG64 hostRsp = (stackTop - 0x80) & ~0xFULL;
+    ULONG64 hostRsp = (stackTop - 0xA0) & ~0xFULL;
     VcpuData->HostRsp = hostRsp;
     
-    RtlZeroMemory((PVOID)hostRsp, 0x80);
+    RtlZeroMemory((PVOID)hostRsp, 0xA0);
     
     __vmx_vmwrite(HOST_RSP, hostRsp);
     __vmx_vmwrite(HOST_RIP, (ULONG64)AsmVmExitHandler);

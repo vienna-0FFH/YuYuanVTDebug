@@ -1,0 +1,72 @@
+*** Begin Patch
+*** Update File: Netr/HvTypes.h
+@@
+ 
+ // VMCB 控制区结构 (偏移 0x000-0x3FF)
+ // 使用 #pragma pack(1) 确保精确布局
+ #pragma pack(push, 1)
+ typedef struct _VMCB_CONTROL_AREA {
+-    // 拦截控制 (0x000 - 0x017)
++    // 拦截控制 (0x000 - 0x01B)
+     USHORT InterceptCrRead;             // +0x000: CR0-15 读取拦截
+     USHORT InterceptCrWrite;            // +0x002: CR0-15 写入拦截
+     USHORT InterceptDrRead;             // +0x004: DR0-15 读取拦截
+     USHORT InterceptDrWrite;            // +0x006: DR0-15 写入拦截
+     ULONG InterceptExceptions;          // +0x008: 异常拦截位图
+-    ULONG InterceptMisc1;               // +0x00C: 指令拦截字 3
+-    ULONG InterceptMisc2;               // +0x010: 指令拦截字 4
+-    ULONG InterceptMisc3;               // +0x014: 指令拦截字 5
+-    UCHAR Reserved1[0x24];              // +0x018 - 0x03B
++    ULONG64 InterceptMisc1;             // +0x00C: 杂项拦截1
++    ULONG64 InterceptMisc2;             // +0x014: 杂项拦截2
++    UCHAR Reserved1[0x20];              // +0x01C - 0x03B
+     
+     // Pause 过滤 (0x03C - 0x03F)
+     USHORT PauseFilterThreshold;        // +0x03C
+     USHORT PauseFilterCount;            // +0x03E
+     
+@@
+     UCHAR Reserved4[0x58];              // +0x580
+     
+     // RSP (0x5D8 - 0x5DF)
+     ULONG64 Rsp;                        // +0x5D8
+     
+-    // Supervisor CET state (0x5E0 - 0x5F7)
+-    ULONG64 SCet;                       // +0x5E0
+-    ULONG64 Ssp;                        // +0x5E8
+-    ULONG64 IsstAddr;                   // +0x5F0
++    // 保留 (0x5E0 - 0x5F7)
++    UCHAR Reserved5[0x18];              // +0x5E0
+     
+     // RAX (0x5F8 - 0x5FF)
+     ULONG64 Rax;                        // +0x5F8
+     
+     // 系统 MSR (0x600 - 0x64F)
+@@
+ #define SVM_INTERCEPT_MSR               (1ULL << 28)
+ #define SVM_INTERCEPT_TASK_SWITCH       (1ULL << 29)
+ #define SVM_INTERCEPT_FERR_FREEZE       (1ULL << 30)
+ #define SVM_INTERCEPT_SHUTDOWN          (1ULL << 31)
+ 
+-// VMCB 拦截位定义 - InterceptMisc2 (偏移 0x010)
++// VMCB 拦截位定义 - InterceptMisc2 (偏移 0x014)
+ #define SVM_INTERCEPT_VMRUN             (1ULL << 0)
+ #define SVM_INTERCEPT_VMMCALL           (1ULL << 1)
+ #define SVM_INTERCEPT_VMLOAD            (1ULL << 2)
+ #define SVM_INTERCEPT_VMSAVE            (1ULL << 3)
+ #define SVM_INTERCEPT_STGI              (1ULL << 4)
+@@
+     // 用 INT64:guest 视角 TSC = real_TSC + Compensation,需要负值。
+     UINT64 LastVmExitHostTsc;       // VM-Exit 入口 __rdtsc() 快照
+     INT64  TscOffsetCompensation;   // 累积 host 处理时间,符号为负
+ 
+     // (撤回 P134/P135: HostPt 字段已删除)
+-
+-    // AMD transient TF owner; assembly never uses this as a host IRQ gate.
+-    volatile LONG SvmSingleStepBlockInterrupts;
+ 
+ } VCPU_DATA, * PVCPU_DATA;
+ 
+ C_ASSERT(FIELD_OFFSET(VCPU_DATA, IsVirtualized) == 0x04);
+ C_ASSERT(FIELD_OFFSET(VCPU_DATA, VmExitStack) == 0x08);
+*** End Patch

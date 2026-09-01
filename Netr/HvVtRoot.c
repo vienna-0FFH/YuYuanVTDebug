@@ -68,8 +68,10 @@
 #include "HvCr3Snoop.h"
 #include "HvTypes.h"
 #include "HvCpu.h"
+#include "HvCore.h"
+#include "HvBroadcast.h"
 #include "HvCompat.h"
-#include "HvNested.h"   // HvNestedGetCurrentVcpu (root mode)
+#include "HvUtils.h"
 #include <intrin.h>
 
 // P122: 全 driver DbgPrint → GUI ring
@@ -95,6 +97,18 @@ extern NTSTATUS AsmVmmCallPhysCopy(
     PSIZE_T OutBytesDone
 );
 
+NTKERNELAPI NTSTATUS PsLookupProcessByProcessId(
+    _In_ HANDLE ProcessId,
+    _Out_ PEPROCESS* Process);
+
+NTKERNELAPI PVOID PsGetProcessPeb(_In_ PEPROCESS Process);
+NTKERNELAPI PVOID PsGetProcessSectionBaseAddress(_In_ PEPROCESS Process);
+NTKERNELAPI VOID MmProbeAndLockProcessPages(
+    _Inout_ PMDL MemoryDescriptorList,
+    _In_ PEPROCESS Process,
+    _In_ KPROCESSOR_MODE AccessMode,
+    _In_ LOCK_OPERATION Operation);
+
 // ============================================================
 // PTE 位域
 // ============================================================
@@ -106,6 +120,14 @@ extern NTSTATUS AsmVmmCallPhysCopy(
 #define VR_PTE_GLOBAL       (1ULL << 8)
 #define VR_PTE_NX           (1ULL << 63)
 #define VR_PTE_PFN_MASK     0x000FFFFFFFFFF000ULL
+#define VR_PDE_2M_PFN_MASK  0x000FFFFFFFE00000ULL
+#define VR_PDPTE_1G_PFN_MASK 0x000FFFFFC0000000ULL
+
+// With PS=1, bit 12 is PAT rather than an address bit. Bits 13..20 (2MB)
+// and 13..29 (1GB) are reserved and must be zero; silently folding them into
+// LeafFlags would make the software walker accept an entry hardware rejects.
+#define VR_PDE_2M_RESERVED_LOW_MASK   0x00000000001FE000ULL
+#define VR_PDPTE_1G_RESERVED_LOW_MASK 0x000000003FFFE000ULL
 
 #define VR_PML4_INDEX(va)   (((UINT64)(va) >> 39) & 0x1FF)
 #define VR_PDPT_INDEX(va)   (((UINT64)(va) >> 30) & 0x1FF)
@@ -113,6 +135,8 @@ extern NTSTATUS AsmVmmCallPhysCopy(
 #define VR_PT_INDEX(va)     (((UINT64)(va) >> 12) & 0x1FF)
 
 #define VR_TAG              'rVvH'
+#define VR_COPY_TAG         'cVvH'
+#define VR_REQUEST_TAG      'qVvH'
 
 // 私有 PT entry 标志: P|RW|NX|Global (内核数据,绝不可执行)
 #define VR_LEAF_FLAGS       (VR_PTE_PRESENT | VR_PTE_RW | VR_PTE_NX | VR_PTE_GLOBAL)
@@ -123,7 +147,22 @@ extern NTSTATUS AsmVmmCallPhysCopy(
 // 全局
 // ============================================================
 
-BOOLEAN g_VtRootEnabled = FALSE;
+volatile BOOLEAN g_VtRootEnabled = FALSE;
+
+typedef enum _VR_PUBLICATION_STATE {
+    VrPublicationOffline = 0,
+    VrPublicationInitializing,
+    VrPublicationOnline,
+    VrPublicationFailed,
+    VrPublicationQuiescing,
+    VrPublicationRetained
+} VR_PUBLICATION_STATE;
+
+static volatile LONG g_VrPublicationState = VrPublicationOffline;
+static EX_RUNDOWN_REF g_VrInvocationRundown;
+static BOOLEAN g_VrInvocationRundownInitialized = FALSE;
+static KEVENT g_VrCleanupCompleteEvent;
+static BOOLEAN g_VrCleanupEventInitialized = FALSE;
 
 static ULONG  g_VrSharedPml4Index = 0;
 static UINT64 g_VrBaseVa          = 0;
@@ -136,61 +175,113 @@ static PVOID  g_VrSharedPtVa   = NULL;
 static UINT64 g_VrSharedPtPa   = 0;
 static PVOID  g_VrBackingVa    = NULL;
 static UINT64 g_VrBackingPa    = 0;
+static UINT64 g_VrHostCr3      = 0;
+static UINT64 g_VrPml4Entry    = 0;
 
 // ============================================================
-// PID → resolved user CR3 cache (2026-06-17)
+// Lifecycle-bound PID → resolved user CR3 cache
 // ============================================================
 //
-// HvVtRootRootCopyByPid 在 root mode 收集 24 个候选 CR3, 用 MZ 锚点验证,
-// 第一个验证通过且 walk 成功的 CR3 就是真 user CR3。这条信息**只在 root
-// mode 知道**,PASSIVE 层(如 HvCloak)拿不到。
-//
-// 现在加一层 cache: walk 成功后 root mode 写 (pid, cr3) 到这张表,PASSIVE
-// 层调 HvVtRootGetResolvedUserCr3(pid, &cr3) 读出来。Cloak 用这个 CR3 走
-// EnumWorkingSet 就能拿到真 user-half PFN, 不再依赖 KeStackAttachProcess +
-// __readcr3() (KVAS 下永远拿到 shadow CR3)。
-//
-// 256 槽,按 PID 直接哈希 (pid % 256)。冲突时新值覆盖旧值 —— 反正进程退出
-// 后 PID 会被复用,cache 中的 stale 项也会被新进程覆盖,代价可接受。
-//
-// 读写都是单 64-bit InterlockedExchange / InterlockedCompareExchange,无锁。
+// Entries are keyed by PID plus PsGetProcessCreateTimeQuadPart. A reused PID
+// cannot inherit a stale CR3. Access is serialized because the three identity
+// fields must be observed as one snapshot.
 
-#define VR_CR3_CACHE_SLOTS  256
-#define VR_CR3_CACHE_MASK   (VR_CR3_CACHE_SLOTS - 1)
+#define VR_CR3_CACHE_SLOTS          256
+#define VR_CR3_CACHE_MASK           (VR_CR3_CACHE_SLOTS - 1)
+#define VR_PROCESS_REQUEST_MAGIC    0x5152545652545648ULL
+#define VR_PROCESS_REQUEST_VERSION  2
+#define VR_PROCESS_MAX_CANDIDATES   24
 
 typedef struct _VR_CR3_CACHE_ENTRY {
-    volatile UINT64 PidAndCr3;   // 高 16 bit = PID, 低 48 bit = CR3 >> 12 (PFN)
-                                 // 0 = 空槽 (PID=0 不会进缓存)
+    ULONG Pid;
+    ULONG Reserved;
+    UINT64 CreateTime;
+    UINT64 Cr3;
 } VR_CR3_CACHE_ENTRY;
 
+typedef struct _VR_PROCESS_REQUEST {
+    UINT64 Magic;
+    ULONG Size;
+    ULONG Version;
+    ULONG TargetPid;
+    ULONG CandidateCount;
+    UINT64 CreateTime;
+    UINT64 PebGva;
+    UINT64 ImageBase;
+    UINT64 PebAnchorPagePa;
+    UINT64 ImageAnchorPagePa;
+    UINT64 TargetGva;
+    PUCHAR Bounce;
+    SIZE_T TransferSize;
+    UINT64 ResolvedCr3;
+    UINT64 ResultPageSize;
+    UINT64 Candidates[VR_PROCESS_MAX_CANDIDATES];
+} VR_PROCESS_REQUEST, *PVR_PROCESS_REQUEST;
+
+typedef struct _VR_LOCKED_ANCHORS {
+    PMDL PebMdl;
+    PMDL ImageMdl;
+    BOOLEAN PebLocked;
+    BOOLEAN ImageLocked;
+} VR_LOCKED_ANCHORS, *PVR_LOCKED_ANCHORS;
+
 static VR_CR3_CACHE_ENTRY g_VrPidCr3Cache[VR_CR3_CACHE_SLOTS] = { 0 };
+static KSPIN_LOCK g_VrPidCr3CacheLock;
+static BOOLEAN g_VrPidCr3CacheInitialized = FALSE;
 
-// PID + CR3 → packed 64-bit. PID 限 16-bit (PID 一般 < 2^20, 我们截高 16-bit
-// 仍能区分大多数; 不行的话 PID=0xFFFFF 仍会命中, 偶发 cache miss 不致命)。
-static __forceinline UINT64
-VrPackPidCr3(_In_ ULONG Pid, _In_ UINT64 Cr3)
+static BOOLEAN
+VrCacheLookup(
+    _In_ ULONG Pid,
+    _In_ UINT64 CreateTime,
+    _Out_ PUINT64 OutCr3)
 {
-    UINT64 pfn = (Cr3 >> 12) & 0xFFFFFFFFFFFFULL;   // 48-bit PFN
-    UINT64 pidHi = ((UINT64)(Pid & 0xFFFF)) << 48;
-    return pidHi | pfn;
+    KIRQL oldIrql;
+    VR_CR3_CACHE_ENTRY entry;
+
+    *OutCr3 = 0;
+    if (!g_VrPidCr3CacheInitialized || Pid == 0 || CreateTime == 0) {
+        return FALSE;
+    }
+
+    KeAcquireSpinLock(&g_VrPidCr3CacheLock, &oldIrql);
+    if (g_VrPidCr3CacheInitialized) {
+        entry = g_VrPidCr3Cache[Pid & VR_CR3_CACHE_MASK];
+    } else {
+        RtlZeroMemory(&entry, sizeof(entry));
+    }
+    KeReleaseSpinLock(&g_VrPidCr3CacheLock, oldIrql);
+
+    if (entry.Pid != Pid || entry.CreateTime != CreateTime || entry.Cr3 == 0) {
+        return FALSE;
+    }
+    *OutCr3 = entry.Cr3 & VR_PTE_PFN_MASK;
+    return TRUE;
 }
 
-static __forceinline VOID
-VrUnpackPidCr3(_In_ UINT64 Packed, _Out_ PULONG Pid, _Out_ PUINT64 Cr3)
+static VOID
+VrCacheStore(
+    _In_ ULONG Pid,
+    _In_ UINT64 CreateTime,
+    _In_ UINT64 Cr3)
 {
-    *Pid = (ULONG)((Packed >> 48) & 0xFFFF);
-    *Cr3 = (Packed & 0xFFFFFFFFFFFFULL) << 12;
-}
+    KIRQL oldIrql;
+    ULONG slot;
 
-// Root-mode 写入:成功 walk 后调。无锁单 64-bit 写。
-static __forceinline VOID
-VrCacheSet(_In_ ULONG Pid, _In_ UINT64 Cr3)
-{
-    if (Pid == 0 || Cr3 == 0) return;
-    ULONG slot = Pid & VR_CR3_CACHE_MASK;
-    UINT64 packed = VrPackPidCr3(Pid, Cr3);
-    InterlockedExchange64((volatile LONG64*)&g_VrPidCr3Cache[slot].PidAndCr3,
-                          (LONG64)packed);
+    Cr3 &= VR_PTE_PFN_MASK;
+    if (!g_VrPidCr3CacheInitialized || Pid == 0 ||
+        CreateTime == 0 || Cr3 == 0) {
+        return;
+    }
+
+    slot = Pid & VR_CR3_CACHE_MASK;
+    KeAcquireSpinLock(&g_VrPidCr3CacheLock, &oldIrql);
+    if (g_VrPidCr3CacheInitialized) {
+        g_VrPidCr3Cache[slot].Pid = Pid;
+        g_VrPidCr3Cache[slot].Reserved = 0;
+        g_VrPidCr3Cache[slot].CreateTime = CreateTime;
+        g_VrPidCr3Cache[slot].Cr3 = Cr3;
+    }
+    KeReleaseSpinLock(&g_VrPidCr3CacheLock, oldIrql);
 }
 
 // ============================================================
@@ -259,6 +350,27 @@ static NTSTATUS VrFindFreePml4Slot(
     return STATUS_NOT_FOUND;
 }
 
+static volatile UINT64* VrMapHostPml4(
+    _In_ UINT64 HostCr3,
+    _Out_ PBOOLEAN NeedsUnmap)
+{
+    PHYSICAL_ADDRESS pml4Pa;
+
+    *NeedsUnmap = FALSE;
+    pml4Pa.QuadPart = (LONGLONG)(HostCr3 & VR_PTE_PFN_MASK);
+    if (pml4Pa.QuadPart == 0) return NULL;
+    return (volatile UINT64*)MmGetVirtualForPhysical(pml4Pa);
+}
+
+static VOID VrUnmapHostPml4(
+    _In_opt_ volatile UINT64* Pml4Va,
+    _In_ BOOLEAN NeedsUnmap)
+{
+    if (Pml4Va && NeedsUnmap) {
+        MmUnmapIoSpace((PVOID)Pml4Va, PAGE_SIZE);
+    }
+}
+
 /*
  * IPI:让每个 CPU 在本核 invlpg 自己的 ScratchVa。用于
  *   - 初始安装后(防御性,清掉历史 stale TLB)
@@ -283,17 +395,14 @@ static ULONG_PTR VrInvlpgSelfIpi(_In_ ULONG_PTR Ctx)
 // HvVtRootInitializeAll: 一次性建立 PT 岛 + 每 CPU 分片
 // ============================================================
 
-// 2026-06-26: 调试器物理直通开关. 关闭后 g_VtRootEnabled 保持 FALSE,
-// HvVtRoot* / HvPhysAccess 的所有 API 在 !g_VtRootEnabled 时走 STATUS_DEVICE_NOT_READY
-// 或 fallback 路径. 用户要求暂时关闭物理直通排查问题.
+// 调试器物理直通编译开关。运行时仍以 g_VtRootEnabled 为准；只有 PT 岛
+// 完整初始化成功后才允许 VMCALL 读写。
 #ifndef HV_ENABLE_VT_ROOT
-#define HV_ENABLE_VT_ROOT 0
+#define HV_ENABLE_VT_ROOT 1
 #endif
 
 NTSTATUS HvVtRootInitializeAll(VOID)
 {
-    g_VtRootEnabled = FALSE;
-
 #if !HV_ENABLE_VT_ROOT
     DbgPrint("[VtRoot V2] HV_ENABLE_VT_ROOT=0, init skipped\n");
     return STATUS_SUCCESS;
@@ -312,6 +421,33 @@ NTSTATUS HvVtRootInitializeAll(VOID)
         return STATUS_INVALID_LEVEL;
     }
 
+    if (InterlockedCompareExchange(
+            &g_VrPublicationState,
+            VrPublicationInitializing,
+            VrPublicationOffline) != VrPublicationOffline) {
+        return STATUS_DEVICE_BUSY;
+    }
+    if (!g_VrInvocationRundownInitialized) {
+        ExInitializeRundownProtection(&g_VrInvocationRundown);
+        g_VrInvocationRundownInitialized = TRUE;
+    } else {
+        ExReInitializeRundownProtection(&g_VrInvocationRundown);
+    }
+    if (!g_VrCleanupEventInitialized) {
+        KeInitializeEvent(
+            &g_VrCleanupCompleteEvent, NotificationEvent, FALSE);
+        g_VrCleanupEventInitialized = TRUE;
+    } else {
+        KeClearEvent(&g_VrCleanupCompleteEvent);
+    }
+
+    g_VtRootEnabled = FALSE;
+    g_VrHostCr3 = 0;
+    g_VrPml4Entry = 0;
+    RtlZeroMemory(g_VrPidCr3Cache, sizeof(g_VrPidCr3Cache));
+    KeInitializeSpinLock(&g_VrPidCr3CacheLock);
+    g_VrPidCr3CacheInitialized = TRUE;
+
     NTSTATUS s;
 
     // 1) 分配 PDPT / PD / PT / Backing 四张 pool 页
@@ -323,6 +459,15 @@ NTSTATUS HvVtRootInitializeAll(VOID)
     if (!NT_SUCCESS(s)) { DbgPrint("[VtRoot V2] PT alloc fail 0x%X\n", s); goto fail; }
     s = VrAllocateAndGetPa(&g_VrBackingVa, &g_VrBackingPa);
     if (!NT_SUCCESS(s)) { DbgPrint("[VtRoot V2] backing alloc fail 0x%X\n", s); goto fail; }
+
+    if (!HvPhysIsRamRangeRootSafe(g_VrSharedPdptPa, PAGE_SIZE) ||
+        !HvPhysIsRamRangeRootSafe(g_VrSharedPdPa, PAGE_SIZE) ||
+        !HvPhysIsRamRangeRootSafe(g_VrSharedPtPa, PAGE_SIZE) ||
+        !HvPhysIsRamRangeRootSafe(g_VrBackingPa, PAGE_SIZE)) {
+        DbgPrint("[VtRoot V2] RAM range snapshot unavailable or PT pages invalid\n");
+        s = STATUS_DEVICE_CONFIGURATION_ERROR;
+        goto fail;
+    }
 
     // 2) 填 PT[0..total-1] → backing (空闲态)
     {
@@ -350,33 +495,15 @@ NTSTATUS HvVtRootInitializeAll(VOID)
     //      反向索引, 这是最干净的路径(零额外映射)
     //   b) MmMapIoSpace(MmCached) — 经典路径
     //   c) MmMapIoSpace(MmNonCached) — HAL cache attribute conflict 时
-    UINT64 hostCr3 = __readcr3() & VR_PTE_PFN_MASK;
-    PHYSICAL_ADDRESS pml4Pa;
-    pml4Pa.QuadPart = (LONGLONG)hostCr3;
-
-    volatile UINT64* pml4Va = NULL;
-    BOOLEAN needUnmap = FALSE;
-
-    // 路径 a: MmGetVirtualForPhysical
-    PVOID gvfp = MmGetVirtualForPhysical(pml4Pa);
-    if (gvfp) {
-        pml4Va = (volatile UINT64*)gvfp;
-        DbgPrint("[VtRoot V2] PML4 KVA via MmGetVirtualForPhysical @ %p (hostCr3=0x%llX)\n",
-                 pml4Va, hostCr3);
-    } else {
-        // 路径 b/c: MmMapIoSpace 兜底
-        pml4Va = (volatile UINT64*)MmMapIoSpace(pml4Pa, PAGE_SIZE, MmCached);
-        if (pml4Va) {
-            needUnmap = TRUE;
-            DbgPrint("[VtRoot V2] PML4 mapped via MmMapIoSpace(MmCached) @ %p\n", pml4Va);
-        } else {
-            pml4Va = (volatile UINT64*)MmMapIoSpace(pml4Pa, PAGE_SIZE, MmNonCached);
-            if (pml4Va) {
-                needUnmap = TRUE;
-                DbgPrint("[VtRoot V2] PML4 mapped via MmMapIoSpace(MmNonCached) @ %p\n", pml4Va);
-            }
-        }
+    if (g_HvSystemCr3 == 0) {
+        DbgPrint("[VtRoot V2] System CR3 unavailable, abort\n");
+        s = STATUS_DEVICE_NOT_READY;
+        goto fail;
     }
+
+    UINT64 hostCr3 = HvUtilsGetSystemCr3() & VR_PTE_PFN_MASK;
+    BOOLEAN needUnmap = FALSE;
+    volatile UINT64* pml4Va = VrMapHostPml4(hostCr3, &needUnmap);
 
     if (!pml4Va) {
         DbgPrint("[VtRoot V2] all PML4 mapping paths failed (hostCr3=0x%llX)\n", hostCr3);
@@ -388,17 +515,19 @@ NTSTATUS HvVtRootInitializeAll(VOID)
     s = VrFindFreePml4Slot(pml4Va, &slot);
     if (!NT_SUCCESS(s)) {
         DbgPrint("[VtRoot V2] no free PML4 slot in kernel half\n");
-        if (needUnmap) MmUnmapIoSpace((PVOID)pml4Va, PAGE_SIZE);
+        VrUnmapHostPml4(pml4Va, needUnmap);
         goto fail;
     }
 
     // 6) 原子安装 PML4 entry → PDPT
     UINT64 pml4Entry = (g_VrSharedPdptPa & VR_PTE_PFN_MASK) | VR_INTR_FLAGS;
     InterlockedExchange64((LONG64*)&pml4Va[slot], (LONG64)pml4Entry);
-    if (needUnmap) MmUnmapIoSpace((PVOID)pml4Va, PAGE_SIZE);
+    VrUnmapHostPml4(pml4Va, needUnmap);
 
     g_VrSharedPml4Index = slot;
     g_VrBaseVa = VrSlotToBaseVa(slot);
+    g_VrHostCr3 = hostCr3;
+    g_VrPml4Entry = pml4Entry;
 
     // 7) 配置每 CPU 的 gadget slice (per-CPU 4KB scratch VA + PT entry 指针)
     {
@@ -419,6 +548,15 @@ NTSTATUS HvVtRootInitializeAll(VOID)
     //    这些刚映射出来的 VA 项,但保险)
     KeIpiGenericCall(VrInvlpgSelfIpi, 0);
 
+    s = HvBroadcastVmCallToAllCpus(1);
+    if (!NT_SUCCESS(s)) {
+        DbgPrint("[VtRoot V2] all-CPU VMCALL health gate failed: 0x%X\n", s);
+        HvVtRootCleanupAll();
+        return s;
+    }
+
+    InterlockedExchange(&g_VrPublicationState, VrPublicationOnline);
+    KeMemoryBarrier();
     g_VtRootEnabled = TRUE;
     DbgPrint("[VtRoot V2] === ENABLED. PML4[%u] @ baseVA=0x%llX, %u CPU slices ===\n",
              slot, g_VrBaseVa, total);
@@ -432,6 +570,9 @@ fail:
     g_VrBackingPa = g_VrSharedPtPa = g_VrSharedPdPa = g_VrSharedPdptPa = 0;
     g_VrBaseVa = 0;
     g_VrSharedPml4Index = 0;
+    g_VrHostCr3 = 0;
+    g_VrPml4Entry = 0;
+    InterlockedExchange(&g_VrPublicationState, VrPublicationFailed);
     return s;
 }
 
@@ -441,17 +582,59 @@ fail:
 
 VOID HvVtRootCleanupAll(VOID)
 {
+    BOOLEAN mayFreeTables = TRUE;
+    LONG previousState;
+    KIRQL cacheIrql;
+
+    for (;;) {
+        previousState = g_VrPublicationState;
+        if (previousState == VrPublicationOffline) return;
+        if (previousState == VrPublicationRetained) return;
+        if (previousState == VrPublicationQuiescing) {
+            if (g_VrCleanupEventInitialized &&
+                KeGetCurrentIrql() == PASSIVE_LEVEL) {
+                (VOID)KeWaitForSingleObject(
+                    &g_VrCleanupCompleteEvent,
+                    Executive, KernelMode, FALSE, NULL);
+            }
+            return;
+        }
+        if (InterlockedCompareExchange(
+                &g_VrPublicationState,
+                VrPublicationQuiescing,
+                previousState) == previousState) {
+            break;
+        }
+    }
+
     g_VtRootEnabled = FALSE;
+    KeMemoryBarrier();
+    if (g_VrInvocationRundownInitialized &&
+        previousState != VrPublicationOffline) {
+        ExWaitForRundownProtectionRelease(&g_VrInvocationRundown);
+    }
+    KeAcquireSpinLock(&g_VrPidCr3CacheLock, &cacheIrql);
+    g_VrPidCr3CacheInitialized = FALSE;
+    RtlZeroMemory(g_VrPidCr3Cache, sizeof(g_VrPidCr3Cache));
+    KeReleaseSpinLock(&g_VrPidCr3CacheLock, cacheIrql);
 
     // 1) 原子零 PML4 entry (前置条件:slot != 0 表示安装过)
     if (g_VrSharedPml4Index >= 256 && g_VrSharedPml4Index < 512) {
-        UINT64 hostCr3 = __readcr3() & VR_PTE_PFN_MASK;
-        PHYSICAL_ADDRESS pml4Pa;
-        pml4Pa.QuadPart = (LONGLONG)hostCr3;
-        volatile UINT64* pml4Va = (volatile UINT64*)MmMapIoSpace(pml4Pa, PAGE_SIZE, MmCached);
+        BOOLEAN needUnmap = FALSE;
+        volatile UINT64* pml4Va = VrMapHostPml4(g_VrHostCr3, &needUnmap);
         if (pml4Va) {
-            InterlockedExchange64((LONG64*)&pml4Va[g_VrSharedPml4Index], 0);
-            MmUnmapIoSpace((PVOID)pml4Va, PAGE_SIZE);
+            volatile LONG64* entry =
+                (volatile LONG64*)&pml4Va[g_VrSharedPml4Index];
+            LONG64 current = *entry;
+            if (((UINT64)current & VR_PTE_PFN_MASK) ==
+                (g_VrPml4Entry & VR_PTE_PFN_MASK)) {
+                LONG64 previous = InterlockedCompareExchange64(
+                    entry, 0, current);
+                if (previous != current) mayFreeTables = FALSE;
+            }
+            VrUnmapHostPml4(pml4Va, needUnmap);
+        } else {
+            mayFreeTables = FALSE;
         }
 
         // 2) IPI 全核 invlpg 自己的 ScratchVa (清掉 stale TLB)
@@ -467,15 +650,117 @@ VOID HvVtRootCleanupAll(VOID)
     }
 
     // 4) 释放 pool 页
-    VrFreeIfAllocated(&g_VrBackingVa);
-    VrFreeIfAllocated(&g_VrSharedPtVa);
-    VrFreeIfAllocated(&g_VrSharedPdVa);
-    VrFreeIfAllocated(&g_VrSharedPdptVa);
-    g_VrBackingPa = g_VrSharedPtPa = g_VrSharedPdPa = g_VrSharedPdptPa = 0;
-    g_VrBaseVa = 0;
-    g_VrSharedPml4Index = 0;
+    if (mayFreeTables) {
+        VrFreeIfAllocated(&g_VrBackingVa);
+        VrFreeIfAllocated(&g_VrSharedPtVa);
+        VrFreeIfAllocated(&g_VrSharedPdVa);
+        VrFreeIfAllocated(&g_VrSharedPdptVa);
+        g_VrBackingPa = g_VrSharedPtPa = g_VrSharedPdPa = g_VrSharedPdptPa = 0;
+        g_VrBaseVa = 0;
+        g_VrSharedPml4Index = 0;
+        g_VrHostCr3 = 0;
+        g_VrPml4Entry = 0;
+    } else {
+        DbgPrint("[VtRoot V2] PML4 unlink failed; retaining PT island pages\n");
+    }
+    if (g_VrCleanupEventInitialized) {
+        KeSetEvent(&g_VrCleanupCompleteEvent, IO_NO_INCREMENT, FALSE);
+    }
+    KeMemoryBarrier();
+    InterlockedExchange(
+        &g_VrPublicationState,
+        mayFreeTables ? VrPublicationOffline : VrPublicationRetained);
 
     DbgPrint("[VtRoot V2] cleaned up\n");
+}
+
+static VOID VrRevokePublication(VOID)
+{
+    g_VtRootEnabled = FALSE;
+    KeMemoryBarrier();
+    (VOID)InterlockedCompareExchange(
+        &g_VrPublicationState,
+        VrPublicationFailed,
+        VrPublicationOnline);
+}
+
+NTSTATUS
+HvVtRootInvokeService(
+    _In_ UINT64 TargetCr3,
+    _In_ UINT64 TargetGva,
+    _Inout_opt_ PVOID KernelBuffer,
+    _In_ SIZE_T Size,
+    _In_ ULONG Mode,
+    _Out_ PSIZE_T OutResult)
+{
+    NTSTATUS status = STATUS_DEVICE_NOT_READY;
+    BOOLEAN invalidateProcessor = FALSE;
+    BOOLEAN revokePublication = FALSE;
+    BOOLEAN irqlRaised = FALSE;
+    ULONG processorNumber = MAXULONG;
+    KIRQL oldIrql = PASSIVE_LEVEL;
+    CPU_VENDOR vendor;
+
+    if (!OutResult) return STATUS_INVALID_PARAMETER;
+    *OutResult = 0;
+    if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
+
+    if (HvIsPowerOffline() ||
+        !g_VtRootEnabled ||
+        g_VrPublicationState != VrPublicationOnline ||
+        !g_VrInvocationRundownInitialized) {
+        return STATUS_DEVICE_NOT_READY;
+    }
+    if (!ExAcquireRundownProtection(&g_VrInvocationRundown)) {
+        return STATUS_DELETE_PENDING;
+    }
+
+    KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
+    irqlRaised = TRUE;
+    processorNumber = KeGetCurrentProcessorNumber();
+
+    if (!g_VtRootEnabled ||
+        g_VrPublicationState != VrPublicationOnline) {
+        status = STATUS_DELETE_PENDING;
+        goto ExitRaised;
+    }
+    if (HvIsPowerOffline() || !g_HypervisorContext.IsActive) {
+        revokePublication = TRUE;
+        goto ExitRaised;
+    }
+    if (!HvIsCurrentProcessorVirtualized()) {
+        invalidateProcessor = TRUE;
+        revokePublication = TRUE;
+        goto ExitRaised;
+    }
+
+    vendor = HvGetCpuVendor();
+    __try {
+        if (vendor == CPU_VENDOR_AMD) {
+            status = AsmVmmCallPhysCopy(
+                TargetCr3, TargetGva, KernelBuffer, Size, Mode, OutResult);
+        } else if (vendor == CPU_VENDOR_INTEL) {
+            status = AsmVmCallPhysCopy(
+                TargetCr3, TargetGva, KernelBuffer, Size, Mode, OutResult);
+        } else {
+            status = STATUS_NOT_SUPPORTED;
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        status = GetExceptionCode();
+        invalidateProcessor = (status == STATUS_ILLEGAL_INSTRUCTION);
+        status = STATUS_DEVICE_NOT_READY;
+        revokePublication = TRUE;
+    }
+
+ExitRaised:
+    if (invalidateProcessor && processorNumber != MAXULONG) {
+        HvInvalidateProcessorVirtualization(processorNumber);
+    }
+    if (irqlRaised) KeLowerIrql(oldIrql);
+    if (revokePublication) VrRevokePublication();
+    ExReleaseRundownProtection(&g_VrInvocationRundown);
+    return status;
 }
 
 // ============================================================
@@ -549,6 +834,7 @@ VrRootWalkAndCopyOnePage(
     _Out_ PSIZE_T BytesDone)
 {
     if (BytesDone) *BytesDone = 0;
+    Quiet = TRUE;
 
     // 2026-06-16: GVA sanity check — TargetGva 必须是 canonical user 半空间。
     // Multi-CR3 candidate 场景: 上层从某进程 EPROCESS 取 PEB 字段, 但 candidate CR3
@@ -569,7 +855,7 @@ VrRootWalkAndCopyOnePage(
     // 2026-06-16: CR3 sanity — snoop ring 可能有非法 CR3 (老进程的 / 边缘 entry)。
     // 不校验直接 VrRedirectScratch 到非法 PA → CPU 读 MMIO/越界 → host #MC/triple fault。
     // PA 必须在 1TB 内 + 非零 + 4KB 对齐 (cr3Base 已 mask 高位, 这里再 sanity)。
-    if (cr3Base == 0 || cr3Base < 0x1000ULL || cr3Base >= 0x10000000000ULL) {
+    if (!HvPhysIsRamRangeRootSafe(cr3Base, PAGE_SIZE)) {
         return STATUS_INVALID_PARAMETER;
     }
 
@@ -589,9 +875,7 @@ VrRootWalkAndCopyOnePage(
     //   - 0xC0000000 以上 (32-bit PCI BAR 常用)
     // 简化判定: PA 落在 0xC0000000 以上但 < 0x100000000 (4GB 以下高位) 视为危险。
     // user-mode PEB/Image 物理页几乎不可能落这里 (Win 不把 user heap 分到 reserved 区)。
-    #define VR_PA_SANE(pa) \
-        ((pa) != 0 && (pa) >= 0x1000ULL && (pa) < 0x10000000000ULL && \
-         !((pa) >= 0xC0000000ULL && (pa) < 0x100000000ULL))
+    #define VR_PA_SANE(pa) HvPhysIsRamRangeRootSafe((pa), PAGE_SIZE)
 
     VrRedirectScratch(Vcpu, cr3Base);
     UINT64 pml4e = ((volatile UINT64*)scratch)[pml4i];
@@ -665,9 +949,7 @@ VrRootWalkAndCopyOnePage(
     UINT64 dataPageBase = targetPa & ~0xFFFULL;
 
     // 2026-06-16: Leaf PA sanity check — 见 VR_PA_SANE 宏(包含 MMIO 黑名单)。
-    if (dataPageBase == 0 || dataPageBase < 0x1000ULL ||
-        dataPageBase >= 0x10000000000ULL ||
-        (dataPageBase >= 0xC0000000ULL && dataPageBase < 0x100000000ULL)) {
+    if (!HvPhysIsRamRangeRootSafe(dataPageBase, PAGE_SIZE)) {
         if (!Quiet) {
             DbgPrint("[VtRoot] Walk FAIL: leaf PA out of range / MMIO cr3=0x%llX gva=0x%llX pa=0x%llX\n",
                      TargetCr3, TargetGva, dataPageBase);
@@ -685,9 +967,9 @@ VrRootWalkAndCopyOnePage(
     PUCHAR src = scratch + inPageOff;
 
     if (IsWrite) {
-        for (SIZE_T i = 0; i < chunk; i++) src[i] = KernelBuf[i];
+        RtlCopyMemory(src, KernelBuf, chunk);
     } else {
-        for (SIZE_T i = 0; i < chunk; i++) KernelBuf[i] = src[i];
+        RtlCopyMemory(KernelBuf, src, chunk);
     }
 
     *BytesDone = chunk;
@@ -695,88 +977,62 @@ VrRootWalkAndCopyOnePage(
 }
 
 /*
- * VrRootValidateCr3OwnsProcess —— 在 root mode 验证 candidate CR3 是不是真属于
- * eproc 进程, 防止 multi-candidate 路径(尤其 snoop ring 含其他进程 CR3)
- * "假成功"读到错的 PA。
- *
- * 镜像 HvPhysValidateCr3OwnsProcess (HvPhysAccess.c) 的双重 MZ 锚点算法:
- *   1. 取 eproc.EPROCESS+PebOff = PEB user VA, 必须在 user 半空间
- *   2. 用 candidate CR3 走 PEB, 读 PEB+0x10 = ImageBaseAddress
- *   3. ImageBase 必须 4K 对齐 + user 半空间
- *   4. 用 candidate CR3 走 ImageBase, 读首 2 字节, 必须 'MZ' (0x5A4D)
- *
- * 假阳性: 两个无关进程同时在 pebGva 处都有有效 PEB + ImageBase 又能 walk
- * + 起首 MZ —— 实际不可能。
- *
- * 返回:
- *   STATUS_SUCCESS         — candidate 几乎确定属于 eproc
- *   STATUS_NOT_SUPPORTED   — eproc 没 PEB (System / Idle / Minimal),
- *                            调用方按老语义接受 (无法验证 → 仍尝试)
- *   STATUS_NOT_FOUND       — candidate 不属于 eproc, 跳到下一个
- *   其他                   — walk 出错, 跳到下一个
+ * Validate a PASSIVE-captured process identity snapshot entirely through the
+ * candidate CR3. Both anchor pages are MDL-locked while the request is live.
  */
 static NTSTATUS
-VrRootValidateCr3OwnsProcess(
+VrRootQueryLeaf(
     _Inout_ PVCPU_DATA Vcpu,
-    _In_ PEPROCESS Eproc,
+    _In_ UINT64 TargetCr3,
+    _In_ UINT64 TargetGva,
+    _Out_ PUINT64 OutHpa,
+    _Out_ PUINT64 OutPageSize,
+    _Out_opt_ PHV_VTROOT_LEAF_PTE_INFO OutLeafInfo);
+
+static NTSTATUS
+VrRootValidateCr3Snapshot(
+    _Inout_ PVCPU_DATA Vcpu,
+    _In_ UINT64 PebGva,
+    _In_ UINT64 ExpectedImageBase,
+    _In_ UINT64 ExpectedPebPagePa,
+    _In_ UINT64 ExpectedImagePagePa,
     _In_ UINT64 CandidateCr3)
 {
-    // 1) 取 PEB user VA
-    if (g_HvPhysRootCtx.PebOff == 0) {
+    UINT64 hpa = 0;
+    UINT64 pageSize = 0;
+    NTSTATUS status;
+
+    if (PebGva < 0x10000ULL || PebGva >= 0x800000000000ULL ||
+        ExpectedImageBase < 0x10000ULL ||
+        ExpectedImageBase >= 0x800000000000ULL ||
+        (ExpectedImageBase & (PAGE_SIZE - 1)) != 0 ||
+        (ExpectedPebPagePa & (PAGE_SIZE - 1)) != 0 ||
+        (ExpectedImagePagePa & (PAGE_SIZE - 1)) != 0 ||
+        !HvPhysIsRamRangeRootSafe(ExpectedPebPagePa, PAGE_SIZE) ||
+        !HvPhysIsRamRangeRootSafe(ExpectedImagePagePa, PAGE_SIZE)) {
         return STATUS_NOT_SUPPORTED;
     }
-    UINT64 pebGva = *(UINT64*)((PUCHAR)Eproc + g_HvPhysRootCtx.PebOff);
-    if (pebGva == 0) {
-        return STATUS_NOT_SUPPORTED;  // System / Idle / Minimal
-    }
-    if (pebGva < 0x10000ULL || pebGva >= 0x800000000000ULL) {
+    if ((PebGva & (PAGE_SIZE - 1)) + 0x18 > PAGE_SIZE) {
         return STATUS_NOT_SUPPORTED;
     }
 
-    // PEB.ImageBaseAddress 在 PEB+0x10, 必须不跨页 (PEB 极少跨页)
-    SIZE_T inPageOff = (SIZE_T)(pebGva & 0xFFFULL);
-    if (inPageOff + 0x18 > PAGE_SIZE) {
-        return STATUS_NOT_SUPPORTED;
-    }
-
-    // 2) 用 candidate CR3 walk PEB+0x10, 读 8 字节 ImageBase
-    UINT64 imageBase = 0;
-    SIZE_T doneIb = 0;
-    NTSTATUS s = VrRootWalkAndCopyOnePage(
-        Vcpu, CandidateCr3, pebGva + 0x10,
-        (PUCHAR)&imageBase, sizeof(imageBase),
-        FALSE,  // read
-        TRUE,   // quiet
-        &doneIb);
-    if (!NT_SUCCESS(s) || doneIb != sizeof(imageBase)) {
+    status = VrRootQueryLeaf(
+        Vcpu, CandidateCr3, PebGva + 0x10,
+        &hpa, &pageSize, NULL);
+    if (!NT_SUCCESS(status) ||
+        (hpa & VR_PTE_PFN_MASK) != ExpectedPebPagePa) {
         return STATUS_NOT_FOUND;
     }
 
-    // 3) ImageBase sanity
-    if (imageBase < 0x10000ULL || imageBase >= 0x800000000000ULL) {
+    hpa = 0;
+    pageSize = 0;
+    status = VrRootQueryLeaf(
+        Vcpu, CandidateCr3, ExpectedImageBase,
+        &hpa, &pageSize, NULL);
+    if (!NT_SUCCESS(status) ||
+        (hpa & VR_PTE_PFN_MASK) != ExpectedImagePagePa) {
         return STATUS_NOT_FOUND;
     }
-    if (imageBase & 0xFFFULL) {
-        return STATUS_NOT_FOUND;
-    }
-
-    // 4) 用 candidate CR3 walk ImageBase, 读首 2 字节 (MZ magic)
-    USHORT magic = 0;
-    SIZE_T doneMz = 0;
-    s = VrRootWalkAndCopyOnePage(
-        Vcpu, CandidateCr3, imageBase,
-        (PUCHAR)&magic, sizeof(magic),
-        FALSE,  // read
-        TRUE,   // quiet
-        &doneMz);
-    if (!NT_SUCCESS(s) || doneMz != sizeof(magic)) {
-        return STATUS_NOT_FOUND;
-    }
-
-    if (magic != 0x5A4D) {  // 'MZ'
-        return STATUS_NOT_FOUND;
-    }
-
     return STATUS_SUCCESS;
 }
 
@@ -796,7 +1052,14 @@ HvVtRootRootCopyOnePage(
     if (!Vcpu || !Vcpu->VtRootGadget.Initialized) {
         return STATUS_DEVICE_NOT_READY;
     }
-    if (!KernelBuf || Size == 0 || Size > PAGE_SIZE) {
+    if (!KernelBuf || !BytesDone || Size == 0 || Size > PAGE_SIZE) {
+        return STATUS_INVALID_PARAMETER;
+    }
+    UINT64 bufferStart = (UINT64)(ULONG_PTR)KernelBuf;
+    UINT64 bufferEnd = bufferStart + (UINT64)Size;
+    if ((bufferStart >> 48) != 0xFFFFULL ||
+        bufferEnd <= bufferStart ||
+        ((bufferEnd - 1) >> 48) != 0xFFFFULL) {
         return STATUS_INVALID_PARAMETER;
     }
     if (((TargetGva & 0xFFF) + Size) > PAGE_SIZE) {
@@ -805,254 +1068,11 @@ HvVtRootRootCopyOnePage(
 
     NTSTATUS status = VrRootWalkAndCopyOnePage(
         Vcpu, TargetCr3, TargetGva, KernelBuf, Size, IsWrite,
-        FALSE,  // 单 CR3 路径, 保留诊断日志
+        TRUE,
         BytesDone);
 
     VrRestoreToBacking(Vcpu);
     return status;
-}
-
-// ============================================================
-// Root mode by-PID copy (Phase C)
-// ============================================================
-//
-// 设计:把 PASSIVE-level 的 EPROCESS 链表遍历 + CR3 候选收集 + walk-validation
-// 全部搬进 root mode handler。Hot path (PASSIVE) 只传 PID,完全不调
-// Mm* / Ps* / Ob*。
-//
-// 反作弊视角:
-//   - PsLookupProcessByProcessId 被替换为"沿 PsInitialSystemProcess 的
-//     ActiveProcessLinks 链表步进", 完全是内存读, 不引用 OB_TYPE 系统结构,
-//     无 reference count 变化, ETWTI 看不到任何 Ps* / Ob* 调用
-//   - HvPhysGetProcessCr3 的 MmMapIoSpace 数 PML4E 启发式被替换为"挨个
-//     候选 CR3 直接 walk 目标 GVA", 全部用 VrRedirectScratch + invlpg
-//   - CR3 snoop ring 在 root mode 读 (HvCr3SnoopSnapshot 只读 ring buffer)
-//
-// 单页约束: ≤ 4KB, 调用方按页切分。
-
-#define HV_VR_MAX_CR3_CANDIDATES   24
-
-/*
- * VrRootResolvePidToEprocess —— 沿 PsActiveProcessHead 链表找匹配 PID 的
- * EPROCESS。
- *
- * Root mode 安全:仅做指针解引用 + LIST_ENTRY 步进, 无任何 NT API。
- * EPROCESS 在 non-paged kernel pool, host CR3 直接可访问。
- *
- * UAF 保护:4096 步上限防死链。链表本身无锁, 其他 CPU 可能在 guest mode 修改,
- * 但 root mode IRQ-off 期间链表结构不会破坏 (插入/删除是 atomic LIST_ENTRY
- * 操作), 最坏情况是看到旧 snapshot, walk 不到 PID 返回 NULL。
- */
-static PEPROCESS
-VrRootResolvePidToEprocess(_In_ ULONG TargetPid)
-{
-    if (!g_HvPhysRootCtx.Initialized) return NULL;
-
-    PEPROCESS systemEproc = (PEPROCESS)g_HvPhysRootCtx.PsInitialSystemProcess;
-    if (!systemEproc) return NULL;
-
-    ULONG linksOff = g_HvPhysRootCtx.ActiveLinksOff;
-    ULONG pidOff   = g_HvPhysRootCtx.PidOff;
-
-    // ----- Fast path: cache hit (优化 #2)
-    // 单 32-bit + 单 64-bit volatile load, 多核 race 最坏看到 stale 配对,
-    // 校验阶段 (再读 cached EPROCESS 的 PID) 失配后退回 walk。
-    {
-        ULONG  cachedPid   = g_HvPhysRootCtx.CachedPid;
-        UINT64 cachedEproc = g_HvPhysRootCtx.CachedEproc;
-        if (cachedPid == TargetPid && cachedEproc != 0) {
-            ULONG_PTR livePid = *(volatile ULONG_PTR*)
-                ((PUCHAR)(ULONG_PTR)cachedEproc + pidOff);
-            if (livePid == TargetPid) {
-                return (PEPROCESS)(ULONG_PTR)cachedEproc;
-            }
-            // 验证失败 (进程退出 / pool 复用 / cache 撕裂) → walk
-        }
-    }
-
-    // ----- Slow path: walk ActiveProcessLinks
-    PLIST_ENTRY head = (PLIST_ENTRY)((PUCHAR)systemEproc + linksOff);
-
-    // 先校验 head 自身 PID = 4 (System)。Walk 从 head->Flink 开始。
-    {
-        ULONG_PTR sysPid = *(ULONG_PTR*)((PUCHAR)systemEproc + pidOff);
-        if (sysPid == TargetPid) {
-            // 更新缓存: 先写 Eproc 再写 Pid, 保证其他核读 Pid 时 Eproc 已就绪
-            g_HvPhysRootCtx.CachedEproc = (UINT64)(ULONG_PTR)systemEproc;
-            g_HvPhysRootCtx.CachedPid   = TargetPid;
-            return systemEproc;
-        }
-    }
-
-    PLIST_ENTRY cur = head->Flink;
-    for (ULONG i = 0; i < 4096; i++) {
-        if (!cur || cur == head) break;
-
-        PUCHAR ep = (PUCHAR)cur - linksOff;
-        ULONG_PTR pid = *(ULONG_PTR*)(ep + pidOff);
-        if (pid == TargetPid) {
-            g_HvPhysRootCtx.CachedEproc = (UINT64)(ULONG_PTR)ep;
-            g_HvPhysRootCtx.CachedPid   = TargetPid;
-            return (PEPROCESS)ep;
-        }
-
-        cur = cur->Flink;
-    }
-    return NULL;
-}
-
-/*
- * VrRootCollectCr3Candidates —— 从 EPROCESS 提取候选 CR3, 追加 snoop ring。
- *
- * 候选来源(按优先级排序):
- *   1) EPROCESS + UserDtbOff (KVAS 已探到时, 真 user CR3)
- *   2) EPROCESS + KnownUserDtbOffs[8] (Win 各版本观察到的 UserDTB 偏移)
- *   3) EPROCESS + DtbOff (KPROCESS.DirectoryTableBase, 可能是 shadow)
- *   4) CR3 snoop ring (硬件层观察到的真 CR3)
- *
- * 去重 + 上限 HV_VR_MAX_CR3_CANDIDATES。
- */
-static ULONG
-VrRootCollectCr3Candidates(
-    _In_ PEPROCESS Eproc,
-    _Out_writes_to_(HV_VR_MAX_CR3_CANDIDATES, return) UINT64* Candidates)
-{
-    ULONG n = 0;
-
-    #define VR_TRY_ADD_CR3(val) do { \
-        UINT64 _v = (val) & 0x000FFFFFFFFFF000ULL; \
-        if (_v != 0 && _v >= 0x100000ULL && _v < 0x10000000000ULL) { \
-            BOOLEAN _dup = FALSE; \
-            for (ULONG _i = 0; _i < n; _i++) { \
-                if (Candidates[_i] == _v) { _dup = TRUE; break; } \
-            } \
-            if (!_dup && n < HV_VR_MAX_CR3_CANDIDATES) { \
-                Candidates[n++] = _v; \
-            } \
-        } \
-    } while (0)
-
-    // 1) UserDTB 已探到的偏移
-    if (g_HvPhysRootCtx.UserDtbOff != 0) {
-        UINT64 cr3 = *(UINT64*)((PUCHAR)Eproc + g_HvPhysRootCtx.UserDtbOff);
-        VR_TRY_ADD_CR3(cr3);
-    }
-
-    // 2) Known UserDTB 备选偏移表 (Win 版本各异)
-    for (ULONG i = 0; i < g_HvPhysRootCtx.KnownUserDtbOffCount; i++) {
-        UINT64 off = g_HvPhysRootCtx.KnownUserDtbOffs[i];
-        UINT64 cr3 = *(UINT64*)((PUCHAR)Eproc + off);
-        VR_TRY_ADD_CR3(cr3);
-    }
-
-    // 3) KPROCESS.DirectoryTableBase (可能是 shadow, 也可能就是 user CR3)
-    if (g_HvPhysRootCtx.DtbOff != 0) {
-        UINT64 cr3 = *(UINT64*)((PUCHAR)Eproc + g_HvPhysRootCtx.DtbOff);
-        VR_TRY_ADD_CR3(cr3);
-    }
-
-    // 4) CR3 snoop ring (硬件层 VMEXIT 时观察的真 user CR3)
-    {
-        UINT64 snoopCr3s[HV_CR3_SNOOP_RING_SIZE];
-        ULONG snoopCount = HvCr3SnoopSnapshot(snoopCr3s, HV_CR3_SNOOP_RING_SIZE);
-        for (ULONG i = 0; i < snoopCount; i++) {
-            VR_TRY_ADD_CR3(snoopCr3s[i]);
-        }
-    }
-
-    #undef VR_TRY_ADD_CR3
-    return n;
-}
-
-NTSTATUS
-HvVtRootRootCopyByPid(
-    _Inout_ PVCPU_DATA Vcpu,
-    _In_ ULONG TargetPid,
-    _In_ UINT64 TargetGva,
-    _Inout_updates_bytes_(Size) PUCHAR KernelBuf,
-    _In_ SIZE_T Size,
-    _In_ BOOLEAN IsWrite,
-    _Out_ PSIZE_T BytesDone)
-{
-    if (BytesDone) *BytesDone = 0;
-
-    if (!Vcpu || !Vcpu->VtRootGadget.Initialized) {
-        return STATUS_DEVICE_NOT_READY;
-    }
-    if (!KernelBuf || Size == 0 || Size > PAGE_SIZE) {
-        return STATUS_INVALID_PARAMETER;
-    }
-    if (((TargetGva & 0xFFF) + Size) > PAGE_SIZE) {
-        return STATUS_INVALID_PARAMETER;
-    }
-    if (TargetPid == 0) {
-        return STATUS_INVALID_PARAMETER;
-    }
-    if (!g_HvPhysRootCtx.Initialized) {
-        return STATUS_DEVICE_NOT_READY;
-    }
-
-    // 1) PID → EPROCESS (root mode, 链表 walk, 无 Ps*/Ob*)
-    PEPROCESS eproc = VrRootResolvePidToEprocess(TargetPid);
-    if (!eproc) {
-        return STATUS_NOT_FOUND;
-    }
-
-    // 2) 收集 CR3 候选
-    UINT64 candidates[HV_VR_MAX_CR3_CANDIDATES];
-    ULONG nCand = VrRootCollectCr3Candidates(eproc, candidates);
-    if (nCand == 0) {
-        return STATUS_NOT_FOUND;
-    }
-
-    // 3) 挨个 CR3 尝试 walk + 拷贝。第一个**通过 MZ 锚点验证**且 walk 成功的 wins。
-    //
-    // 2026-06-16: 加 MZ 锚点验证 (镜像 HvPhysValidateCr3OwnsProcess), 防止
-    // snoop ring 含的其他进程 CR3 在目标 GVA 上恰好"假成功 walk" → 读到错的数据。
-    // 验证失败的 candidate 跳过, 没有任何拷贝发生, 不污染 KernelBuf。
-    //
-    // System / Idle / Minimal 进程没 PEB (validate 返 NOT_SUPPORTED), 退化为
-    // 老行为 (直接尝试拷贝, 第一个 thisDone>0 wins) —— 维持对内核进程内存兼容。
-    NTSTATUS lastStatus = STATUS_NOT_FOUND;
-    BOOLEAN canValidate = (g_HvPhysRootCtx.PebOff != 0);
-    BOOLEAN sawNotSupported = FALSE;
-
-    for (ULONG i = 0; i < nCand; i++) {
-        // ---- MZ 锚点验证 (双重 walk) ----
-        if (canValidate) {
-            NTSTATUS vs = VrRootValidateCr3OwnsProcess(Vcpu, eproc, candidates[i]);
-            if (vs == STATUS_NOT_SUPPORTED) {
-                // eproc 没 PEB (System / Minimal) — 整个验证失效, 切兼容路径
-                sawNotSupported = TRUE;
-            } else if (!NT_SUCCESS(vs)) {
-                // candidate 不属于该进程, 跳过 (不拷贝)
-                lastStatus = vs;
-                continue;
-            }
-            // 验证通过 (或没 PEB 时按兼容路径走) → 落到 walk+copy
-        }
-
-        SIZE_T thisDone = 0;
-        NTSTATUS s = VrRootWalkAndCopyOnePage(
-            Vcpu, candidates[i], TargetGva, KernelBuf, Size, IsWrite,
-            TRUE,  // Quiet: multi-candidate, 不打 walk-fail 日志
-            &thisDone);
-
-        if (NT_SUCCESS(s) && thisDone > 0) {
-            // 找到正确 CR3 — 完成拷贝。同时把 (PID, CR3) 写进 cache, 让
-            // PASSIVE 层 (HvCloak) 能直接拿到真 user CR3, 不再依赖 KVAS 下
-            // 永远拿到 shadow CR3 的 __readcr3() 路径。
-            VrCacheSet(TargetPid, candidates[i]);
-            *BytesDone = thisDone;
-            VrRestoreToBacking(Vcpu);
-            return STATUS_SUCCESS;
-        }
-        lastStatus = s;
-    }
-
-    UNREFERENCED_PARAMETER(sawNotSupported);
-    VrRestoreToBacking(Vcpu);
-    return lastStatus;
 }
 
 // ============================================================
@@ -1065,23 +1085,33 @@ HvVtRootRootCopyByPid(
 //
 // IRQL: root mode (interrupts off)
 static NTSTATUS
-VrRootWalkOnly(
+VrRootQueryLeaf(
     _Inout_ PVCPU_DATA Vcpu,
     _In_ UINT64 TargetCr3,
     _In_ UINT64 TargetGva,
     _Out_ PUINT64 OutHpa,
-    _Out_ PUINT64 OutPageSize)
+    _Out_ PUINT64 OutPageSize,
+    _Out_opt_ PHV_VTROOT_LEAF_PTE_INFO OutLeafInfo)
 {
     *OutHpa = 0;
     *OutPageSize = 0;
 
-    if (TargetGva < 0x10000ULL || TargetGva >= 0x800000000000ULL) {
+    if (OutLeafInfo) {
+        RtlZeroMemory(OutLeafInfo, sizeof(*OutLeafInfo));
+        OutLeafInfo->Magic = HV_VTROOT_LEAF_INFO_MAGIC;
+        OutLeafInfo->Version = HV_VTROOT_LEAF_INFO_VERSION;
+        OutLeafInfo->Size = sizeof(*OutLeafInfo);
+    }
+
+    if (!((TargetGva >= 0x10000ULL &&
+           TargetGva < 0x800000000000ULL) ||
+          TargetGva >= 0xFFFF800000000000ULL)) {
         return STATUS_INVALID_PARAMETER;
     }
 
     PUCHAR scratch = (PUCHAR)Vcpu->VtRootGadget.ScratchVa;
     UINT64 cr3Base = TargetCr3 & VR_PTE_PFN_MASK;
-    if (cr3Base == 0 || cr3Base < 0x1000ULL || cr3Base >= 0x10000000000ULL) {
+    if (!HvPhysIsRamRangeRootSafe(cr3Base, PAGE_SIZE)) {
         return STATUS_INVALID_PARAMETER;
     }
 
@@ -1090,9 +1120,7 @@ VrRootWalkOnly(
     ULONG pdi   = (ULONG)VR_PD_INDEX(TargetGva);
     ULONG pti   = (ULONG)VR_PT_INDEX(TargetGva);
 
-    #define VR_WO_PA_SANE(pa) \
-        ((pa) != 0 && (pa) >= 0x1000ULL && (pa) < 0x10000000000ULL && \
-         !((pa) >= 0xC0000000ULL && (pa) < 0x100000000ULL))
+    #define VR_WO_PA_SANE(pa) HvPhysIsRamRangeRootSafe((pa), PAGE_SIZE)
 
     VrRedirectScratch(Vcpu, cr3Base);
     UINT64 pml4e = ((volatile UINT64*)scratch)[pml4i];
@@ -1105,9 +1133,26 @@ VrRootWalkOnly(
     if (!(pdpte & VR_PTE_PRESENT)) return STATUS_INVALID_ADDRESS_COMPONENT;
 
     if (pdpte & VR_PTE_PS) {
-        UINT64 leaf = (pdpte & 0x000FFFFFC0000000ULL) | (TargetGva & 0x3FFFFFFFULL);
+        if (pdpte & VR_PDPTE_1G_RESERVED_LOW_MASK) {
+            return STATUS_INVALID_ADDRESS_COMPONENT;
+        }
+        UINT64 leaf = (pdpte & VR_PDPTE_1G_PFN_MASK) |
+                      (TargetGva & 0x3FFFFFFFULL);
+        if (!VR_WO_PA_SANE(leaf & ~0xFFFULL)) {
+            return STATUS_INVALID_ADDRESS_COMPONENT;
+        }
         *OutHpa = leaf;
         *OutPageSize = 0x40000000ULL;
+        if (OutLeafInfo) {
+            OutLeafInfo->LeafTablePa = pdptPa;
+            OutLeafInfo->LeafIndex = pdpti;
+            OutLeafInfo->LeafLevel = HV_VTROOT_LEAF_LEVEL_PDPT;
+            OutLeafInfo->OriginalEntry = pdpte;
+            OutLeafInfo->LeafHpa = leaf;
+            OutLeafInfo->PageSize = 0x40000000ULL;
+            OutLeafInfo->LeafFlags =
+                pdpte & ~VR_PDPTE_1G_PFN_MASK;
+        }
         return STATUS_SUCCESS;
     }
 
@@ -1118,9 +1163,26 @@ VrRootWalkOnly(
     if (!(pde & VR_PTE_PRESENT)) return STATUS_INVALID_ADDRESS_COMPONENT;
 
     if (pde & VR_PTE_PS) {
-        UINT64 leaf = (pde & 0x000FFFFFFFE00000ULL) | (TargetGva & 0x1FFFFFULL);
+        if (pde & VR_PDE_2M_RESERVED_LOW_MASK) {
+            return STATUS_INVALID_ADDRESS_COMPONENT;
+        }
+        UINT64 leaf = (pde & VR_PDE_2M_PFN_MASK) |
+                      (TargetGva & 0x1FFFFFULL);
+        if (!VR_WO_PA_SANE(leaf & ~0xFFFULL)) {
+            return STATUS_INVALID_ADDRESS_COMPONENT;
+        }
         *OutHpa = leaf;
         *OutPageSize = 0x200000ULL;
+        if (OutLeafInfo) {
+            OutLeafInfo->LeafTablePa = pdPa;
+            OutLeafInfo->LeafIndex = pdi;
+            OutLeafInfo->LeafLevel = HV_VTROOT_LEAF_LEVEL_PD;
+            OutLeafInfo->OriginalEntry = pde;
+            OutLeafInfo->LeafHpa = leaf;
+            OutLeafInfo->PageSize = 0x200000ULL;
+            OutLeafInfo->LeafFlags =
+                pde & ~VR_PDE_2M_PFN_MASK;
+        }
         return STATUS_SUCCESS;
     }
 
@@ -1128,121 +1190,234 @@ VrRootWalkOnly(
     if (!VR_WO_PA_SANE(ptPa)) return STATUS_INVALID_ADDRESS_COMPONENT;
     VrRedirectScratch(Vcpu, ptPa);
     UINT64 pte = ((volatile UINT64*)scratch)[pti];
-    if (!(pte & VR_PTE_PRESENT)) return STATUS_NOT_FOUND;
+    if (!(pte & VR_PTE_PRESENT)) {
+        // Leaf-location callers need to locate an empty PT slot as well. The
+        // ordinary GVA walker passes OutLeafInfo=NULL and keeps NOT_FOUND
+        // semantics for an unmapped page.
+        if (!OutLeafInfo) return STATUS_NOT_FOUND;
+
+        OutLeafInfo->LeafTablePa = ptPa;
+        OutLeafInfo->LeafIndex = pti;
+        OutLeafInfo->LeafLevel = HV_VTROOT_LEAF_LEVEL_PT;
+        OutLeafInfo->OriginalEntry = pte;
+        OutLeafInfo->LeafHpa = 0;
+        OutLeafInfo->PageSize = PAGE_SIZE;
+        OutLeafInfo->LeafFlags = pte & ~VR_PTE_PFN_MASK;
+        return STATUS_SUCCESS;
+    }
 
     UINT64 leaf = (pte & VR_PTE_PFN_MASK) | (TargetGva & 0xFFFULL);
     if (!VR_WO_PA_SANE(leaf & ~0xFFFULL)) return STATUS_INVALID_ADDRESS_COMPONENT;
 
     *OutHpa = leaf;
     *OutPageSize = PAGE_SIZE;
+    if (OutLeafInfo) {
+        OutLeafInfo->LeafTablePa = ptPa;
+        OutLeafInfo->LeafIndex = pti;
+        OutLeafInfo->LeafLevel = HV_VTROOT_LEAF_LEVEL_PT;
+        OutLeafInfo->OriginalEntry = pte;
+        OutLeafInfo->LeafHpa = leaf;
+        OutLeafInfo->PageSize = PAGE_SIZE;
+        OutLeafInfo->LeafFlags = pte & ~VR_PTE_PFN_MASK;
+    }
 
     #undef VR_WO_PA_SANE
     return STATUS_SUCCESS;
 }
 
-// ============================================================
-// RootResolveUserCr3 - 用 24 候选+MZ 验证选真 user CR3 (root mode)
-// ============================================================
-NTSTATUS
-HvVtRootRootResolveUserCr3(
-    _In_ ULONG TargetPid,
-    _Out_ PUINT64 OutCr3)
+static NTSTATUS
+VrRootWalkOnly(
+    _Inout_ PVCPU_DATA Vcpu,
+    _In_ UINT64 TargetCr3,
+    _In_ UINT64 TargetGva,
+    _Out_ PUINT64 OutHpa,
+    _Out_ PUINT64 OutPageSize)
 {
-    *OutCr3 = 0;
-    if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
-    if (!g_HvPhysRootCtx.Initialized) return STATUS_DEVICE_NOT_READY;
-
-    PVCPU_DATA vcpu = HvNestedGetCurrentVcpu();
-    if (!vcpu || !vcpu->VtRootGadget.Initialized) return STATUS_DEVICE_NOT_READY;
-
-    PEPROCESS eproc = VrRootResolvePidToEprocess(TargetPid);
-    if (!eproc) return STATUS_NOT_FOUND;
-
-    UINT64 candidates[HV_VR_MAX_CR3_CANDIDATES];
-    ULONG nCand = VrRootCollectCr3Candidates(eproc, candidates);
-    if (nCand == 0) return STATUS_NOT_FOUND;
-
-    BOOLEAN canValidate = (g_HvPhysRootCtx.PebOff != 0);
-    NTSTATUS lastStatus = STATUS_NOT_FOUND;
-
-    for (ULONG i = 0; i < nCand; i++) {
-        if (canValidate) {
-            NTSTATUS vs = VrRootValidateCr3OwnsProcess(vcpu, eproc, candidates[i]);
-            if (vs == STATUS_NOT_SUPPORTED) {
-                // 没 PEB 进程 - 跳过, 不参与 cloak
-                continue;
-            }
-            if (!NT_SUCCESS(vs)) {
-                lastStatus = vs;
-                continue;
-            }
-        }
-        // MZ 验证通过 = 真 user CR3
-        VrCacheSet(TargetPid, candidates[i]);
-        *OutCr3 = candidates[i];
-        VrRestoreToBacking(vcpu);
-        return STATUS_SUCCESS;
+    // PID/process request modes are user-address APIs. The generalized
+    // trusted-CR3 query below also supports canonical kernel addresses.
+    if (TargetGva < 0x10000ULL || TargetGva >= 0x800000000000ULL) {
+        return STATUS_INVALID_PARAMETER;
     }
-
-    VrRestoreToBacking(vcpu);
-    return lastStatus;
+    return VrRootQueryLeaf(
+        Vcpu, TargetCr3, TargetGva, OutHpa, OutPageSize, NULL);
 }
 
-// ============================================================
-// RootWalkGvaToHpa - 找真 user CR3 + walk GVA → HPA (root mode)
-// ============================================================
 NTSTATUS
-HvVtRootRootWalkGvaToHpa(
+HvVtRootRootWalkGvaToHpaWithCr3(
     _Inout_ PVCPU_DATA Vcpu,
-    _In_ ULONG TargetPid,
+    _In_ UINT64 TargetCr3,
     _In_ UINT64 Gva,
     _Out_ PUINT64 OutHpa,
     _Out_ PUINT64 OutPageSize)
 {
+    if (!OutHpa || !OutPageSize) return STATUS_INVALID_PARAMETER;
     *OutHpa = 0;
     *OutPageSize = 0;
 
-    if (!Vcpu || !Vcpu->VtRootGadget.Initialized) return STATUS_DEVICE_NOT_READY;
-    if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
-    if (Gva < 0x10000ULL || Gva >= 0x800000000000ULL) return STATUS_INVALID_PARAMETER;
-    if (!g_HvPhysRootCtx.Initialized) return STATUS_DEVICE_NOT_READY;
-
-    // 优先从 cache 取真 user CR3 (前面 ResolveUserCr3 一定写过)
-    UINT64 cr3 = 0;
-    NTSTATUS cs = HvVtRootGetResolvedUserCr3(TargetPid, &cr3);
-
-    if (NT_SUCCESS(cs) && cr3 != 0) {
-        // Cache 有 — 直接 walk
-        NTSTATUS ws = VrRootWalkOnly(Vcpu, cr3, Gva, OutHpa, OutPageSize);
-        VrRestoreToBacking(Vcpu);
-        if (NT_SUCCESS(ws)) return STATUS_SUCCESS;
-        // Cache CR3 走不通 (working set 变了?) - 继续走候选
+    if (!Vcpu || !Vcpu->VtRootGadget.Initialized) {
+        return STATUS_DEVICE_NOT_READY;
+    }
+    if (Gva < 0x10000ULL || Gva >= 0x800000000000ULL) {
+        return STATUS_INVALID_PARAMETER;
     }
 
-    // Cache 没有 / 失效 — 走 24 候选
-    PEPROCESS eproc = VrRootResolvePidToEprocess(TargetPid);
-    if (!eproc) { VrRestoreToBacking(Vcpu); return STATUS_NOT_FOUND; }
+    NTSTATUS status = VrRootWalkOnly(
+        Vcpu, TargetCr3, Gva, OutHpa, OutPageSize);
+    VrRestoreToBacking(Vcpu);
+    return status;
+}
 
-    UINT64 candidates[HV_VR_MAX_CR3_CANDIDATES];
-    ULONG nCand = VrRootCollectCr3Candidates(eproc, candidates);
-    if (nCand == 0) { VrRestoreToBacking(Vcpu); return STATUS_NOT_FOUND; }
+NTSTATUS
+HvVtRootRootQueryLeafPteWithCr3(
+    _Inout_ PVCPU_DATA Vcpu,
+    _In_ UINT64 TargetCr3,
+    _In_ UINT64 Gva,
+    _Inout_ PHV_VTROOT_LEAF_PTE_INFO LeafInfo)
+{
+    UINT64 infoStart;
+    UINT64 infoEnd;
+    UINT64 hpa = 0;
+    UINT64 pageSize = 0;
 
-    BOOLEAN canValidate = (g_HvPhysRootCtx.PebOff != 0);
+    if (!Vcpu || !Vcpu->VtRootGadget.Initialized) {
+        return STATUS_DEVICE_NOT_READY;
+    }
+    if (!LeafInfo) return STATUS_INVALID_PARAMETER;
+
+    infoStart = (UINT64)(ULONG_PTR)LeafInfo;
+    infoEnd = infoStart + sizeof(*LeafInfo);
+    if ((infoStart >> 48) != 0xFFFFULL ||
+        infoEnd <= infoStart ||
+        ((infoEnd - 1) >> 48) != 0xFFFFULL) {
+        return STATUS_INVALID_PARAMETER;
+    }
+    if (LeafInfo->Magic != HV_VTROOT_LEAF_INFO_MAGIC ||
+        LeafInfo->Version != HV_VTROOT_LEAF_INFO_VERSION ||
+        LeafInfo->Size != sizeof(*LeafInfo)) {
+        return STATUS_REVISION_MISMATCH;
+    }
+    if (!((Gva >= 0x10000ULL && Gva < 0x800000000000ULL) ||
+          Gva >= 0xFFFF800000000000ULL)) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    NTSTATUS status = VrRootQueryLeaf(
+        Vcpu, TargetCr3, Gva, &hpa, &pageSize, LeafInfo);
+    VrRestoreToBacking(Vcpu);
+    return status;
+}
+
+NTSTATUS
+HvVtRootRootProcessRequest(
+    _Inout_ PVCPU_DATA Vcpu,
+    _In_ PVOID RequestAddress,
+    _In_ ULONG Mode,
+    _Out_ PUINT64 OutResult)
+{
+    PVR_PROCESS_REQUEST request;
+    UINT64 requestStart;
+    UINT64 requestEnd;
     NTSTATUS lastStatus = STATUS_NOT_FOUND;
 
-    for (ULONG i = 0; i < nCand; i++) {
-        if (canValidate) {
-            NTSTATUS vs = VrRootValidateCr3OwnsProcess(Vcpu, eproc, candidates[i]);
-            if (vs == STATUS_NOT_SUPPORTED) continue;
-            if (!NT_SUCCESS(vs)) { lastStatus = vs; continue; }
+    if (OutResult) *OutResult = 0;
+    if (!Vcpu || !Vcpu->VtRootGadget.Initialized || !OutResult) {
+        return STATUS_DEVICE_NOT_READY;
+    }
+
+    requestStart = (UINT64)(ULONG_PTR)RequestAddress;
+    requestEnd = requestStart + sizeof(VR_PROCESS_REQUEST);
+    if ((requestStart >> 48) != 0xFFFFULL ||
+        requestEnd <= requestStart ||
+        ((requestEnd - 1) >> 48) != 0xFFFFULL) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    request = (PVR_PROCESS_REQUEST)RequestAddress;
+    if (request->Magic != VR_PROCESS_REQUEST_MAGIC ||
+        request->Version != VR_PROCESS_REQUEST_VERSION ||
+        request->Size != sizeof(VR_PROCESS_REQUEST) ||
+        request->TargetPid == 0 || request->CreateTime == 0 ||
+        request->CandidateCount == 0 ||
+        request->CandidateCount > VR_PROCESS_MAX_CANDIDATES) {
+        return STATUS_INVALID_PARAMETER;
+    }
+    if (Mode != HV_VTROOT_MODE_PROCESS_READ &&
+        Mode != HV_VTROOT_MODE_PROCESS_WRITE &&
+        Mode != HV_VTROOT_MODE_PROCESS_RESOLVE &&
+        Mode != HV_VTROOT_MODE_PROCESS_WALK) {
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    if (Mode == HV_VTROOT_MODE_PROCESS_READ ||
+        Mode == HV_VTROOT_MODE_PROCESS_WRITE) {
+        UINT64 bufferStart = (UINT64)(ULONG_PTR)request->Bounce;
+        UINT64 bufferEnd = bufferStart + request->TransferSize;
+        if (!request->Bounce || request->TransferSize == 0 ||
+            request->TransferSize > PAGE_SIZE ||
+            (request->TargetGva & (PAGE_SIZE - 1)) +
+                request->TransferSize > PAGE_SIZE ||
+            (bufferStart >> 48) != 0xFFFFULL ||
+            bufferEnd <= bufferStart ||
+            ((bufferEnd - 1) >> 48) != 0xFFFFULL) {
+            return STATUS_INVALID_PARAMETER;
         }
-        NTSTATUS ws = VrRootWalkOnly(Vcpu, candidates[i], Gva, OutHpa, OutPageSize);
-        if (NT_SUCCESS(ws)) {
-            VrCacheSet(TargetPid, candidates[i]);
+    }
+
+    for (ULONG index = 0; index < request->CandidateCount; ++index) {
+        UINT64 candidate = request->Candidates[index] & VR_PTE_PFN_MASK;
+        if (!HvPhysIsRamRangeRootSafe(candidate, PAGE_SIZE)) {
+            continue;
+        }
+
+        NTSTATUS status = STATUS_SUCCESS;
+        if (request->ResolvedCr3 != candidate) {
+            status = VrRootValidateCr3Snapshot(
+                Vcpu, request->PebGva, request->ImageBase,
+                request->PebAnchorPagePa,
+                request->ImageAnchorPagePa,
+                candidate);
+            if (!NT_SUCCESS(status)) {
+                lastStatus = status;
+                continue;
+            }
+        }
+
+        if (Mode == HV_VTROOT_MODE_PROCESS_RESOLVE) {
+            request->ResolvedCr3 = candidate;
+            *OutResult = candidate;
             VrRestoreToBacking(Vcpu);
             return STATUS_SUCCESS;
         }
-        lastStatus = ws;
+
+        if (Mode == HV_VTROOT_MODE_PROCESS_WALK) {
+            UINT64 hpa = 0;
+            UINT64 pageSize = 0;
+            status = VrRootWalkOnly(
+                Vcpu, candidate, request->TargetGva, &hpa, &pageSize);
+            if (NT_SUCCESS(status)) {
+                request->ResolvedCr3 = candidate;
+                request->ResultPageSize = pageSize;
+                *OutResult = hpa;
+                VrRestoreToBacking(Vcpu);
+                return STATUS_SUCCESS;
+            }
+            lastStatus = status;
+            continue;
+        }
+
+        SIZE_T done = 0;
+        status = VrRootWalkAndCopyOnePage(
+            Vcpu, candidate, request->TargetGva,
+            request->Bounce, request->TransferSize,
+            (BOOLEAN)(Mode == HV_VTROOT_MODE_PROCESS_WRITE),
+            TRUE, &done);
+        if (NT_SUCCESS(status) && done == request->TransferSize) {
+            request->ResolvedCr3 = candidate;
+            *OutResult = done;
+            VrRestoreToBacking(Vcpu);
+            return STATUS_SUCCESS;
+        }
+        lastStatus = NT_SUCCESS(status) ? STATUS_PARTIAL_COPY : status;
     }
 
     VrRestoreToBacking(Vcpu);
@@ -1253,9 +1428,237 @@ HvVtRootRootWalkGvaToHpa(
 // PASSIVE-level by-PID copy (Phase C)
 // ============================================================
 //
-// 与 HvVtRootCopyWithCr3 镜像, 但 RDX 寄存器传 PID 而非 CR3。
-// 调用 AsmVmCallPhysCopy / AsmVmmCallPhysCopy 时, 第一个参数 (走 RCX → RDX
-// 的命名是 "TargetCr3" 但语义上现在是 PID, 因为 root handler 改了)。
+// PASSIVE owns the referenced process and immutable identity/candidate
+// snapshot. Candidate validation, page-table walking and copying are performed
+// synchronously in VMX-root/SVM-host mode.
+
+static VOID
+VrAddProcessCandidate(
+    _Inout_ PVR_PROCESS_REQUEST Request,
+    _In_ UINT64 Candidate)
+{
+    Candidate &= VR_PTE_PFN_MASK;
+    if (!HvPhysIsRamRangeRootSafe(Candidate, PAGE_SIZE)) return;
+
+    for (ULONG index = 0; index < Request->CandidateCount; ++index) {
+        if (Request->Candidates[index] == Candidate) return;
+    }
+    if (Request->CandidateCount < VR_PROCESS_MAX_CANDIDATES) {
+        Request->Candidates[Request->CandidateCount++] = Candidate;
+    }
+}
+
+static VOID
+VrAddProcessCandidateAtOffset(
+    _Inout_ PVR_PROCESS_REQUEST Request,
+    _In_ PEPROCESS Process,
+    _In_ ULONG Offset)
+{
+    UINT64 candidate = 0;
+
+    if (Offset < 0x20 || Offset > 0xC00) return;
+    __try {
+        candidate = *(volatile UINT64*)((PUCHAR)Process + Offset);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return;
+    }
+    VrAddProcessCandidate(Request, candidate);
+}
+
+static NTSTATUS
+VrBuildProcessRequest(
+    _In_ ULONG TargetPid,
+    _In_ PEPROCESS Process,
+    _Out_ PVR_PROCESS_REQUEST Request)
+{
+    UINT64 cachedCr3 = 0;
+    UINT64 snoopCr3s[HV_CR3_SNOOP_RING_SIZE];
+
+    RtlZeroMemory(Request, sizeof(*Request));
+    if (!Process || TargetPid == 0 || !g_HvPhysRootCtx.Initialized) {
+        return STATUS_DEVICE_NOT_READY;
+    }
+
+    Request->Magic = VR_PROCESS_REQUEST_MAGIC;
+    Request->Size = sizeof(*Request);
+    Request->Version = VR_PROCESS_REQUEST_VERSION;
+    Request->TargetPid = TargetPid;
+    Request->CreateTime = (UINT64)PsGetProcessCreateTimeQuadPart(Process);
+    Request->PebGva = (UINT64)(ULONG_PTR)PsGetProcessPeb(Process);
+    Request->ImageBase = (UINT64)(ULONG_PTR)
+        PsGetProcessSectionBaseAddress(Process);
+
+    if (Request->CreateTime == 0 ||
+        Request->PebGva < 0x10000ULL ||
+        Request->PebGva >= 0x800000000000ULL ||
+        Request->ImageBase < 0x10000ULL ||
+        Request->ImageBase >= 0x800000000000ULL ||
+        (Request->ImageBase & (PAGE_SIZE - 1)) != 0) {
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    if (VrCacheLookup(TargetPid, Request->CreateTime, &cachedCr3)) {
+        VrAddProcessCandidate(Request, cachedCr3);
+    }
+    for (ULONG index = 0;
+         index < g_HvPhysRootCtx.KnownUserDtbOffCount;
+        ++index) {
+        VrAddProcessCandidateAtOffset(
+            Request, Process,
+            (ULONG)g_HvPhysRootCtx.KnownUserDtbOffs[index]);
+    }
+    VrAddProcessCandidateAtOffset(
+        Request, Process, g_HvPhysRootCtx.DtbOff);
+
+    ULONG snoopCount = HvCr3SnoopSnapshot(
+        snoopCr3s, RTL_NUMBER_OF(snoopCr3s));
+    for (ULONG index = 0; index < snoopCount; ++index) {
+        VrAddProcessCandidate(Request, snoopCr3s[index]);
+    }
+
+    return Request->CandidateCount != 0
+        ? STATUS_SUCCESS : STATUS_NOT_FOUND;
+}
+
+static NTSTATUS
+VrLockProcessRange(
+    _In_ PEPROCESS Process,
+    _In_ UINT64 Address,
+    _In_ SIZE_T Size,
+    _In_ LOCK_OPERATION Operation,
+    _Out_ PMDL* OutMdl,
+    _Out_ PBOOLEAN OutLocked)
+{
+    PMDL mdl;
+    NTSTATUS status = STATUS_SUCCESS;
+
+    *OutMdl = NULL;
+    *OutLocked = FALSE;
+    if (!Process || Address < 0x10000ULL ||
+        Address >= 0x800000000000ULL || Size == 0 || Size > MAXULONG ||
+        Address + Size <= Address ||
+        Address + Size > 0x800000000000ULL) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    mdl = IoAllocateMdl(
+        (PVOID)(ULONG_PTR)Address, (ULONG)Size, FALSE, FALSE, NULL);
+    if (!mdl) return STATUS_INSUFFICIENT_RESOURCES;
+
+    __try {
+        MmProbeAndLockProcessPages(mdl, Process, UserMode, Operation);
+        *OutLocked = TRUE;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        status = GetExceptionCode();
+        if (NT_SUCCESS(status)) status = STATUS_ACCESS_VIOLATION;
+    }
+
+    if (!NT_SUCCESS(status)) {
+        IoFreeMdl(mdl);
+        return status;
+    }
+    *OutMdl = mdl;
+    return STATUS_SUCCESS;
+}
+
+static VOID
+VrUnlockProcessRange(
+    _Inout_ PMDL* Mdl,
+    _Inout_ PBOOLEAN Locked)
+{
+    if (*Mdl) {
+        if (*Locked) MmUnlockPages(*Mdl);
+        IoFreeMdl(*Mdl);
+    }
+    *Mdl = NULL;
+    *Locked = FALSE;
+}
+
+static NTSTATUS
+VrCaptureMdlPagePa(
+    _In_ PMDL Mdl,
+    _Out_ PUINT64 OutPagePa)
+{
+    PPFN_NUMBER pageFrames;
+    UINT64 pagePa;
+
+    if (!Mdl || !OutPagePa || !(Mdl->MdlFlags & MDL_PAGES_LOCKED)) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    *OutPagePa = 0;
+    pageFrames = MmGetMdlPfnArray(Mdl);
+    if (!pageFrames) return STATUS_INVALID_ADDRESS_COMPONENT;
+
+    pagePa = ((UINT64)pageFrames[0]) << PAGE_SHIFT;
+    if (!HvPhysIsRamRangeRootSafe(pagePa, PAGE_SIZE)) {
+        return STATUS_INVALID_ADDRESS_COMPONENT;
+    }
+
+    *OutPagePa = pagePa;
+    return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+VrLockProcessAnchors(
+    _In_ PEPROCESS Process,
+    _In_ PVR_PROCESS_REQUEST Request,
+    _Out_ PVR_LOCKED_ANCHORS Anchors)
+{
+    NTSTATUS status;
+
+    RtlZeroMemory(Anchors, sizeof(*Anchors));
+    status = VrLockProcessRange(
+        Process, Request->PebGva + 0x10, sizeof(UINT64), IoReadAccess,
+        &Anchors->PebMdl, &Anchors->PebLocked);
+    if (!NT_SUCCESS(status)) return status;
+    status = VrCaptureMdlPagePa(
+        Anchors->PebMdl, &Request->PebAnchorPagePa);
+    if (!NT_SUCCESS(status)) {
+        VrUnlockProcessRange(&Anchors->PebMdl, &Anchors->PebLocked);
+        return status;
+    }
+
+    status = VrLockProcessRange(
+        Process, Request->ImageBase, sizeof(USHORT), IoReadAccess,
+        &Anchors->ImageMdl, &Anchors->ImageLocked);
+    if (NT_SUCCESS(status)) {
+        status = VrCaptureMdlPagePa(
+            Anchors->ImageMdl, &Request->ImageAnchorPagePa);
+    }
+    if (!NT_SUCCESS(status)) {
+        VrUnlockProcessRange(&Anchors->ImageMdl, &Anchors->ImageLocked);
+        VrUnlockProcessRange(&Anchors->PebMdl, &Anchors->PebLocked);
+    }
+    return status;
+}
+
+static VOID
+VrUnlockProcessAnchors(_Inout_ PVR_LOCKED_ANCHORS Anchors)
+{
+    VrUnlockProcessRange(&Anchors->ImageMdl, &Anchors->ImageLocked);
+    VrUnlockProcessRange(&Anchors->PebMdl, &Anchors->PebLocked);
+}
+
+static NTSTATUS
+VrInvokeProcessRequest(
+    _Inout_ PVR_PROCESS_REQUEST Request,
+    _In_ ULONG Mode,
+    _Out_ PUINT64 OutResult)
+{
+    SIZE_T resultSlot = 0;
+    NTSTATUS status;
+
+    status = HvVtRootInvokeService(
+        (UINT64)(ULONG_PTR)Request, 0, NULL, 0, Mode, &resultSlot);
+
+    *OutResult = (UINT64)resultSlot;
+    if (NT_SUCCESS(status) && Request->ResolvedCr3 != 0) {
+        VrCacheStore(
+            Request->TargetPid, Request->CreateTime, Request->ResolvedCr3);
+    }
+    return status;
+}
 
 NTSTATUS
 HvVtRootCopyByPid(
@@ -1266,89 +1669,237 @@ HvVtRootCopyByPid(
     _In_ BOOLEAN IsWrite,
     _Out_opt_ PSIZE_T BytesDone)
 {
+    PEPROCESS process = NULL;
+    PVR_PROCESS_REQUEST request = NULL;
+    PUCHAR bounce = NULL;
+    PMDL targetMdl = NULL;
+    BOOLEAN targetLocked = FALSE;
+    VR_LOCKED_ANCHORS anchors;
+    BOOLEAN anchorsLocked = FALSE;
+    NTSTATUS status;
+    SIZE_T totalDone = 0;
+
     if (BytesDone) *BytesDone = 0;
     if (!Buffer || Size == 0) return STATUS_INVALID_PARAMETER;
     if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
     if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
-    if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
-
-    CPU_VENDOR vendor = HvGetCpuVendor();
-    ULONG dir = IsWrite ? HV_VTROOT_DIR_WRITE : HV_VTROOT_DIR_READ;
-
-    SIZE_T totalDone = 0;
-    PUCHAR userBuf = (PUCHAR)Buffer;
-    UINT64 curGva = Gva;
-    SIZE_T remaining = Size;
-
-    while (remaining > 0) {
-        SIZE_T inPageOff = (SIZE_T)(curGva & 0xFFF);
-        SIZE_T inPageLeft = PAGE_SIZE - inPageOff;
-        SIZE_T chunk = (remaining < inPageLeft) ? remaining : inPageLeft;
-
-        SIZE_T thisDone = 0;
-        NTSTATUS vs;
-        // 注意:第一个参数槽 (RCX 经 ASM 重洗到 RDX) 现在传 PID, 而非 CR3。
-        // ASM 不变, 只是 root handler 改成把 RDX 解释为 PID。
-        if (vendor == CPU_VENDOR_AMD) {
-            vs = AsmVmmCallPhysCopy((UINT64)TargetPid, curGva, userBuf, chunk, dir, &thisDone);
-        } else {
-            vs = AsmVmCallPhysCopy((UINT64)TargetPid, curGva, userBuf, chunk, dir, &thisDone);
-        }
-
-        totalDone += thisDone;
-        if (!NT_SUCCESS(vs) || thisDone == 0) {
-            if (BytesDone) *BytesDone = totalDone;
-            return NT_SUCCESS(vs) ? STATUS_NOT_FOUND : vs;
-        }
-
-        userBuf   += thisDone;
-        curGva    += thisDone;
-        remaining -= thisDone;
+    if (TargetPid == 0 || Gva < 0x10000ULL ||
+        Gva >= 0x800000000000ULL || Size > MAXULONG ||
+        Gva + Size <= Gva || Gva + Size > 0x800000000000ULL) {
+        return STATUS_INVALID_PARAMETER;
     }
 
+    status = PsLookupProcessByProcessId(
+        (HANDLE)(ULONG_PTR)TargetPid, &process);
+    if (!NT_SUCCESS(status) || !process) {
+        return NT_SUCCESS(status) ? STATUS_INVALID_CID : status;
+    }
+
+    request = (PVR_PROCESS_REQUEST)HvAllocateNonPagedZeroed(
+        sizeof(*request), VR_REQUEST_TAG);
+    bounce = (PUCHAR)HvAllocateNonPaged(PAGE_SIZE, VR_COPY_TAG);
+    if (!request || !bounce) {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto cleanup;
+    }
+
+    status = VrBuildProcessRequest(TargetPid, process, request);
+    if (!NT_SUCCESS(status)) goto cleanup;
+
+    status = VrLockProcessRange(
+        process, Gva, Size,
+        IoReadAccess,
+        &targetMdl, &targetLocked);
+    if (!NT_SUCCESS(status)) goto cleanup;
+
+    status = VrLockProcessAnchors(process, request, &anchors);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    anchorsLocked = TRUE;
+    request->Bounce = bounce;
+
+    PUCHAR currentBuffer = (PUCHAR)Buffer;
+    UINT64 currentGva = Gva;
+    SIZE_T remaining = Size;
+    while (remaining != 0) {
+        SIZE_T pageRemaining = PAGE_SIZE - (SIZE_T)(currentGva & 0xFFF);
+        SIZE_T chunk = remaining < pageRemaining ? remaining : pageRemaining;
+        UINT64 result = 0;
+
+        if (IsWrite) {
+            __try {
+                RtlCopyMemory(bounce, currentBuffer, chunk);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                status = GetExceptionCode();
+                if (NT_SUCCESS(status)) status = STATUS_ACCESS_VIOLATION;
+                goto cleanup;
+            }
+        }
+
+        request->TargetGva = currentGva;
+        request->TransferSize = chunk;
+        status = VrInvokeProcessRequest(
+            request,
+            IsWrite ? HV_VTROOT_MODE_PROCESS_WRITE
+                    : HV_VTROOT_MODE_PROCESS_READ,
+            &result);
+        if (!NT_SUCCESS(status) || result != chunk) {
+            if (NT_SUCCESS(status)) status = STATUS_PARTIAL_COPY;
+            goto cleanup;
+        }
+
+        if (!IsWrite) {
+            __try {
+                RtlCopyMemory(currentBuffer, bounce, (SIZE_T)result);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                status = GetExceptionCode();
+                if (NT_SUCCESS(status)) status = STATUS_ACCESS_VIOLATION;
+                goto cleanup;
+            }
+        }
+
+        if (request->Candidates[0] != request->ResolvedCr3) {
+            for (ULONG index = 1; index < request->CandidateCount; ++index) {
+                if (request->Candidates[index] == request->ResolvedCr3) {
+                    UINT64 first = request->Candidates[0];
+                    request->Candidates[0] = request->ResolvedCr3;
+                    request->Candidates[index] = first;
+                    break;
+                }
+            }
+        }
+
+        totalDone += (SIZE_T)result;
+        currentBuffer += result;
+        currentGva += result;
+        remaining -= (SIZE_T)result;
+    }
+    status = STATUS_SUCCESS;
+
+cleanup:
+    if (anchorsLocked) VrUnlockProcessAnchors(&anchors);
+    VrUnlockProcessRange(&targetMdl, &targetLocked);
+    if (bounce) ExFreePoolWithTag(bounce, VR_COPY_TAG);
+    if (request) ExFreePoolWithTag(request, VR_REQUEST_TAG);
+    if (process) ObDereferenceObject(process);
     if (BytesDone) *BytesDone = totalDone;
-    return STATUS_SUCCESS;
+    return status;
 }
 
 // ============================================================
-// HvVtRootResolveUserCr3 - PASSIVE 触发 root-mode 解析 (2026-06-17)
+// HvVtRootResolveUserCr3 - PASSIVE-level resolver
 // ============================================================
 //
-// 复用 VMCALL_PHYS_COPY, mode=3 (HV_VTROOT_MODE_RESOLVE_CR3)。
-// AsmVmCallPhysCopy 把 R10 写到 *OutBytesDone, root handler 把 real CR3 放 R10。
-// 我们传 NULL kernelBuf + size=0 是合法的 (root handler 在 mode=3 不读它们)。
-//
-// 实际上 AsmVmCallPhysCopy 要求 OutBytesDone 非 NULL 才回写, NULL 时直接丢
-// (见 AsmVmx.asm:799-802)。我们传一个 stack UINT64。
+// Uses the lifecycle-bound PASSIVE cache; no PID lookup runs in root mode.
 NTSTATUS
 HvVtRootResolveUserCr3(
     _In_ ULONG TargetPid,
     _Out_ PUINT64 OutCr3)
 {
+    PEPROCESS process = NULL;
+    PVR_PROCESS_REQUEST request = NULL;
+    VR_LOCKED_ANCHORS anchors;
+    BOOLEAN anchorsLocked = FALSE;
+    UINT64 result = 0;
+    NTSTATUS status;
+
     if (!OutCr3) return STATUS_INVALID_PARAMETER;
     *OutCr3 = 0;
     if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
     if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
     if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
 
-    CPU_VENDOR vendor = HvGetCpuVendor();
-    SIZE_T outSlot = 0;
-    NTSTATUS s;
-
-    // RCX=cmd, RDX=pid, R8=0, R9=NULL, R10(size)=0, R11(mode)=3
-    if (vendor == CPU_VENDOR_AMD) {
-        s = AsmVmmCallPhysCopy((UINT64)TargetPid, 0, NULL, 0,
-                                HV_VTROOT_MODE_RESOLVE_CR3, &outSlot);
-    } else {
-        s = AsmVmCallPhysCopy((UINT64)TargetPid, 0, NULL, 0,
-                               HV_VTROOT_MODE_RESOLVE_CR3, &outSlot);
+    status = PsLookupProcessByProcessId(
+        (HANDLE)(ULONG_PTR)TargetPid, &process);
+    if (!NT_SUCCESS(status) || !process) {
+        return NT_SUCCESS(status) ? STATUS_INVALID_CID : status;
     }
 
-    if (NT_SUCCESS(s)) {
-        *OutCr3 = (UINT64)outSlot;
-        if (*OutCr3 == 0) return STATUS_NOT_FOUND;
+    request = (PVR_PROCESS_REQUEST)HvAllocateNonPagedZeroed(
+        sizeof(*request), VR_REQUEST_TAG);
+    if (!request) {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto cleanup;
     }
-    return s;
+
+    status = VrBuildProcessRequest(TargetPid, process, request);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    status = VrLockProcessAnchors(process, request, &anchors);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    anchorsLocked = TRUE;
+
+    status = VrInvokeProcessRequest(
+        request, HV_VTROOT_MODE_PROCESS_RESOLVE, &result);
+    if (NT_SUCCESS(status) && result != 0) {
+        *OutCr3 = result & VR_PTE_PFN_MASK;
+    } else if (NT_SUCCESS(status)) {
+        status = STATUS_NOT_FOUND;
+    }
+
+cleanup:
+    if (anchorsLocked) VrUnlockProcessAnchors(&anchors);
+    if (request) ExFreePoolWithTag(request, VR_REQUEST_TAG);
+    if (process) ObDereferenceObject(process);
+    return status;
+}
+
+NTSTATUS
+HvVtRootAdoptObservedUserCr3(
+    _In_ ULONG TargetPid,
+    _In_ UINT64 CandidateCr3)
+{
+    PEPROCESS process = NULL;
+    PVR_PROCESS_REQUEST request = NULL;
+    VR_LOCKED_ANCHORS anchors;
+    BOOLEAN anchorsLocked = FALSE;
+    UINT64 result = 0;
+    NTSTATUS status;
+
+    CandidateCr3 &= VR_PTE_PFN_MASK;
+    if (TargetPid == 0 || CandidateCr3 == 0) {
+        return STATUS_INVALID_PARAMETER;
+    }
+    if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
+    if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
+
+    status = PsLookupProcessByProcessId(
+        (HANDLE)(ULONG_PTR)TargetPid, &process);
+    if (!NT_SUCCESS(status) || !process) {
+        return NT_SUCCESS(status) ? STATUS_INVALID_CID : status;
+    }
+
+    request = (PVR_PROCESS_REQUEST)HvAllocateNonPagedZeroed(
+        sizeof(*request), VR_REQUEST_TAG);
+    if (!request) {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto cleanup;
+    }
+
+    status = VrBuildProcessRequest(TargetPid, process, request);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    request->CandidateCount = 0;
+    request->ResolvedCr3 = 0;
+    VrAddProcessCandidate(request, CandidateCr3);
+    if (request->CandidateCount != 1) {
+        status = STATUS_INVALID_ADDRESS_COMPONENT;
+        goto cleanup;
+    }
+
+    status = VrLockProcessAnchors(process, request, &anchors);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    anchorsLocked = TRUE;
+
+    status = VrInvokeProcessRequest(
+        request, HV_VTROOT_MODE_PROCESS_RESOLVE, &result);
+    if (NT_SUCCESS(status) &&
+        (result & VR_PTE_PFN_MASK) != CandidateCr3) {
+        status = STATUS_NOT_FOUND;
+    }
+
+cleanup:
+    if (anchorsLocked) VrUnlockProcessAnchors(&anchors);
+    if (request) ExFreePoolWithTag(request, VR_REQUEST_TAG);
+    if (process) ObDereferenceObject(process);
+    return status;
 }
 
 // ============================================================
@@ -1366,6 +1917,15 @@ HvVtRootWalkGvaToHpa(
     _Out_ PUINT64 OutHpa,
     _Out_opt_ PUINT64 OutPageSize)
 {
+    PEPROCESS process = NULL;
+    PVR_PROCESS_REQUEST request = NULL;
+    PMDL targetMdl = NULL;
+    BOOLEAN targetLocked = FALSE;
+    VR_LOCKED_ANCHORS anchors;
+    BOOLEAN anchorsLocked = FALSE;
+    UINT64 result = 0;
+    NTSTATUS status;
+
     if (!OutHpa) return STATUS_INVALID_PARAMETER;
     *OutHpa = 0;
     if (OutPageSize) *OutPageSize = 0;
@@ -1374,44 +1934,50 @@ HvVtRootWalkGvaToHpa(
     if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
     if (Gva < 0x10000ULL || Gva >= 0x800000000000ULL) return STATUS_INVALID_PARAMETER;
 
-    CPU_VENDOR vendor = HvGetCpuVendor();
-    SIZE_T outSlot = 0;
-    NTSTATUS s;
-
-    // RDX=pid, R8=gva, R9=NULL, R10(size)=0, R11(mode)=4
-    if (vendor == CPU_VENDOR_AMD) {
-        s = AsmVmmCallPhysCopy((UINT64)TargetPid, Gva, NULL, 0,
-                                HV_VTROOT_MODE_GVA_TO_HPA, &outSlot);
-    } else {
-        s = AsmVmCallPhysCopy((UINT64)TargetPid, Gva, NULL, 0,
-                               HV_VTROOT_MODE_GVA_TO_HPA, &outSlot);
+    status = PsLookupProcessByProcessId(
+        (HANDLE)(ULONG_PTR)TargetPid, &process);
+    if (!NT_SUCCESS(status) || !process) {
+        return NT_SUCCESS(status) ? STATUS_INVALID_CID : status;
     }
 
-    if (NT_SUCCESS(s)) {
-        // 4KB leaf
-        *OutHpa = (UINT64)outSlot;
-        if (OutPageSize) *OutPageSize = PAGE_SIZE;
-        return STATUS_SUCCESS;
+    request = (PVR_PROCESS_REQUEST)HvAllocateNonPagedZeroed(
+        sizeof(*request), VR_REQUEST_TAG);
+    if (!request) {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto cleanup;
     }
-    if (s == STATUS_NOT_SUPPORTED) {
-        // 命中 2MB/1GB; outSlot = pageSize
-        if (OutPageSize) *OutPageSize = (UINT64)outSlot;
-        return STATUS_NOT_SUPPORTED;
+
+    status = VrBuildProcessRequest(TargetPid, process, request);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    request->TargetGva = Gva;
+
+    status = VrLockProcessRange(
+        process, Gva, 1, IoReadAccess, &targetMdl, &targetLocked);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    status = VrLockProcessAnchors(process, request, &anchors);
+    if (!NT_SUCCESS(status)) goto cleanup;
+    anchorsLocked = TRUE;
+
+    status = VrInvokeProcessRequest(
+        request, HV_VTROOT_MODE_PROCESS_WALK, &result);
+    if (NT_SUCCESS(status)) {
+        *OutHpa = result;
+        if (OutPageSize) *OutPageSize = request->ResultPageSize;
+        if (request->ResultPageSize != PAGE_SIZE) {
+            status = STATUS_NOT_SUPPORTED;
+        }
     }
-    return s;
+
+cleanup:
+    if (anchorsLocked) VrUnlockProcessAnchors(&anchors);
+    VrUnlockProcessRange(&targetMdl, &targetLocked);
+    if (request) ExFreePoolWithTag(request, VR_REQUEST_TAG);
+    if (process) ObDereferenceObject(process);
+    return status;
 }
 
 // ============================================================
-// HvVtRootGetResolvedUserCr3 - PASSIVE 查询 PID → 真 user CR3
-// ============================================================
-//
-// HvCloak.c 调用: 在 ADD_DEBUGGER 路径上, 先发一次 dummy read 触发 VtRoot
-// 走 24 候选 walk 流程, 让真 user CR3 落到 g_VrPidCr3Cache, 然后用这个
-// API 读出来给 EnumWorkingSet。
-//
-// 返回:
-//   STATUS_SUCCESS      *OutCr3 = 缓存中的真 user CR3
-//   STATUS_NOT_FOUND    cache miss (PID 没在最近一次 VtRoot walk 中出现)
+// Source-compatible alias for the validated VT-root resolver.
 //
 NTSTATUS
 HvVtRootGetResolvedUserCr3(
@@ -1421,56 +1987,9 @@ HvVtRootGetResolvedUserCr3(
     if (!OutCr3) return STATUS_INVALID_PARAMETER;
     *OutCr3 = 0;
     if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
+    if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
 
-    ULONG slot = TargetPid & VR_CR3_CACHE_MASK;
-    UINT64 packed = (UINT64)InterlockedOr64(
-        (volatile LONG64*)&g_VrPidCr3Cache[slot].PidAndCr3, 0);
-    if (packed == 0) return STATUS_NOT_FOUND;
-
-    ULONG cachedPid = 0;
-    UINT64 cachedCr3 = 0;
-    VrUnpackPidCr3(packed, &cachedPid, &cachedCr3);
-
-    // PID 哈希冲突: cache 槽是另一个 PID。pack 时 PID 截高 16-bit, 验证时也
-    // 比同样的 16-bit, 否则两个 PID 撞同 slot + 同 hi-16 时会假命中。
-    if (cachedPid != (TargetPid & 0xFFFF)) {
-        return STATUS_NOT_FOUND;
-    }
-    if (cachedCr3 == 0) return STATUS_NOT_FOUND;
-
-    *OutCr3 = cachedCr3;
-    return STATUS_SUCCESS;
-}
-
-// ============================================================
-// GetPeb: PID → PEB user VA (root mode + PASSIVE 入口)
-// ============================================================
-
-NTSTATUS
-HvVtRootRootGetPebByPid(
-    _In_ ULONG TargetPid,
-    _Out_ PUINT64 OutPebVa)
-{
-    if (!OutPebVa) return STATUS_INVALID_PARAMETER;
-    *OutPebVa = 0;
-    if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
-    if (!g_HvPhysRootCtx.Initialized) return STATUS_DEVICE_NOT_READY;
-    if (g_HvPhysRootCtx.PebOff == 0) return STATUS_NOT_SUPPORTED;
-
-    PEPROCESS eproc = VrRootResolvePidToEprocess(TargetPid);
-    if (!eproc) return STATUS_NOT_FOUND;
-
-    // PEB 在 EPROCESS+PebOff, 是个 user VA。System / Registry / Memory
-    // Compression / Secure System 等内核进程的 Peb = NULL, 不算错误。
-    UINT64 peb = *(UINT64*)((PUCHAR)eproc + g_HvPhysRootCtx.PebOff);
-
-    // 鲁棒性校验: 值必须在 user-VA 范围, 否则当作 NULL (可能撞 garbage 偏移)
-    if (peb != 0 && (peb < 0x10000ULL || peb >= 0x00007FFFFFFFFFFFULL)) {
-        peb = 0;
-    }
-
-    *OutPebVa = peb;
-    return STATUS_SUCCESS;
+    return HvVtRootResolveUserCr3(TargetPid, OutCr3);
 }
 
 NTSTATUS
@@ -1482,26 +2001,22 @@ HvVtRootGetPebByPid(
     *OutPebVa = 0;
     if (TargetPid == 0) return STATUS_INVALID_PARAMETER;
     if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
-    if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
 
-    CPU_VENDOR vendor = HvGetCpuVendor();
+    PEPROCESS process = NULL;
+    NTSTATUS status = PsLookupProcessByProcessId(
+        (HANDLE)(ULONG_PTR)TargetPid, &process);
+    if (!NT_SUCCESS(status)) return status;
 
-    // 复用 AsmVmCallPhysCopy:
-    //   RDX = PID, R8/R9 = 0, R10 = 0 (返回 peb_va), R11 = HV_VTROOT_MODE_GET_PEB
-    // 注意: BytesDone 形参在 ASM 端就是 [rsp+30h] 写回 R10, 我们把它指到
-    // pebVa 即可拿到结果 (SIZE_T 和 UINT64 在 x64 同宽 8 字节)。
-    SIZE_T pebVa = 0;
-    NTSTATUS s;
-    if (vendor == CPU_VENDOR_AMD) {
-        s = AsmVmmCallPhysCopy((UINT64)TargetPid, 0, NULL, 0, HV_VTROOT_MODE_GET_PEB, &pebVa);
-    } else {
-        s = AsmVmCallPhysCopy((UINT64)TargetPid, 0, NULL, 0, HV_VTROOT_MODE_GET_PEB, &pebVa);
+    UINT64 pebVa = (UINT64)(ULONG_PTR)PsGetProcessPeb(process);
+    ObDereferenceObject(process);
+
+    if (pebVa != 0 &&
+        (pebVa < 0x10000ULL || pebVa >= 0x800000000000ULL)) {
+        return STATUS_INVALID_ADDRESS_COMPONENT;
     }
 
-    if (NT_SUCCESS(s)) {
-        *OutPebVa = (UINT64)pebVa;
-    }
-    return s;
+    *OutPebVa = pebVa;
+    return STATUS_SUCCESS;
 }
 
 // ============================================================
@@ -1522,10 +2037,15 @@ HvVtRootCopyWithCr3(
     if (!Buffer || Size == 0) return STATUS_INVALID_PARAMETER;
     if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
     if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
-    if (TargetCr3 == 0) return STATUS_INVALID_PARAMETER;
+    TargetCr3 &= VR_PTE_PFN_MASK;
+    if (!HvPhysIsRamRangeRootSafe(TargetCr3, PAGE_SIZE)) {
+        return STATUS_INVALID_PARAMETER;
+    }
 
-    CPU_VENDOR vendor = HvGetCpuVendor();
     ULONG dir = IsWrite ? HV_VTROOT_DIR_WRITE : HV_VTROOT_DIR_READ;
+
+    PUCHAR bounce = (PUCHAR)HvAllocateNonPaged(PAGE_SIZE, VR_COPY_TAG);
+    if (!bounce) return STATUS_INSUFFICIENT_RESOURCES;
 
     SIZE_T totalDone = 0;
     PUCHAR userBuf = (PUCHAR)Buffer;
@@ -1539,14 +2059,34 @@ HvVtRootCopyWithCr3(
 
         SIZE_T thisDone = 0;
         NTSTATUS vs;
-        if (vendor == CPU_VENDOR_AMD) {
-            vs = AsmVmmCallPhysCopy(TargetCr3, curGva, userBuf, chunk, dir, &thisDone);
-        } else {
-            vs = AsmVmCallPhysCopy(TargetCr3, curGva, userBuf, chunk, dir, &thisDone);
+        if (IsWrite) {
+            __try {
+                RtlCopyMemory(bounce, userBuf, chunk);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                vs = GetExceptionCode();
+                ExFreePoolWithTag(bounce, VR_COPY_TAG);
+                if (BytesDone) *BytesDone = totalDone;
+                return NT_SUCCESS(vs) ? STATUS_ACCESS_VIOLATION : vs;
+            }
+        }
+
+        vs = HvVtRootInvokeService(
+            TargetCr3, curGva, bounce, chunk, dir, &thisDone);
+
+        if (!IsWrite && thisDone > 0) {
+            __try {
+                RtlCopyMemory(userBuf, bounce, thisDone);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                NTSTATUS copyStatus = GetExceptionCode();
+                ExFreePoolWithTag(bounce, VR_COPY_TAG);
+                if (BytesDone) *BytesDone = totalDone;
+                return NT_SUCCESS(copyStatus) ? STATUS_ACCESS_VIOLATION : copyStatus;
+            }
         }
 
         totalDone += thisDone;
         if (!NT_SUCCESS(vs) || thisDone == 0) {
+            ExFreePoolWithTag(bounce, VR_COPY_TAG);
             if (BytesDone) *BytesDone = totalDone;
             return NT_SUCCESS(vs) ? STATUS_NOT_FOUND : vs;
         }
@@ -1556,6 +2096,7 @@ HvVtRootCopyWithCr3(
         remaining -= thisDone;
     }
 
+    ExFreePoolWithTag(bounce, VR_COPY_TAG);
     if (BytesDone) *BytesDone = totalDone;
     return STATUS_SUCCESS;
 }
@@ -1575,9 +2116,6 @@ HvVtRootCopy(
     if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
     if (!g_VtRootEnabled) return STATUS_DEVICE_NOT_READY;
 
-    UINT64 cr3 = 0;
-    NTSTATUS s = HvPhysGetProcessCr3(TargetPid, &cr3);
-    if (!NT_SUCCESS(s)) return s;
-
-    return HvVtRootCopyWithCr3(cr3, Gva, Buffer, Size, IsWrite, BytesDone);
+    return HvVtRootCopyByPid(
+        TargetPid, Gva, Buffer, Size, IsWrite, BytesDone);
 }

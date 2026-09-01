@@ -1,0 +1,110 @@
+@'
+from pathlib import Path
+
+# ===== 1. Driver HvVwatch.c =====
+p = Path(r"E:\project_learning\YuYuanVTDebug\Netr\HvVwatch.c")
+text = p.read_text(encoding="utf-8", errors="replace")
+old = """        if (debuggerStepCompleted && swBpEntry) {
+            /*
+             * Always enqueue HV_DBG_EVT_STEP so Bridge can stop the external
+             * debugger with EXCEPTION_SINGLE_STEP.  Inject #DB only if the
+             * private ring is full/unavailable; inject alone is silent when
+             * private mode has no DebugPort, which free-runs the target.
+             */
+            HV_DEBUG_EVENT stepEvent;
+            NTSTATUS stepStatus;
+            RtlZeroMemory(&stepEvent, sizeof(stepEvent));
+            stepEvent.Sequence = HvDbgReserveEventSequence();
+            stepEvent.Tid = swBpEntry->StepTid;
+            stepEvent.Pid = swBpEntry->TargetPid;
+            stepEvent.ThreadToken = swBpEntry->StepThreadToken
+                ? swBpEntry->StepThreadToken
+                : HvVwatchpCurrentThreadToken();
+            stepEvent.Kind = HV_DBG_EVT_STEP;
+            RtlCopyMemory(stepEvent.Gpr, Ctx, sizeof(stepEvent.Gpr));
+            if (HvGetCpuVendor() == CPU_VENDOR_AMD) {
+                stepEvent.Rip = VcpuData->Vmcb->StateSaveArea.Rip;
+                stepEvent.Rsp = VcpuData->Vmcb->StateSaveArea.Rsp;
+                stepEvent.Rflags = VcpuData->Vmcb->StateSaveArea.Rflags;
+                stepEvent.Cr3 = VcpuData->Vmcb->StateSaveArea.Cr3;
+            } else {
+                SIZE_T value = 0;
+                __vmx_vmread(GUEST_RIP, &value);
+                stepEvent.Rip = value;
+                __vmx_vmread(GUEST_RSP, &value);
+                stepEvent.Rsp = value;
+                __vmx_vmread(GUEST_RFLAGS, &value);
+                stepEvent.Rflags = value;
+                __vmx_vmread(GUEST_CR3, &value);
+                stepEvent.Cr3 = value;
+            }
+
+            stepStatus = HvDbgEnqueuePrivateSwBpEventRootNoSignal(
+                cpu,
+                swBpEntry->DebuggerPid,
+                &stepEvent);
+            if (!NT_SUCCESS(stepStatus)) {
+                (void)HvVwatchpTryInjectPrivateStepDb();
+            }
+
+            InterlockedExchange(&swBpEntry->StepState, HV_VWATCH_STEP_IDLE);
+            KeMemoryBarrier();
+            swBpEntry->StepTid = NULL;
+            swBpEntry->StepThreadToken = NULL;
+        }"""
+new = """        if (debuggerStepCompleted && swBpEntry) {
+            /*
+             * Dual-notify VT step completion:
+             * 1) Inject #DB for DebugPort / WaitForDebugEvent consumers
+             *    (built-in native receiver and external native DebugObject).
+             * 2) Always enqueue HV_DBG_EVT_STEP for private-ring / Bridge
+             *    consumers (external private mode often has no DebugPort, so
+             *    inject alone is silent and free-runs the target).
+             * These are complementary, not mutually exclusive. Bridge and the
+             * built-in poller suppress/discard the late duplicate stop.
+             */
+            HV_DEBUG_EVENT stepEvent;
+            NTSTATUS stepStatus;
+            RtlZeroMemory(&stepEvent, sizeof(stepEvent));
+            stepEvent.Sequence = HvDbgReserveEventSequence();
+            stepEvent.Tid = swBpEntry->StepTid;
+            stepEvent.Pid = swBpEntry->TargetPid;
+            stepEvent.ThreadToken = swBpEntry->StepThreadToken
+                ? swBpEntry->StepThreadToken
+                : HvVwatchpCurrentThreadToken();
+            stepEvent.Kind = HV_DBG_EVT_STEP;
+            RtlCopyMemory(stepEvent.Gpr, Ctx, sizeof(stepEvent.Gpr));
+            if (HvGetCpuVendor() == CPU_VENDOR_AMD) {
+                stepEvent.Rip = VcpuData->Vmcb->StateSaveArea.Rip;
+                stepEvent.Rsp = VcpuData->Vmcb->StateSaveArea.Rsp;
+                stepEvent.Rflags = VcpuData->Vmcb->StateSaveArea.Rflags;
+                stepEvent.Cr3 = VcpuData->Vmcb->StateSaveArea.Cr3;
+            } else {
+                SIZE_T value = 0;
+                __vmx_vmread(GUEST_RIP, &value);
+                stepEvent.Rip = value;
+                __vmx_vmread(GUEST_RSP, &value);
+                stepEvent.Rsp = value;
+                __vmx_vmread(GUEST_RFLAGS, &value);
+                stepEvent.Rflags = value;
+                __vmx_vmread(GUEST_CR3, &value);
+                stepEvent.Cr3 = value;
+            }
+
+            (void)HvVwatchpTryInjectPrivateStepDb();
+            stepStatus = HvDbgEnqueuePrivateSwBpEventRootNoSignal(
+                cpu,
+                swBpEntry->DebuggerPid,
+                &stepEvent);
+            (void)stepStatus;
+
+            InterlockedExchange(&swBpEntry->StepState, HV_VWATCH_STEP_IDLE);
+            KeMemoryBarrier();
+            swBpEntry->StepTid = NULL;
+            swBpEntry->StepThreadToken = NULL;
+        }"""
+if old not in text:
+    raise SystemExit("driver block not found")
+p.write_text(text.replace(old, new, 1), encoding="utf-8")
+print("driver ok")
+'@ | python -

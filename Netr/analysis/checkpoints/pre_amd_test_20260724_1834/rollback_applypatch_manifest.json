@@ -1,0 +1,128 @@
+[
+  {
+    "index": 1,
+    "source": "Netr/AsmSvm.asm",
+    "patch": "01_AsmSvm.asm.applypatch",
+    "bytes": 12345,
+    "sha256": "1A98D2BFF5F346E5DA01140CDBB82B0D9BFB3860F31BB3FD453C56C607E31BDD"
+  },
+  {
+    "index": 2,
+    "source": "Netr/Driver.c",
+    "patch": "02_Driver.c.applypatch",
+    "bytes": 4106,
+    "sha256": "7B2F091AE2C52F0B39BB2DF3B919564E81C3AB69AE7B57D18FAA88F35E7E034A"
+  },
+  {
+    "index": 3,
+    "source": "Netr/HvCore.c",
+    "patch": "03_HvCore.c.applypatch",
+    "bytes": 26337,
+    "sha256": "3F52D50B4E81A6644F52C35F13D63DEF5A5F86DF2DFDDD4FCACCC41A9E8A9751"
+  },
+  {
+    "index": 4,
+    "source": "Netr/HvCore.h",
+    "patch": "04_HvCore.h.applypatch",
+    "bytes": 6604,
+    "sha256": "7DA56B74CCEEED629646AABEDA55FF1CAA3728C15D9B5BD0DB98756E7C5E4EF7"
+  },
+  {
+    "index": 5,
+    "source": "Netr/HvCpu.c",
+    "patch": "05_HvCpu.c.applypatch",
+    "bytes": 812,
+    "sha256": "560D7B42F68EB4EE3E3E3B8C051B96800D95794AD5027537A5A84107ABAE6A6A"
+  },
+  {
+    "index": 6,
+    "source": "Netr/HvCpu.h",
+    "patch": "06_HvCpu.h.applypatch",
+    "bytes": 402,
+    "sha256": "1F5F93C1FCA5914F4BEAE87408B8FA3849921BC34EAF0785AFA48DB277487EC2"
+  },
+  {
+    "index": 7,
+    "source": "Netr/HvHook.c",
+    "patch": "07_HvHook.c.applypatch",
+    "bytes": 10682,
+    "sha256": "E07D3A7425E8BA7A326B1C4EF13843DD67D1242462622784E5EA94323C40A673"
+  },
+  {
+    "index": 8,
+    "source": "Netr/HvNestedSvm.c",
+    "patch": "08_HvNestedSvm.c.applypatch",
+    "bytes": 6860,
+    "sha256": "F6B52A02383D529D589D66DFE9E5E531FC42406E37F635341A12DDD94CE617FB"
+  },
+  {
+    "index": 9,
+    "source": "Netr/HvNestedSvm.h",
+    "patch": "09_HvNestedSvm.h.applypatch",
+    "bytes": 680,
+    "sha256": "666E142BA65476141D2F21B3339F40D9461EA2342D174288C8E7FA2ADD81A120"
+  },
+  {
+    "index": 10,
+    "source": "Netr/HvTypes.h",
+    "patch": "10_HvTypes.h.applypatch",
+    "bytes": 2973,
+    "sha256": "D9AC240706EF7F5A1AC1C1A941BE47C6DACAE5A985B91BF214F6E19593E0C620"
+  },
+  {
+    "index": 11,
+    "source": "Netr/HvVmcb.c",
+    "patch": "11_HvVmcb.c.applypatch",
+    "bytes": 25096,
+    "sha256": "3B7A4E54DA173A8B1CB6BC8B3010D386B8E7DFDE27A60824A21C6A40546F22C9"
+  },
+  {
+    "index": 12,
+    "source": "Netr/HvVmcb.h",
+    "patch": "12_HvVmcb.h.applypatch",
+    "bytes": 987,
+    "sha256": "495833BC9CF70D7CB6D0189D4A1FA964EF2E6E1BC73A33D4C9B3473042A1487F"
+  },
+  {
+    "index": 13,
+    "source": "Netr/HvVmExit.c",
+    "patch": "13_HvVmExit.c.applypatch",
+    "bytes": 2223,
+    "sha256": "6A7289EAA2D53C56FD9B520B593732946F850D9B3A6783184437308D836A0671"
+  },
+  {
+    "index": 14,
+    "source": "Netr/NptHook.c",
+    "patch": "14_NptHook.c.applypatch",
+    "bytes": 16777,
+    "sha256": "3D48DAB63227B3F221E1D53526249D94C5020CBD83538F707DE9999F2F29FD1D"
+  },
+  {
+    "index": 15,
+    "source": "Netr/NptHook.h",
+    "patch": "15_NptHook.h.applypatch",
+    "bytes": 829,
+    "sha256": "625EF9554AA54A6615A4A89FDAA6A00D6EF01D1BF2D4A99E6BC9544540B7D5C4"
+  },
+  {
+    "index": 16,
+    "source": "Netr/README.md",
+    "patch": "16_README.md.applypatch",
+    "bytes": 1631,
+    "sha256": "E15269374CB3611435BC3F50872A7E2AAF4C8C512FEF0781B521489B5A773CF1"
+  },
+  {
+    "index": 17,
+    "source": "Netr/tools/netr-gui-rs/src-tauri/src/commands/driver.rs",
+    "patch": "17_tools__netr-gui-rs__src-tauri__src__commands__driver.rs.applypatch",
+    "bytes": 10572,
+    "sha256": "A8ABF055B4D3923494A5A7CCBB90CDA6B8096A5D748F5051A1F45DF466B8DBA9"
+  },
+  {
+    "index": 18,
+    "source": "Netr/tools/netr-gui-rs/src-tauri/src/ioctl/codes.rs",
+    "patch": "18_tools__netr-gui-rs__src-tauri__src__ioctl__codes.rs.applypatch",
+    "bytes": 401,
+    "sha256": "F36FC079B82DD33E0FE0F3ACFA4AB905AE498F9703DD5010BF021E543D651F43"
+  }
+]

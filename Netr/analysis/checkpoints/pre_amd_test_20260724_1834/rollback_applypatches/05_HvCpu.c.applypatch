@@ -1,0 +1,34 @@
+*** Begin Patch
+*** Update File: Netr/HvCpu.c
+@@
+ 
+     DbgPrint("[HV-CPU] ==========================================\n");
+ }
+ 
+ /*
+- * AMD SVM: CPUID 8000000AH.EBX[31:0] = NumberOfAsids
++ * AMD SVM: CPUID 80000008H.EBX[31:0] = NumberOfAsids
+  * 真实硬件典型值: Zen1/2/3 = 32768, Bulldozer/Piledriver = 64
+  */
+ ULONG HvSvmGetMaxAsid(VOID)
+ {
+     int cpuInfo[4] = { 0 };
+@@
+     if (g_CpuVendor != CPU_VENDOR_AMD) {
+         return 0;
+     }
+ 
+     __cpuid(cpuInfo, 0x80000000);
+-    if ((ULONG)cpuInfo[0] < 0x8000000A) {
++    if ((ULONG)cpuInfo[0] < 0x80000008) {
+         return 0;
+     }
+ 
+-    __cpuid(cpuInfo, 0x8000000A);
++    __cpuid(cpuInfo, 0x80000008);
+     return (ULONG)cpuInfo[1];  // EBX = NumberOfAsids
+ }
+ 
+ /*
+  * AMD/Intel: CPUID 80000001H.EDX[26] = PdpePages (1GB pages)
+*** End Patch

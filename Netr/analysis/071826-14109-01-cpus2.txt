@@ -1,0 +1,99 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\071826-14109-01-cpus2.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.016 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.015 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\071826-14109-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Symbol search path is: srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff805`27600000 PsLoadedModuleList = 0xfffff805`282135f0
+Debug session time: Sat Jul 18 20:53:37.065 2026 (UTC + 8:00)
+System Uptime: 0 days 4:12:53.734
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+6: kd> .symopt+ 0x40; ~*kv; !dpcwatchdog; !cpuinfo; q
+Symbol options are 0xB0367:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000040 - SYMOPT_LOAD_ANYTHING
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+                      ^ Syntax error in '.symopt+ 0x40; ~*kv; !dpcwatchdog; !cpuinfo; q'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

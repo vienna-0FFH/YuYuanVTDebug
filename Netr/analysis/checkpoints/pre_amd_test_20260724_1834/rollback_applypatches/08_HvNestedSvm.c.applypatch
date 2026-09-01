@@ -1,0 +1,108 @@
+*** Begin Patch
+*** Update File: Netr/HvNestedSvm.c
+@@
+ #include "HvNpt.h"
+ #include "HvNestedNpt.h"
+ #include "NptHook.h"
+ #include "HvVmcb.h"
+ #include "HvCompat.h"
+-
+-C_ASSERT(VMCB_INTERCEPT_CR_READ == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptCrRead));
+-C_ASSERT(VMCB_INTERCEPT_CR_WRITE == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptCrWrite));
+-C_ASSERT(VMCB_INTERCEPT_DR_READ == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptDrRead));
+-C_ASSERT(VMCB_INTERCEPT_DR_WRITE == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptDrWrite));
+-C_ASSERT(VMCB_INTERCEPT_EXCEPTIONS == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptExceptions));
+-C_ASSERT(VMCB_INTERCEPT_MISC1 == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc1));
+-C_ASSERT(VMCB_INTERCEPT_MISC2 == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc2));
+-C_ASSERT(VMCB_INTERCEPT_MISC3 == FIELD_OFFSET(VMCB_CONTROL_AREA, InterceptMisc3));
+-C_ASSERT(VMCB_PAUSE_FILTER_THRESHOLD == FIELD_OFFSET(VMCB_CONTROL_AREA, PauseFilterThreshold));
+-C_ASSERT(VMCB_PAUSE_FILTER_COUNT == FIELD_OFFSET(VMCB_CONTROL_AREA, PauseFilterCount));
+-C_ASSERT(VMCB_IOPM_BASE_PA == FIELD_OFFSET(VMCB_CONTROL_AREA, IopmBasePa));
+-C_ASSERT(VMCB_MSRPM_BASE_PA == FIELD_OFFSET(VMCB_CONTROL_AREA, MsrpmBasePa));
+-C_ASSERT(VMCB_TSC_OFFSET == FIELD_OFFSET(VMCB_CONTROL_AREA, TscOffset));
+-C_ASSERT(VMCB_GUEST_ASID == FIELD_OFFSET(VMCB_CONTROL_AREA, GuestAsid));
+-C_ASSERT(VMCB_TLB_CONTROL == FIELD_OFFSET(VMCB_CONTROL_AREA, TlbControl));
+-C_ASSERT(VMCB_V_INTR == FIELD_OFFSET(VMCB_CONTROL_AREA, VIntr));
+-C_ASSERT(VMCB_INTERRUPT_SHADOW == FIELD_OFFSET(VMCB_CONTROL_AREA, InterruptShadow));
+-C_ASSERT(VMCB_EXIT_CODE == FIELD_OFFSET(VMCB_CONTROL_AREA, ExitCode));
+-C_ASSERT(VMCB_EXIT_INFO1 == FIELD_OFFSET(VMCB_CONTROL_AREA, ExitInfo1));
+-C_ASSERT(VMCB_EXIT_INFO2 == FIELD_OFFSET(VMCB_CONTROL_AREA, ExitInfo2));
+-C_ASSERT(VMCB_EXIT_INT_INFO == FIELD_OFFSET(VMCB_CONTROL_AREA, ExitIntInfo));
+-C_ASSERT(VMCB_NP_ENABLE == FIELD_OFFSET(VMCB_CONTROL_AREA, NpEnable));
+-C_ASSERT(VMCB_AVIC_APIC_BAR == FIELD_OFFSET(VMCB_CONTROL_AREA, AvicApicBar));
+-C_ASSERT(VMCB_GHCB_PA == FIELD_OFFSET(VMCB_CONTROL_AREA, GhcbPa));
+-C_ASSERT(VMCB_EVENT_INJ == FIELD_OFFSET(VMCB_CONTROL_AREA, EventInj));
+-C_ASSERT(VMCB_N_CR3 == FIELD_OFFSET(VMCB_CONTROL_AREA, NCr3));
+-C_ASSERT(VMCB_LBR_VIRTUALIZATION_ENABLE == FIELD_OFFSET(VMCB_CONTROL_AREA, LbrVirtualizationEnable));
+-C_ASSERT(VMCB_VMCB_CLEAN_BITS == FIELD_OFFSET(VMCB_CONTROL_AREA, VmcbCleanBits));
+-C_ASSERT(VMCB_NRIP == FIELD_OFFSET(VMCB_CONTROL_AREA, NRip));
+-C_ASSERT(VMCB_NUM_BYTES_FETCHED == FIELD_OFFSET(VMCB_CONTROL_AREA, NumOfBytesFetched));
+-C_ASSERT(VMCB_GUEST_INSTRUCTION_BYTES == FIELD_OFFSET(VMCB_CONTROL_AREA, GuestInstructionBytes));
+-C_ASSERT(VMCB_SAVE_ES == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Es));
+-C_ASSERT(VMCB_SAVE_CS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cs));
+-C_ASSERT(VMCB_SAVE_SS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ss));
+-C_ASSERT(VMCB_SAVE_DS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ds));
+-C_ASSERT(VMCB_SAVE_FS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Fs));
+-C_ASSERT(VMCB_SAVE_GS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Gs));
+-C_ASSERT(VMCB_SAVE_GDTR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Gdtr));
+-C_ASSERT(VMCB_SAVE_LDTR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ldtr));
+-C_ASSERT(VMCB_SAVE_IDTR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Idtr));
+-C_ASSERT(VMCB_SAVE_TR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Tr));
+-C_ASSERT(VMCB_SAVE_CPL == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cpl));
+-C_ASSERT(VMCB_SAVE_EFER == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Efer));
+-C_ASSERT(VMCB_SAVE_CR4 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr4));
+-C_ASSERT(VMCB_SAVE_CR3 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr3));
+-C_ASSERT(VMCB_SAVE_CR0 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr0));
+-C_ASSERT(VMCB_SAVE_DR7 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Dr7));
+-C_ASSERT(VMCB_SAVE_DR6 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Dr6));
+-C_ASSERT(VMCB_SAVE_RFLAGS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rflags));
+-C_ASSERT(VMCB_SAVE_RIP == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rip));
+-C_ASSERT(VMCB_SAVE_RSP == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rsp));
+-C_ASSERT(VMCB_SAVE_RAX == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rax));
+-C_ASSERT(VMCB_SAVE_STAR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Star));
+-C_ASSERT(VMCB_SAVE_LSTAR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, LStar));
+-C_ASSERT(VMCB_SAVE_CSTAR == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, CStar));
+-C_ASSERT(VMCB_SAVE_SFMASK == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SfMask));
+-C_ASSERT(VMCB_SAVE_KERNEL_GS_BASE == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, KernelGsBase));
+-C_ASSERT(VMCB_SAVE_SYSENTER_CS == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterCs));
+-C_ASSERT(VMCB_SAVE_SYSENTER_ESP == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterEsp));
+-C_ASSERT(VMCB_SAVE_SYSENTER_EIP == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SysenterEip));
+-C_ASSERT(VMCB_SAVE_CR2 == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Cr2));
+-C_ASSERT(VMCB_SAVE_G_PAT == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, GPat));
+-C_ASSERT(VMCB_SAVE_DBGCTL == FIELD_OFFSET(VMCB_STATE_SAVE_AREA, DbgCtl));
+ 
+ // P122: 全 driver DbgPrint → GUI ring
+ #define HV_TRACE_THIS_CAT HV_TRACE_CAT_NESTED
+ #include "HvTrace.h"
+ 
+@@
+     vmcb->ControlArea.InterceptCrRead = nested->SavedInterceptCrRead;
+     vmcb->ControlArea.InterceptCrWrite = nested->SavedInterceptCrWrite;
+     vmcb->ControlArea.InterceptDrRead = nested->SavedInterceptDrRead;
+     vmcb->ControlArea.InterceptDrWrite = nested->SavedInterceptDrWrite;
+     vmcb->ControlArea.InterceptExceptions = nested->SavedInterceptExceptions;
+-    vmcb->ControlArea.InterceptMisc1 = (ULONG)nested->SavedInterceptMisc1;
+-    vmcb->ControlArea.InterceptMisc2 = (ULONG)nested->SavedInterceptMisc2;
++    vmcb->ControlArea.InterceptMisc1 = nested->SavedInterceptMisc1;
++    vmcb->ControlArea.InterceptMisc2 = nested->SavedInterceptMisc2;
+     vmcb->ControlArea.TscOffset = nested->SavedTscOffset;
+     vmcb->ControlArea.NpEnable = nested->SavedNpEnable;
+     vmcb->ControlArea.NCr3 = nested->SavedNCr3;
+     vmcb->ControlArea.GuestAsid = nested->SavedAsid;
+     vmcb->ControlArea.IopmBasePa = nested->SavedIopmBasePa;
+@@
+     vmcb->ControlArea.InterceptCrRead = merged.InterceptCrRead;
+     vmcb->ControlArea.InterceptCrWrite = merged.InterceptCrWrite;
+     vmcb->ControlArea.InterceptDrRead = merged.InterceptDrRead;
+     vmcb->ControlArea.InterceptDrWrite = merged.InterceptDrWrite;
+     vmcb->ControlArea.InterceptExceptions = merged.InterceptExceptions;
+-    vmcb->ControlArea.InterceptMisc1 = (ULONG)merged.InterceptMisc1;
+-    vmcb->ControlArea.InterceptMisc2 = (ULONG)merged.InterceptMisc2;
++    vmcb->ControlArea.InterceptMisc1 = merged.InterceptMisc1;
++    vmcb->ControlArea.InterceptMisc2 = merged.InterceptMisc2;
+     vmcb->ControlArea.TscOffset = merged.TscOffset;
+     vmcb->ControlArea.VIntr = merged.VIntr;
+     
+     // 应用 ASID（L2 使用不同的 ASID）
+     vmcb->ControlArea.GuestAsid = merged.GuestAsid;
+*** End Patch

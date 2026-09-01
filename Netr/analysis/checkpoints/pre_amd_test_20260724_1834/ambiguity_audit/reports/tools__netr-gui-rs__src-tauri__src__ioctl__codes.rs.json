@@ -1,0 +1,29 @@
+{
+  "start": "2026-07-22T12:00:00.000Z",
+  "end": "2026-07-24T10:34:00.000Z",
+  "only_file": "Netr/tools/netr-gui-rs/src-tauri/src/ioctl/codes.rs",
+  "candidate_calls": 113,
+  "applied_product_calls": 1,
+  "changed_operations": 1,
+  "changed_files": [
+    "Netr/tools/netr-gui-rs/src-tauri/src/ioctl/codes.rs"
+  ],
+  "skipped_failed_calls": [
+    "call_qzr59LZXYCwpks5VduqqtZ29",
+    "call_rTOFtapsaUREMCcCWddEh6WQ",
+    "call_dUrSRQguS4u2efR5hlk8Rx0b",
+    "call_CyCCZZsUeJtgmrU6T1CWhBW8",
+    "call_kPds95uSsFIr9e8HFjwUHIvS",
+    "call_9Aiu1w18ei8FX9RihahkAMNS",
+    "call_Ur4BEw4J7C46fBGiZ5vVyg9a",
+    "call_Eiv3kVx8xsz8GJ7RFko0ykLo",
+    "call_UwLWTFO2dbDgqswkKCMydUgo",
+    "call_ttiDQALkHpyhiaFKQRX5vhVm"
+  ],
+  "skipped_dynamic_analysis_calls": [
+    "call_i2CgqTF4MbMSsQ8Rr5vXuTt4"
+  ],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": []
+}

@@ -1,0 +1,24 @@
+{
+  "start": "2026-07-24T09:55:00.000Z",
+  "end": "2026-07-24T09:56:30.000Z",
+  "candidate_calls": 2,
+  "applied_product_calls": 2,
+  "changed_operations": 2,
+  "changed_files": [
+    "Netr/HvHook.c"
+  ],
+  "skipped_failed_calls": [],
+  "reverse_order_ambiguities": [
+    {
+      "matches": [
+        2703,
+        2721
+      ],
+      "selected": 2721,
+      "sequence": [
+        "    return HvHookpFilterAmdNtUserBuildHwndListResult(",
+        "        result, cHwnd, phwndList, pcHwndNeeded);"
+      ]
+    }
+  ]
+}

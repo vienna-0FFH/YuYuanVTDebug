@@ -12,12 +12,16 @@
 #include "HvPebCloak.h"     // P125: PEB 字段级 EPT spoof
 #include "HvUtils.h"
 
+extern volatile BOOLEAN g_VtRootEnabled;
+
 // P122: 全 driver DbgPrint → GUI ring
 #define HV_TRACE_THIS_CAT HV_TRACE_CAT_VM
 #include "HvTrace.h"
 
 // 全局上下文
 HYPERVISOR_CONTEXT g_HypervisorContext = { 0 };
+
+static volatile LONG g_HvPowerOffline = FALSE;
 
 // 内部静态变量
 static volatile BOOLEAN s_VmLaunchContinue = FALSE;
@@ -49,6 +53,19 @@ typedef struct _HV_VMOFF_DESC_SAVE {
     UCHAR  GdtrBuf[10];     // sgdt: limit(2) + base(8)
     USHORT TrSel;           // str
     USHORT LdtrSel;         // sldt
+    USHORT DsSel;
+    USHORT EsSel;
+    USHORT FsSel;
+    USHORT GsSel;
+    ULONG64 FsBase;
+    ULONG64 GsBase;
+    ULONG64 Dr7;
+    ULONG64 SysenterCs;
+    ULONG64 SysenterEsp;
+    ULONG64 SysenterEip;
+    ULONG64 Pat;
+    ULONG64 Efer;
+    ULONG64 DebugCtl;
 } HV_VMOFF_DESC_SAVE;
 #pragma pack(pop)
 
@@ -59,6 +76,11 @@ extern VOID AsmLoadIdtr(_In_ PVOID IdtrBuffer);
 extern VOID AsmLoadGdtr(_In_ PVOID GdtrBuffer);
 extern VOID AsmLoadTr(_In_ USHORT Selector);
 extern VOID AsmLoadLdtr(_In_ USHORT Selector);
+extern VOID AsmLoadDataSegments(
+    _In_ USHORT DsSelector,
+    _In_ USHORT EsSelector,
+    _In_ USHORT FsSelector,
+    _In_ USHORT GsSelector);
 
 // 清掉 GDT 中某个 TR descriptor 的 busy bit (位 9)。
 // LTR 要求 descriptor 的 type 是 9 (available 64-bit TSS), 而 SIDT 时 TR 已是
@@ -147,6 +169,7 @@ VOID HvStartOnProcessor(PVOID Context)
     
     vcpuData->ProcessorNumber = cpuNumber;
     vcpuData->IsVirtualized = FALSE;
+    vcpuData->IsVmxOn = FALSE;
 
     // Enable VMX
     status = HvEnableVmxOnCpu(vcpuData);
@@ -191,6 +214,7 @@ VOID HvStartOnProcessor(PVOID Context)
         DbgPrint("[HV] CPU %d: VMCS failed 0x%X\n", cpuNumber, status);
         HvCleanupEpt(vcpuData);
         __vmx_off();
+        vcpuData->IsVmxOn = FALSE;
         return;
     }
 #if HV_DIAG_VMCS_SETUP
@@ -521,6 +545,7 @@ NTSTATUS HvInitialize(VOID)
     ULONG successCount = 0;
     CPU_VENDOR cpuVendor;
 
+    HvClearPowerOffline();
     DbgPrint("[HV] ========================================\n");
     DbgPrint("[HV] Initializing Hypervisor...\n");
     DbgPrint("[HV] ========================================\n");
@@ -556,6 +581,17 @@ NTSTATUS HvInitialize(VOID)
         DbgPrint("[HV] Unknown CPU vendor, virtualization not supported\n");
         return STATUS_NOT_SUPPORTED;
     }
+
+#if !HV_DISABLE_SLAT
+    if (cpuVendor == CPU_VENDOR_INTEL) {
+        status = HvEptInitializeMemoryTypes();
+        if (!NT_SUCCESS(status)) {
+            DbgPrint("[HV] Refusing VMX startup without a valid MTRR map: 0x%08X\n",
+                     status);
+            return status;
+        }
+    }
+#endif
 
     g_HypervisorContext.ProcessorCount = KeQueryActiveProcessorCount(NULL);
     DbgPrint("[HV] CPU count: %d\n", g_HypervisorContext.ProcessorCount);
@@ -723,7 +759,16 @@ NTSTATUS HvInitialize(VOID)
         }
     }
 
-    if (successCount > 0) {
+    // Publish the hypervisor only when every processor actually completed
+    // VMLAUNCH/VMRUN. Later IPI paths require this all-or-nothing invariant.
+    successCount = 0;
+    for (i = 0; i < g_HypervisorContext.ProcessorCount; i++) {
+        if (g_HypervisorContext.VcpuData[i].IsVirtualized) {
+            successCount++;
+        }
+    }
+
+    if (successCount == g_HypervisorContext.ProcessorCount) {
         g_HypervisorContext.IsActive = TRUE;
         g_AsmDebugFlag = 300;  // marker: 进入 IsActive=TRUE 路径
 
@@ -743,14 +788,10 @@ NTSTATUS HvInitialize(VOID)
 #endif
     }
     else {
-        HV_LOG_ERROR("Hypervisor startup failed: No CPUs virtualized\n");
-        
-        if (g_HypervisorContext.VcpuData) {
-            ExFreePoolWithTag(g_HypervisorContext.VcpuData, 'VCPU');
-            g_HypervisorContext.VcpuData = NULL;
-        }
-        
+        DbgPrint("[HV] Hypervisor startup rejected: only %u/%u CPUs virtualized\n",
+                 successCount, g_HypervisorContext.ProcessorCount);
         status = STATUS_UNSUCCESSFUL;
+        HvCleanup();
     }
 
     return status;
@@ -763,6 +804,14 @@ BOOLEAN HvIsHypervisorRunning(VOID)
 {
     ULONG64 result = 0;
     CPU_VENDOR cpuVendor = HvGetCpuVendor();
+
+    if (HvIsPowerOffline()) {
+        return FALSE;
+    }
+
+    if (!HvIsCurrentProcessorVirtualized()) {
+        return FALSE;
+    }
     
     __try {
         if (cpuVendor == CPU_VENDOR_INTEL) {
@@ -777,9 +826,74 @@ BOOLEAN HvIsHypervisorRunning(VOID)
         }
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
+        HvInvalidateCurrentProcessorVirtualization();
     }
     
     return FALSE;
+}
+
+BOOLEAN HvIsCurrentProcessorVirtualized(VOID)
+{
+    ULONG cpuNumber = KeGetCurrentProcessorNumber();
+    PVCPU_DATA vcpuData = g_HypervisorContext.VcpuData;
+
+    if (HvIsPowerOffline()) {
+        return FALSE;
+    }
+
+    if (!vcpuData || cpuNumber >= g_HypervisorContext.ProcessorCount) {
+        return FALSE;
+    }
+
+    return vcpuData[cpuNumber].IsVirtualized ? TRUE : FALSE;
+}
+
+BOOLEAN HvAreAllProcessorsVirtualized(VOID)
+{
+    PVCPU_DATA vcpuData = g_HypervisorContext.VcpuData;
+    ULONG processorCount = g_HypervisorContext.ProcessorCount;
+
+    if (HvIsPowerOffline() ||
+        !g_HypervisorContext.IsActive || !vcpuData || processorCount == 0) {
+        return FALSE;
+    }
+    for (ULONG processor = 0; processor < processorCount; ++processor) {
+        if (!vcpuData[processor].IsVirtualized) return FALSE;
+    }
+    return TRUE;
+}
+
+BOOLEAN HvIsPowerOffline(VOID)
+{
+    return InterlockedCompareExchange(&g_HvPowerOffline, 0, 0) != 0;
+}
+
+VOID HvMarkPowerOffline(VOID)
+{
+    InterlockedExchange(&g_HvPowerOffline, TRUE);
+    g_HypervisorContext.IsActive = FALSE;
+    g_VtRootEnabled = FALSE;
+    KeMemoryBarrier();
+}
+
+VOID HvClearPowerOffline(VOID)
+{
+    InterlockedExchange(&g_HvPowerOffline, FALSE);
+}
+
+VOID HvInvalidateProcessorVirtualization(_In_ ULONG ProcessorNumber)
+{
+    PVCPU_DATA vcpuData = g_HypervisorContext.VcpuData;
+
+    if (vcpuData && ProcessorNumber < g_HypervisorContext.ProcessorCount) {
+        *((volatile BOOLEAN*)&vcpuData[ProcessorNumber].IsVirtualized) = FALSE;
+    }
+    KeMemoryBarrier();
+}
+
+VOID HvInvalidateCurrentProcessorVirtualization(VOID)
+{
+    HvInvalidateProcessorVirtualization(KeGetCurrentProcessorNumber());
 }
 
 /*
@@ -789,6 +903,10 @@ ULONG HvGetHypervisorVersion(VOID)
 {
     ULONG64 result = 0;
     CPU_VENDOR cpuVendor = HvGetCpuVendor();
+
+    if (!HvIsCurrentProcessorVirtualized()) {
+        return 0;
+    }
     
     __try {
         if (cpuVendor == CPU_VENDOR_INTEL) {
@@ -812,6 +930,10 @@ VOID HvRequestUnload(VOID)
 {
     int result[4];
     CPU_VENDOR cpuVendor = HvGetCpuVendor();
+
+    if (!HvIsCurrentProcessorVirtualized()) {
+        return;
+    }
     
     __cpuidex(result, 0, 0);
     
@@ -868,6 +990,19 @@ static ULONG_PTR HvUnloadIpiCallback(ULONG_PTR Context)
             _sgdt(g_VmoffDescSave[cpuNumber].GdtrBuf);
             g_VmoffDescSave[cpuNumber].TrSel = __readtr();
             g_VmoffDescSave[cpuNumber].LdtrSel = __readldtr();
+            g_VmoffDescSave[cpuNumber].DsSel = __readds();
+            g_VmoffDescSave[cpuNumber].EsSel = __reades();
+            g_VmoffDescSave[cpuNumber].FsSel = __readfs();
+            g_VmoffDescSave[cpuNumber].GsSel = __readgs();
+            g_VmoffDescSave[cpuNumber].FsBase = __readmsr(MSR_IA32_FS_BASE);
+            g_VmoffDescSave[cpuNumber].GsBase = __readmsr(MSR_IA32_GS_BASE);
+            g_VmoffDescSave[cpuNumber].Dr7 = __readdr(7);
+            g_VmoffDescSave[cpuNumber].SysenterCs = __readmsr(MSR_IA32_SYSENTER_CS);
+            g_VmoffDescSave[cpuNumber].SysenterEsp = __readmsr(MSR_IA32_SYSENTER_ESP);
+            g_VmoffDescSave[cpuNumber].SysenterEip = __readmsr(MSR_IA32_SYSENTER_EIP);
+            g_VmoffDescSave[cpuNumber].Pat = __readmsr(MSR_IA32_PAT);
+            g_VmoffDescSave[cpuNumber].Efer = __readmsr(MSR_IA32_EFER);
+            g_VmoffDescSave[cpuNumber].DebugCtl = __readmsr(MSR_IA32_DEBUGCTL);
         }
 
         __try {
@@ -892,9 +1027,34 @@ static ULONG_PTR HvUnloadIpiCallback(ULONG_PTR Context)
             AsmLoadIdtr(g_VmoffDescSave[cpuNumber].IdtrBuf);
             AsmLoadTr(g_VmoffDescSave[cpuNumber].TrSel);
             AsmLoadLdtr(g_VmoffDescSave[cpuNumber].LdtrSel);
+            AsmLoadDataSegments(
+                g_VmoffDescSave[cpuNumber].DsSel,
+                g_VmoffDescSave[cpuNumber].EsSel,
+                g_VmoffDescSave[cpuNumber].FsSel,
+                g_VmoffDescSave[cpuNumber].GsSel);
+            __writemsr(MSR_IA32_FS_BASE, g_VmoffDescSave[cpuNumber].FsBase);
+            __writemsr(MSR_IA32_GS_BASE, g_VmoffDescSave[cpuNumber].GsBase);
+            __writemsr(MSR_IA32_SYSENTER_CS, g_VmoffDescSave[cpuNumber].SysenterCs);
+            __writemsr(MSR_IA32_SYSENTER_ESP, g_VmoffDescSave[cpuNumber].SysenterEsp);
+            __writemsr(MSR_IA32_SYSENTER_EIP, g_VmoffDescSave[cpuNumber].SysenterEip);
+            __writemsr(MSR_IA32_PAT, g_VmoffDescSave[cpuNumber].Pat);
+            __writemsr(MSR_IA32_EFER, g_VmoffDescSave[cpuNumber].Efer);
+            __writemsr(MSR_IA32_DEBUGCTL, g_VmoffDescSave[cpuNumber].DebugCtl);
+            __writedr(7, g_VmoffDescSave[cpuNumber].Dr7);
         }
 
         vcpuData->IsVirtualized = FALSE;
+        vcpuData->IsVmxOn = FALSE;
+    }
+    else if (cpuVendor == CPU_VENDOR_INTEL && vcpuData->IsVmxOn) {
+        // VMXON succeeded but VMLAUNCH did not. Host descriptor state was not
+        // loaded, so a local VMXOFF is sufficient before freeing resources.
+        __try {
+            __vmx_off();
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        vcpuData->IsVmxOn = FALSE;
     }
 
     InterlockedIncrement(&g_UnloadBarrierCount);
@@ -909,7 +1069,7 @@ VOID HvCleanup(VOID)
     ULONG i;
     CPU_VENDOR cpuVendor = HvGetCpuVendor();
 
-    if (!g_HypervisorContext.IsActive) {
+    if (!g_HypervisorContext.IsActive && !g_HypervisorContext.VcpuData) {
         DbgPrint("[HV] HvCleanup: Not active, skipping\n");
         return;
     }
@@ -923,6 +1083,11 @@ VOID HvCleanup(VOID)
         return;
     }
 
+    // Stop asynchronous producers before any VMXOFF or VCPU/EPT release.
+    // The final resource release remains below, after every CPU is out of VMX.
+    HvInputBeginShutdown();
+    HvUsbXhciBeginShutdown();
+
     // 使用 IPI 同步所有 CPU 同时退出虚拟化
     // 这确保没有 CPU 还在 VM Exit handler 中引用共享数据
     g_UnloadBarrierCount = 0;
@@ -930,6 +1095,12 @@ VOID HvCleanup(VOID)
 
     // 等待所有 CPU 完成卸载（IPI 是同步的，这里是额外保障）
     DbgPrint("[HV] All CPUs devirtualized (%d responded)\n", g_UnloadBarrierCount);
+
+    /* xHCI trap state points into the per-VCPU EPT tables, while VMCS still
+     * references the input bitmaps.  Tear both managers down before freeing
+     * any VCPU/EPT storage. */
+    HvUsbXhciShutdown(); /* teardown while VCPU/EPT state is still valid */
+    HvInputShutdown();    /* release bitmap after VMXOFF, before VCPU free */
 
     // 所有 CPU 已退出虚拟化，安全释放资源
     for (i = 0; i < g_HypervisorContext.ProcessorCount; i++) {
@@ -969,10 +1140,10 @@ VOID HvCleanup(VOID)
 
     // 阶段 7.10 Layer 4: 卸 xHCI BAR 映射 + 清状态 (必须在 HvInputShutdown 之前,
     // 否则 IPI 还可能在 KeIpiGenericCall 路径上跑)
-    HvUsbXhciShutdown();
+    /* xHCI teardown already completed before VCPU/EPT release. */
 
     // 阶段 7.10: 释放 IO bitmap + 取消所有 AutoBreak timer
-    HvInputShutdown();
+    /* Input teardown already completed before VCPU/EPT release. */
 
     g_HypervisorContext.IsActive = FALSE;
     DbgPrint("[HV] Hypervisor unloaded\n");

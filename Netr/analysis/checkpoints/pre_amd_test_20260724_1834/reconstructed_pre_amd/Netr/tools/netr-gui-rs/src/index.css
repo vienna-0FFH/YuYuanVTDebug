@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ============================================================
+     * 亮色主题 - 钢蓝+银白,商务质感
+     * Primary 用深钢蓝 (slate-blue),前景银白
+     * ============================================================ */
+    --background: 215 30% 96%;
+    --foreground: 220 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 12%;
+
+    /* Popover 比 card 略深一档 + 全不透明,便于在 card 上"浮起" */
+    --popover: 215 25% 99%;
+    --popover-foreground: 220 40% 12%;
+
+    --primary: 215 60% 28%;
+    --primary-foreground: 210 25% 96%;
+
+    --secondary: 215 20% 92%;
+    --secondary-foreground: 220 40% 12%;
+
+    --muted: 215 18% 92%;
+    --muted-foreground: 215 12% 42%;
+
+    --accent: 215 22% 90%;
+    --accent-foreground: 220 40% 12%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 90% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 210 75% 45%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 20% 86%;
+    --input: 215 20% 86%;
+    --ring: 215 60% 38%;
+
+    --radius: 0.625rem;
+
+    /* 渐变光晕色 — 钢蓝 / 冰蓝 */
+    --halo-1: 215 65% 50%;
+    --halo-2: 200 70% 60%;
+
+    /* 银白色 — 文字与边框高光用 */
+    --silver: 210 25% 95%;
+    --silver-soft: 215 18% 86%;
+  }
+
+  .dark {
+    /* ============================================================
+     * 暗色主题 - 深海军蓝底,银白文字,钢蓝光晕
+     * ============================================================ */
+    --background: 218 45% 6%;
+    --foreground: 210 25% 94%;
+
+    --card: 218 35% 10%;
+    --card-foreground: 210 25% 94%;
+
+    /* Popover 比 card 略亮,便于浮起 */
+    --popover: 218 32% 14%;
+    --popover-foreground: 210 25% 94%;
+
+    --primary: 210 80% 70%;
+    --primary-foreground: 218 45% 8%;
+
+    --secondary: 218 25% 14%;
+    --secondary-foreground: 210 25% 94%;
+
+    --muted: 218 25% 14%;
+    --muted-foreground: 215 18% 65%;
+
+    --accent: 218 25% 17%;
+    --accent-foreground: 210 25% 94%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 65% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 95% 60%;
+    --warning-foreground: 218 45% 8%;
+
+    --info: 210 80% 65%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 218 25% 18%;
+    --input: 218 25% 18%;
+    --ring: 210 80% 65%;
+
+    --halo-1: 215 75% 45%;
+    --halo-2: 195 80% 50%;
+
+    --silver: 210 25% 92%;
+    --silver-soft: 215 18% 75%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    @apply bg-background text-foreground;
+    user-select: none;
+    /* 钢蓝渐变光晕背景 — 双色,主题切换无缝过渡 */
+    background-image:
+      radial-gradient(ellipse at 20% 0%, hsl(var(--halo-1) / 0.18) 0px, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, hsl(var(--halo-2) / 0.14) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  input, textarea, [contenteditable="true"], .selectable {
+    user-select: text;
+  }
+}
+
+/* ============================================================
+ * Reusable utilities
+ * ============================================================ */
+@layer components {
+  /* 钢质渐变 — 用于 hero / brand 区域 */
+  .bg-steel {
+    background-image: linear-gradient(135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--halo-1)) 50%,
+      hsl(var(--halo-2)) 100%);
+  }
+  .bg-steel-soft {
+    background-image: linear-gradient(135deg,
+      hsl(var(--primary) / 0.10) 0%,
+      hsl(var(--halo-1) / 0.06) 50%,
+      hsl(var(--halo-2) / 0.04) 100%);
+  }
+
+  /* 银白文字渐变 — 在深色 / 钢蓝背景上 */
+  .text-silver {
+    background-image: linear-gradient(180deg, hsl(var(--silver)) 0%, hsl(var(--silver-soft)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* 卡片 hover 微发光 — 钢蓝光圈 */
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    border-color: hsl(var(--ring) / 0.55);
+    box-shadow:
+      0 0 0 1px hsl(var(--ring) / 0.15),
+      0 10px 40px -10px hsl(var(--halo-1) / 0.25);
+  }
+
+  /* 钢面光泽边框 — 用于重要卡片 */
+  .card-steel {
+    position: relative;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(135deg, hsl(var(--silver-soft) / 0.5), hsl(var(--halo-1) / 0.35), hsl(var(--halo-2) / 0.25)) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* 状态胶囊 */
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .pill-success { background: hsl(var(--success) / 0.15); color: hsl(var(--success)); }
+  .pill-warning { background: hsl(var(--warning) / 0.18); color: hsl(var(--warning)); }
+  .pill-danger  { background: hsl(var(--destructive) / 0.15); color: hsl(var(--destructive)); }
+  .pill-info    { background: hsl(var(--info) / 0.15); color: hsl(var(--info)); }
+  .pill-muted   { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .pill-primary { background: hsl(var(--primary) / 0.15); color: hsl(var(--primary)); }
+
+  /* 状态点 */
+  .pill-dot {
+    @apply h-1.5 w-1.5 rounded-full;
+  }
+  .pill-dot-pulse { animation: pulse 2s ease-in-out infinite; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50%      { opacity: 0.7; box-shadow: 0 0 0 4px transparent; }
+}
+
+/* ============================================================
+ * Scrollbar
+ * ============================================================ */
+@layer utilities {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}

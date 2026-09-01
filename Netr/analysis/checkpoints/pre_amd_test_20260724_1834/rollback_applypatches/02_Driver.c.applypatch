@@ -1,0 +1,88 @@
+*** Begin Patch
+*** Update File: Netr/Driver.c
+@@
+ #define IOCTL_HV_SUBMIT_LICENSE         CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0x107, METHOD_BUFFERED, FILE_ANY_ACCESS)
+ 
+ // 2026-06-16: 0x1AA 诊断快照 (用户态崩前读, 实机无 dmesg/无 dump 兜底)
+ // 见 HvUtils.h HV_DIAG_SNAPSHOT 结构。
+ #define IOCTL_HV_GET_DIAG_SNAPSHOT      CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0xB0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+-#define IOCTL_HV_GET_INACTIVE_DIAGNOSTICS CTL_CODE(FILE_DEVICE_UNKNOWN, HV_IOCTL_BASE + 0xB1, METHOD_BUFFERED, FILE_ANY_ACCESS)
+ 
+ // ==================== 通信数据结构 (与 VTWindowsProject 匹配) ====================
+ // 状态码
+ typedef enum _HV_STATUS_CODE {
+     HV_STATUS_SUCCESS = 0,
+@@
+         outputLength >= sizeof(HV_STATUS_INFO)) {
+         PHV_STATUS_INFO pStatus = (PHV_STATUS_INFO)outputBuffer;
+         RtlZeroMemory(pStatus, sizeof(*pStatus));
+         pStatus->Version = 0x00010000;
+         pStatus->HypervisorActive = HvIsHypervisorRunning();
+-        if (!pStatus->HypervisorActive) {
+-            HvLogInactiveDiagnostics("IOCTL_HV_GET_STATUS", STATUS_DEVICE_NOT_READY);
+-        }
+         pStatus->CpuVendor = (ULONG)HvGetCpuVendor();
+         pStatus->ProcessorCount = g_HypervisorContext.ProcessorCount;
+         status = pStatus->HypervisorActive ? STATUS_SUCCESS : STATUS_DEVICE_NOT_READY;
+         bytesReturned = sizeof(*pStatus);
+     } else if (controlCode == IOCTL_HV_GET_STATUS) {
+@@
+     // Phase 2: license gate
+     // 例外白名单:GET_STATUS 与 SUBMIT_LICENSE 必须永远可调
+     //   - GET_STATUS 用于 GUI 探测驱动 alive
+     //   - SUBMIT_LICENSE 本身就是为了"开锁"
+     if (controlCode != IOCTL_HV_GET_STATUS &&
+-        controlCode != IOCTL_HV_GET_INACTIVE_DIAGNOSTICS &&
+         controlCode != IOCTL_HV_SUBMIT_LICENSE &&
+         !HvLicenseIsValid())
+     {
+         DbgPrint("[HV] IOCTL 0x%X rejected: license not submitted\n", controlCode);
+         Irp->IoStatus.Status = STATUS_ACCESS_DENIED;
+@@
+             BOOLEAN dseEnabled = TRUE;
+             HvDseGetStatus(&dseEnabled, NULL, NULL);
+             
+             pStatus->Version = hasV2 ? 0x00020000 : 0x00010000;
+             pStatus->HypervisorActive = HvIsHypervisorRunning();
+-            if (!pStatus->HypervisorActive) {
+-                HvLogInactiveDiagnostics("IOCTL_HV_GET_STATUS", STATUS_DEVICE_NOT_READY);
+-            }
+             pStatus->HookManagerInitialized = HvHookIsInitialized();
+             pStatus->DseDisabled = !dseEnabled;
+             pStatus->AntiAntiDebugEnabled = HvHookIsAntiAntiDebugEnabled();
+             pStatus->HiddenProcessCount = 0;  // AMD backend has no count ABI yet
+             pStatus->HiddenDriverCount = 0;
+@@
+         DbgPrint("[HV] DBG_SET_HWBP: Dbg=%llu Target=%u Tid=%u Slot=%u Addr=0x%llX Len=%u Type=%u Mode=%u Private=%u -> NT=0x%X\n",
+             (ULONG64)(ULONG_PTR)caller, targetPid, targetTid, slotIndex, address,
+             length, type, selectedMode, privateEvent ? 1 : 0, st);
+         break;
+     }
+-
+-    case IOCTL_HV_GET_INACTIVE_DIAGNOSTICS:
+-        if (outputLength < sizeof(HV_INACTIVE_DIAGNOSTICS)) {
+-            status = STATUS_BUFFER_TOO_SMALL;
+-            break;
+-        }
+-        HvGetInactiveDiagnostics((PHV_INACTIVE_DIAGNOSTICS)outputBuffer);
+-        bytesReturned = sizeof(HV_INACTIVE_DIAGNOSTICS);
+-        status = STATUS_SUCCESS;
+-        break;
+ 
+     case IOCTL_HV_DBG_CLEAR_HWBP:
+     {
+         HANDLE caller = (HANDLE)(ULONG_PTR)requestorPid;
+         if (!HvHookIsDebuggerPid(caller)) {
+@@
+         } else {
+             DbgPrint("[HV] Hook Manager initialization failed\n");
+         }
+ #endif // !HV_MINIMAL_MODE
+     } else {
+-        HvLogInactiveDiagnostics("HvInitialize", status);
+         DbgPrint("[HV] ========================================\n");
+         DbgPrint("[HV] FULL CPU VIRTUALIZATION FAILED: 0x%X\n", status);
+         if (cpuVendor == CPU_VENDOR_INTEL) {
+             DbgPrint("[HV] AsmDebugFlag: %llu\n", g_AsmDebugFlag);
+             DbgPrint("[HV] VM Exit Counter: %llu\n", g_VmExitCounter);
+*** End Patch

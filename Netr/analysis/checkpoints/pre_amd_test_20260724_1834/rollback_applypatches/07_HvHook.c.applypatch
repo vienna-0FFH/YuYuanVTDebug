@@ -1,0 +1,269 @@
+*** Begin Patch
+*** Update File: Netr/HvHook.c
+@@
+ #include "HvHook.h"
+ #include "HvCpu.h"
+ #include "EptHook.h"
+ #include "NptHook.h"
+ #include "HvCompat.h"
+-#include "HvUtils.h"
+ #include "HvInjection.h"
+ #include "HvDebugger.h"
+ #include "HvPhysAccess.h"
+ #include "HvTypes.h"   // Phase L: HV_RTL_PROCESS_MODULES (ntoskrnl base lookup)
+ #include "HvPebCloak.h"  // P125: PEB 字段级 EPT spoof
+@@
+ static HV_HOOK_HANDLE g_HookNtQueryInformationProcess = NULL;
+ static HV_HOOK_HANDLE g_HookNtQuerySystemInformation = NULL;
+ static HV_HOOK_HANDLE g_HookNtQueryVirtualMemory = NULL;
+ // 2026-06-17: win32k window-enumeration spoofing hooks
+ // 2026-06-19: NtUserBuildHwndList hook 复活 — 从枚举结果里抹掉 debugger hwnd
+-#ifndef HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK
+-#define HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK 1
+-#endif
+ static HV_HOOK_HANDLE g_HookNtUserBuildHwndList = NULL;
+ // 2026-06-19: 防 Spy++ 拖拽 — point-based hwnd 查询
+ static HV_HOOK_HANDLE g_HookNtUserWindowFromPoint = NULL;
+ static HV_HOOK_HANDLE g_HookNtUserChildWindowFromPointEx = NULL;
+ static HV_HOOK_HANDLE g_HookNtUserQueryWindow = NULL;
+@@
+     HANDLE HwndParent, HANDLE HwndChildAfter,
+     PUNICODE_STRING ClassName, PUNICODE_STRING WindowName,
+     DWORD Type);
+ typedef ULONG (NTAPI *PFN_NtUserBuildHwndList)(
+     HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded);
+-typedef ULONG (NTAPI *PFN_AmdNtUserBuildHwndListSeven)(
+-    HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded);
+-typedef ULONG (NTAPI *PFN_AmdNtUserBuildHwndListEight)(
+-    HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    BOOLEAN UnknownFlag, ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded);
++    ULONG dwThreadId, ULONG cHwnd, PHANDLE phwndList, PULONG pcHwndNeeded);
+ 
+ static BOOLEAN HvHookpIsDebuggerHwnd(HANDLE Hwnd)
+ {
+     if (!Hwnd) return FALSE;
+     PFN_NtUserQueryWindow Original =
+@@
+     return hit;
+ }
+ 
+ static ULONG NTAPI HookedNtUserBuildHwndList(
+     HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded)
++    ULONG dwThreadId, ULONG cHwnd, PHANDLE phwndList, PULONG pcHwndNeeded)
+ {
+     HV_HOOK_CALLBACK_BEGIN(g_HookNtUserBuildHwndList, 0)
+     PFN_NtUserBuildHwndList Original =
+         (PFN_NtUserBuildHwndList)HvHookGetTrampoline(g_HookNtUserBuildHwndList);
+     if (!Original) return STATUS_UNSUCCESSFUL;
+@@
+     if (!NT_SUCCESS((NTSTATUS)ret)) return ret;
+ 
+     if (KeGetCurrentIrql() > APC_LEVEL) return ret;
+ 
+     HANDLE caller = PsGetCurrentProcessId();
++    // debugger 自己 / shell 宿主 放行 (保留任务栏 / Alt+Tab UI)
+     if (HvHookIsDebuggerPid(caller) || HvHookpIsShellHostCaller(caller)) return ret;
+ 
+     if (!phwndList || !pcHwndNeeded || cHwnd == 0) return ret;
+ 
++    // 实际填充数量 = min(cHwnd, *pcHwndNeeded)
+     ULONG actualCount = 0;
+     KPROCESSOR_MODE prevMode = ExGetPreviousMode();
+     __try {
+         if (prevMode == UserMode) {
+             ProbeForRead(pcHwndNeeded, sizeof(ULONG), sizeof(ULONG));
+@@
+         }
+ 
+         ULONG writeIdx = 0;
+         ULONG removed = 0;
+         for (ULONG readIdx = 0; readIdx < actualCount; readIdx++) {
+-            HANDLE hwnd = phwndList[readIdx];
+-            if (hwnd && HvHookpIsDebuggerHwnd(hwnd)) {
++            HANDLE h = phwndList[readIdx];
++            if (h && HvHookpIsDebuggerHwnd(h)) {
+                 removed++;
+-                continue;
++                continue;   // 跳过 debugger 的 hwnd
+             }
+-            if (writeIdx != readIdx) phwndList[writeIdx] = hwnd;
++            if (writeIdx != readIdx) phwndList[writeIdx] = h;
+             writeIdx++;
+         }
+-        for (ULONG index = writeIdx; index < actualCount; index++) {
+-            phwndList[index] = NULL;
+-        }
++        // 把尾部多余位置清零 (避免残留旧值)
++        for (ULONG i = writeIdx; i < actualCount; i++) phwndList[i] = NULL;
+ 
+         if (removed > 0) {
+             *pcHwndNeeded = writeIdx;
+             HV_HOT_DBG("[HvHook-Spoof] NtUserBuildHwndList caller=%u removed=%u kept=%u/%u\n",
+-                       (ULONG)(ULONG_PTR)caller, removed, writeIdx, actualCount);
++                     (ULONG)(ULONG_PTR)caller, removed, writeIdx, actualCount);
+         }
+     } __except (EXCEPTION_EXECUTE_HANDLER) { }
+ 
+     return ret;
+     HV_HOOK_CALLBACK_END()
+-}
+-
+-static ULONG HvHookpFilterAmdNtUserBuildHwndListResult(
+-    ULONG Result,
+-    ULONG cHwnd,
+-    PHANDLE phwndList,
+-    PULONG pcHwndNeeded)
+-{
+-    if (!NT_SUCCESS((NTSTATUS)Result)) return Result;
+-
+-    if (KeGetCurrentIrql() > APC_LEVEL) return Result;
+-
+-    HANDLE caller = PsGetCurrentProcessId();
+-    if (HvHookIsDebuggerPid(caller) || HvHookpIsShellHostCaller(caller)) return Result;
+-
+-    if (!phwndList || !pcHwndNeeded || cHwnd == 0) return Result;
+-
+-    ULONG actualCount = 0;
+-    KPROCESSOR_MODE prevMode = ExGetPreviousMode();
+-    __try {
+-        if (prevMode == UserMode) {
+-            ProbeForRead(pcHwndNeeded, sizeof(ULONG), sizeof(ULONG));
+-        }
+-        actualCount = *pcHwndNeeded;
+-        if (actualCount > cHwnd) actualCount = cHwnd;
+-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+-        return Result;
+-    }
+-    if (actualCount == 0) return Result;
+-
+-    __try {
+-        if (prevMode == UserMode) {
+-            ProbeForWrite(phwndList, actualCount * sizeof(HANDLE), sizeof(HANDLE));
+-            ProbeForWrite(pcHwndNeeded, sizeof(ULONG), sizeof(ULONG));
+-        }
+-
+-        ULONG writeIdx = 0;
+-        ULONG removed = 0;
+-        for (ULONG readIdx = 0; readIdx < actualCount; readIdx++) {
+-            HANDLE hwnd = phwndList[readIdx];
+-            if (hwnd && HvHookpIsDebuggerHwnd(hwnd)) {
+-                removed++;
+-                continue;
+-            }
+-            if (writeIdx != readIdx) phwndList[writeIdx] = hwnd;
+-            writeIdx++;
+-        }
+-        for (ULONG index = writeIdx; index < actualCount; index++) {
+-            phwndList[index] = NULL;
+-        }
+-
+-        if (removed > 0) {
+-            *pcHwndNeeded = writeIdx;
+-            HV_HOT_DBG("[HvHook-Spoof] NtUserBuildHwndList caller=%u removed=%u kept=%u/%u\n",
+-                       (ULONG)(ULONG_PTR)caller, removed, writeIdx, actualCount);
+-        }
+-    } __except (EXCEPTION_EXECUTE_HANDLER) { }
+-
+-    return Result;
+-}
+-
+-static ULONG NTAPI HookedAmdNtUserBuildHwndListSeven(
+-    HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded)
+-{
+-    HV_HOOK_CALLBACK_BEGIN(g_HookNtUserBuildHwndList, 0)
+-    PFN_AmdNtUserBuildHwndListSeven Original =
+-        (PFN_AmdNtUserBuildHwndListSeven)HvHookGetTrampoline(
+-            g_HookNtUserBuildHwndList);
+-    if (!Original) return STATUS_UNSUCCESSFUL;
+-
+-    ULONG result = Original(Desktop, StartHwnd, EnumChildren, dwThreadId,
+-                            cHwnd, phwndList, pcHwndNeeded);
+-    return HvHookpFilterAmdNtUserBuildHwndListResult(
+-        result, cHwnd, phwndList, pcHwndNeeded);
+-    HV_HOOK_CALLBACK_END()
+-}
+-
+-static ULONG NTAPI HookedAmdNtUserBuildHwndListEight(
+-    HANDLE Desktop, HANDLE StartHwnd, ULONG EnumChildren,
+-    BOOLEAN UnknownFlag, ULONG dwThreadId, ULONG cHwnd,
+-    PHANDLE phwndList, PULONG pcHwndNeeded)
+-{
+-    HV_HOOK_CALLBACK_BEGIN(g_HookNtUserBuildHwndList, 0)
+-    PFN_AmdNtUserBuildHwndListEight Original =
+-        (PFN_AmdNtUserBuildHwndListEight)HvHookGetTrampoline(
+-            g_HookNtUserBuildHwndList);
+-    if (!Original) return STATUS_UNSUCCESSFUL;
+-
+-    ULONG result = Original(Desktop, StartHwnd, EnumChildren, UnknownFlag,
+-                            dwThreadId, cHwnd, phwndList, pcHwndNeeded);
+-    return HvHookpFilterAmdNtUserBuildHwndListResult(
+-        result, cHwnd, phwndList, pcHwndNeeded);
+-    HV_HOOK_CALLBACK_END()
+-}
+-
+-static PVOID HvHookpSelectAmdNtUserBuildHwndListHook(VOID)
+-{
+-    if (!HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK) {
+-        return NULL;
+-    }
+-    if (g_HvOsBuildNumber <= 7601) {
+-        return HookedAmdNtUserBuildHwndListSeven;
+-    }
+-    if (g_HvOsBuildNumber >= 9200) {
+-        return HookedAmdNtUserBuildHwndListEight;
+-    }
+-    return NULL;
+ }
+ 
+ // ============================================================
+ // 2026-06-19: NtUserWindowFromPoint / NtUserChildWindowFromPointEx
+ // ============================================================
+@@
+     //   - NtUserGetClassName → 改类名为 "Notepad"
+     //
+     // win32k SSDT 从 caller (debugger GUI 进程) 的 win32u.dll EAT 提 syscall index
+     // (写死索引会跟版本漂; 动态解析最稳)。
+     {
+-        PVOID buildHwndListHook = HookedNtUserBuildHwndList;
+-        if (g_HvHookBackend == CPU_VENDOR_AMD) {
+-            buildHwndListHook = HvHookpSelectAmdNtUserBuildHwndListHook();
+-        }
+         struct { PCSTR Name; PVOID Hook; HV_HOOK_HANDLE* Handle; } w32kEntries[] = {
+             { "NtUserQueryWindow",            HookedNtUserQueryWindow,
+               &g_HookNtUserQueryWindow },
+             { "NtUserInternalGetWindowText",  HookedNtUserInternalGetWindowText,
+               &g_HookNtUserInternalGetWindowText },
+             { "NtUserGetClassName",           HookedNtUserGetClassName,
+               &g_HookNtUserGetClassName },
+             { "NtUserFindWindowEx",           HookedNtUserFindWindowEx,
+               &g_HookNtUserFindWindowEx },
+-            { "NtUserBuildHwndList",          buildHwndListHook,
++            { "NtUserBuildHwndList",          HookedNtUserBuildHwndList,
+               &g_HookNtUserBuildHwndList },
+             { "NtUserWindowFromPoint",        HookedNtUserWindowFromPoint,
+               &g_HookNtUserWindowFromPoint },
+             { "NtUserChildWindowFromPointEx", HookedNtUserChildWindowFromPointEx,
+               &g_HookNtUserChildWindowFromPointEx },
+         };
+         for (ULONG i = 0; i < RTL_NUMBER_OF(w32kEntries); i++) {
+             if (*w32kEntries[i].Handle) continue;
+-            if (!w32kEntries[i].Hook) {
+-                DbgPrint("[HvHook] %hs skipped: unsupported OS build %lu\n",
+-                         w32kEntries[i].Name, g_HvOsBuildNumber);
+-                continue;
+-            }
+ 
+             // 2026-06-19 优先用 EAT (win32kfull.sys 导出全 7 个 NtUser*),
+             // 失败再回退 SSDT (兼容旧版本 Windows)
+             PVOID target = HvHookpResolveKernelExport("win32kfull.sys", w32kEntries[i].Name);
+             if (!target) {
+*** End Patch

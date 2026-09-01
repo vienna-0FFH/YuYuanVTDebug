@@ -1,0 +1,302 @@
+@'
+from pathlib import Path
+
+path = Path(r"E:\project_learning\YuYuanVTDebug\Netr\DebuggerBridge\Bridge.cpp")
+text = path.read_text(encoding="utf-8", errors="replace")
+
+old_struct = '''struct PendingPrivateEvent {
+    std::uint64_t Sequence{};
+    std::uint64_t BreakpointAddress{};
+    HANDLE Thread = nullptr;
+    bool DriverContinued{};
+    bool ContextRipAdvanced{};
+    bool Wow64Context{};
+};'''
+
+new_struct = '''struct PendingPrivateEvent {
+    std::uint64_t Sequence{};
+    std::uint64_t BreakpointAddress{};
+    HANDLE Thread = nullptr;
+    ULONG Kind{HV_BRIDGE_PRIVATE_EVENT_SWBP};
+    bool DriverContinued{};
+    bool ContextRipAdvanced{};
+    bool Wow64Context{};
+};'''
+
+if old_struct not in text:
+    raise SystemExit("PendingPrivateEvent struct not found")
+text = text.replace(old_struct, new_struct, 1)
+
+old_filter = '''    if (!debug_event || g_stop.load() ||
+        private_event.Kind != HV_BRIDGE_PRIVATE_EVENT_SWBP ||
+        private_event.ThreadId == 0 ||
+        private_event.Rip > static_cast<std::uint64_t>(UINTPTR_MAX)) {
+        Trace(L"[PRIVATE] discarded kind=%lu pid=%lu tid=%lu rip=0x%llX seq=%llu\\n",
+              private_event.Kind, private_event.ProcessId,
+              private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence));
+        acknowledge_discarded();
+        return PrivateDeliveryResult::Skipped;
+    }
+
+    // External x64dbg path: VT single-step installs a temporary SWBP gate at
+    // the current RIP.  When the driver fails to consume that gate in the
+    // step-over MTF path, the same SWBP is enqueued as a private user BP.
+    // Delivering it to the debugger makes x64dbg CONTINUE with
+    // DBG_EXCEPTION_NOT_HANDLED, which normalizes the gate and free-runs.
+    // Keep the gate internal: continue it without clearing the armed VT step
+    // and keep waiting for the real EXCEPTION_SINGLE_STEP (0x80000004).
+    {
+        PendingVtStep pending_step = {};
+        if (LookupPendingVtStep(
+                private_event.ProcessId,
+                private_event.ThreadId,
+                &pending_step) &&
+            pending_step.Address == private_event.Rip) {
+            Trace(L"[VT-STEP] suppressed gate SWBP route=%s pid=%lu tid=%lu "
+                  L"rip=0x%llX seq=%llu owns_gate=%d\\n",
+                  route ? route : L"unknown",
+                  private_event.ProcessId,
+                  private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Rip),
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  pending_step.OwnsSwBpGate ? 1 : 0);
+            if (!ContinuePrivateEvent(private_event, DBG_CONTINUE)) {
+                const DWORD cont_error = GetLastError();
+                Trace(L"[VT-STEP] gate SWBP continue failed route=%s "
+                      L"pid=%lu tid=%lu seq=%llu win32=%lu\\n",
+                      route ? route : L"unknown",
+                      private_event.ProcessId,
+                      private_event.ThreadId,
+                      static_cast<unsigned long long>(private_event.Sequence),
+                      cont_error);
+                SetLastError(cont_error);
+                return PrivateDeliveryResult::Error;
+            }
+            return PrivateDeliveryResult::Skipped;
+        }
+    }'''
+
+new_filter = '''    const bool is_swbp =
+        private_event.Kind == HV_BRIDGE_PRIVATE_EVENT_SWBP;
+    const bool is_step =
+        private_event.Kind == HV_BRIDGE_PRIVATE_EVENT_STEP;
+    if (!debug_event || g_stop.load() ||
+        (!is_swbp && !is_step) ||
+        private_event.ThreadId == 0 ||
+        private_event.Rip > static_cast<std::uint64_t>(UINTPTR_MAX)) {
+        Trace(L"[PRIVATE] discarded kind=%lu pid=%lu tid=%lu rip=0x%llX seq=%llu\\n",
+              private_event.Kind, private_event.ProcessId,
+              private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence));
+        acknowledge_discarded();
+        return PrivateDeliveryResult::Skipped;
+    }
+
+    // Secondary safety only: if a gate SWBP still arrives while a VT step is
+    // armed at the same RIP, continue it without delivering a user BP.  The
+    // real stop must come from HV_BRIDGE_PRIVATE_EVENT_STEP.
+    if (is_swbp) {
+        PendingVtStep pending_step = {};
+        if (LookupPendingVtStep(
+                private_event.ProcessId,
+                private_event.ThreadId,
+                &pending_step) &&
+            pending_step.Address == private_event.Rip) {
+            Trace(L"[VT-STEP] suppressed gate SWBP route=%s pid=%lu tid=%lu "
+                  L"rip=0x%llX seq=%llu owns_gate=%d\\n",
+                  route ? route : L"unknown",
+                  private_event.ProcessId,
+                  private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Rip),
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  pending_step.OwnsSwBpGate ? 1 : 0);
+            if (!ContinuePrivateEvent(private_event, DBG_CONTINUE)) {
+                const DWORD cont_error = GetLastError();
+                Trace(L"[VT-STEP] gate SWBP continue failed route=%s "
+                      L"pid=%lu tid=%lu seq=%llu win32=%lu\\n",
+                      route ? route : L"unknown",
+                      private_event.ProcessId,
+                      private_event.ThreadId,
+                      static_cast<unsigned long long>(private_event.Sequence),
+                      cont_error);
+                SetLastError(cont_error);
+                return PrivateDeliveryResult::Error;
+            }
+            return PrivateDeliveryResult::Skipped;
+        }
+    }'''
+
+if old_filter not in text:
+    raise SystemExit("filter block not found")
+text = text.replace(old_filter, new_filter, 1)
+
+old_pending = '''        PendingPrivateEvent pending = {};
+        pending.Sequence = private_event.Sequence;
+        pending.BreakpointAddress = private_event.Rip;
+        pending.Thread = thread;
+        if (!g_pending_private_events.emplace(key, pending).second) {'''
+
+new_pending = '''        PendingPrivateEvent pending = {};
+        pending.Sequence = private_event.Sequence;
+        pending.BreakpointAddress = private_event.Rip;
+        pending.Thread = thread;
+        pending.Kind = private_event.Kind;
+        if (!g_pending_private_events.emplace(key, pending).second) {'''
+
+if old_pending not in text:
+    raise SystemExit("pending emplace not found")
+text = text.replace(old_pending, new_pending, 1)
+
+old_prepare = '''    auto pending_context = g_pending_private_events.find(key);
+    if (pending_context == g_pending_private_events.end() ||
+        (prepare_context && !prepare_context(
+            private_event.ProcessId,
+            private_event.ThreadId,
+            &pending_context->second))) {
+        const DWORD context_error = GetLastError();
+        g_pending_private_events.erase(key);
+        ReleaseSRWLockExclusive(&g_private_event_lock);
+        ReleaseSRWLockShared(&g_target_lock);
+        acknowledge_discarded();
+        const DWORD previous = ResumeThread(thread);
+        if (previous == static_cast<DWORD>(-1)) {
+            Trace(L"[PRIVATE] context failure resume failed pid=%lu tid=%lu seq=%llu win32=%lu\\n",
+                  private_event.ProcessId, private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  GetLastError());
+        }
+        CloseHandle(thread);
+        Trace(L"[PRIVATE] INT3 context preparation failed pid=%lu tid=%lu rip=0x%llX seq=%llu win32=%lu\\n",
+              private_event.ProcessId, private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence),
+              context_error);
+        SetLastError(context_error);
+        return PrivateDeliveryResult::Skipped;
+    }
+    ReleaseSRWLockExclusive(&g_private_event_lock);
+    ReleaseSRWLockShared(&g_target_lock);
+
+    ZeroMemory(debug_event, sizeof(*debug_event));
+    debug_event->dwDebugEventCode = EXCEPTION_DEBUG_EVENT;
+    debug_event->dwProcessId = private_event.ProcessId;
+    debug_event->dwThreadId = private_event.ThreadId;
+    debug_event->u.Exception.ExceptionRecord.ExceptionCode =
+        EXCEPTION_BREAKPOINT;
+    debug_event->u.Exception.ExceptionRecord.ExceptionAddress =
+        reinterpret_cast<PVOID>(static_cast<ULONG_PTR>(private_event.Rip));
+    debug_event->u.Exception.ExceptionRecord.NumberParameters = 1;
+    debug_event->u.Exception.ExceptionRecord.ExceptionInformation[0] = 0;
+    debug_event->u.Exception.dwFirstChance = TRUE;
+
+    Trace(L"[PRIVATE] delivered SWBP route=%s pid=%lu tid=%lu rip=0x%llX seq=%llu previous_suspend=%lu\\n",
+          route ? route : L"unknown",
+          private_event.ProcessId, private_event.ThreadId,
+          static_cast<unsigned long long>(private_event.Rip),
+          static_cast<unsigned long long>(private_event.Sequence),
+          previous_suspend_count);
+    ObserveDebugEvent(debug_event);
+    return PrivateDeliveryResult::Delivered;
+}'''
+
+new_prepare = '''    auto pending_context = g_pending_private_events.find(key);
+    // STEP is reported after the instruction already executed.  Never apply
+    // the INT3 RIP+1 emulator used for private SWBP delivery.
+    const PreparePrivateEventContextFn context_fn =
+        is_step ? nullptr : prepare_context;
+    if (pending_context == g_pending_private_events.end() ||
+        (context_fn && !context_fn(
+            private_event.ProcessId,
+            private_event.ThreadId,
+            &pending_context->second))) {
+        const DWORD context_error = GetLastError();
+        g_pending_private_events.erase(key);
+        ReleaseSRWLockExclusive(&g_private_event_lock);
+        ReleaseSRWLockShared(&g_target_lock);
+        acknowledge_discarded();
+        const DWORD previous = ResumeThread(thread);
+        if (previous == static_cast<DWORD>(-1)) {
+            Trace(L"[PRIVATE] context failure resume failed pid=%lu tid=%lu seq=%llu win32=%lu\\n",
+                  private_event.ProcessId, private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  GetLastError());
+        }
+        CloseHandle(thread);
+        Trace(L"[PRIVATE] INT3 context preparation failed pid=%lu tid=%lu rip=0x%llX seq=%llu win32=%lu\\n",
+              private_event.ProcessId, private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence),
+              context_error);
+        SetLastError(context_error);
+        return PrivateDeliveryResult::Skipped;
+    }
+    ReleaseSRWLockExclusive(&g_private_event_lock);
+    ReleaseSRWLockShared(&g_target_lock);
+
+    ZeroMemory(debug_event, sizeof(*debug_event));
+    debug_event->dwDebugEventCode = EXCEPTION_DEBUG_EVENT;
+    debug_event->dwProcessId = private_event.ProcessId;
+    debug_event->dwThreadId = private_event.ThreadId;
+    debug_event->u.Exception.ExceptionRecord.ExceptionCode =
+        is_step ? EXCEPTION_SINGLE_STEP : EXCEPTION_BREAKPOINT;
+    debug_event->u.Exception.ExceptionRecord.ExceptionAddress =
+        reinterpret_cast<PVOID>(static_cast<ULONG_PTR>(private_event.Rip));
+    debug_event->u.Exception.ExceptionRecord.NumberParameters =
+        is_step ? 0 : 1;
+    debug_event->u.Exception.ExceptionRecord.ExceptionInformation[0] = 0;
+    debug_event->u.Exception.dwFirstChance = TRUE;
+
+    Trace(L"[PRIVATE] delivered %s route=%s pid=%lu tid=%lu rip=0x%llX seq=%llu previous_suspend=%lu\\n",
+          is_step ? L"STEP" : L"SWBP",
+          route ? route : L"unknown",
+          private_event.ProcessId, private_event.ThreadId,
+          static_cast<unsigned long long>(private_event.Rip),
+          static_cast<unsigned long long>(private_event.Sequence),
+          previous_suspend_count);
+    ObserveDebugEvent(debug_event);
+    return PrivateDeliveryResult::Delivered;
+}'''
+
+if old_prepare not in text:
+    raise SystemExit("prepare/deliver block not found")
+text = text.replace(old_prepare, new_prepare, 1)
+
+old_continue = '''        if (!continued) {
+            HV_BRIDGE_PRIVATE_EVENT private_event = {};
+            private_event.Sequence = pending->second.Sequence;
+            private_event.ProcessId = pid;
+            private_event.ThreadId = tid;
+            continued = ContinuePrivateEvent(private_event, status);
+            error = continued ? ERROR_SUCCESS : GetLastError();
+            if (continued) pending->second.DriverContinued = true;
+        }'''
+
+new_continue = '''        if (!continued) {
+            HV_BRIDGE_PRIVATE_EVENT private_event = {};
+            private_event.Sequence = pending->second.Sequence;
+            private_event.ProcessId = pid;
+            private_event.ThreadId = tid;
+            private_event.Kind = pending->second.Kind;
+            continued = ContinuePrivateEvent(private_event, status);
+            error = continued ? ERROR_SUCCESS : GetLastError();
+            // STEP completion has no HitPending SWBP entry.  Driver continue
+            // returns NOT_FOUND by design; still resume the suspended thread.
+            if (!continued &&
+                pending->second.Kind == HV_BRIDGE_PRIVATE_EVENT_STEP &&
+                error == ERROR_NOT_FOUND) {
+                continued = true;
+                error = ERROR_SUCCESS;
+            }
+            if (continued) pending->second.DriverContinued = true;
+        }'''
+
+if old_continue not in text:
+    raise SystemExit("continue block not found")
+text = text.replace(old_continue, new_continue, 1)
+
+path.write_text(text, encoding="utf-8")
+print("Bridge.cpp patched OK")
+'@ | python -

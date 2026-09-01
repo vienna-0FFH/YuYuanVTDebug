@@ -4,7 +4,7 @@
  * 无痕注入框架 - 基于 EPT/NPT Hook 的隐蔽代码注入
  * 
  * 功能：
- *   - DLL 手动映射（无 LdrLoadDll 调用）
+ *   - 原生 x64 DLL 手动映射（依赖引用由目标 LdrLoadDll 管理）
  *   - Shellcode 注入
  *   - 跨进程内存读写
  *   - APC 代码执行引擎
@@ -26,6 +26,27 @@
 #define HV_INJECTION_TAG            'jnIH'
 #define MAX_INJECTION_MODULES       32
 #define MAX_MODULE_NAME_LENGTH      256
+#define MAX_TRACKED_ALLOCATIONS     256
+#define MAX_INJECTION_TLS_CALLBACKS 64
+#define MAX_INJECTION_DEPENDENCIES  128
+#define HV_INJECTION_DIAGNOSTIC_VERSION       1
+#define HV_INJECTION_DIAGNOSTIC_MAX_EVENTS    320
+#define HV_INJECTION_DIAGNOSTIC_SUBJECT_CHARS 128
+
+#define HV_INJECTION_DIAG_FLAG_MANUAL_MAP              0x00000001UL
+#define HV_INJECTION_DIAG_FLAG_WINDOWS_LOADER          0x00000002UL
+#define HV_INJECTION_DIAG_FLAG_ROLLBACK_STARTED        0x00000004UL
+#define HV_INJECTION_DIAG_FLAG_ROLLBACK_UNSAFE         0x00000008UL
+#define HV_INJECTION_DIAG_FLAG_MAPPING_RETAINED        0x00000010UL
+#define HV_INJECTION_DIAG_FLAG_DEPENDENCIES_RETAINED   0x00000020UL
+#define HV_INJECTION_DIAG_FLAG_LOADER_CONTEXT_RETAINED 0x00000040UL
+#define HV_INJECTION_DIAG_FLAG_MODULE_TRACKED          0x00000080UL
+#define HV_INJECTION_DIAG_FLAG_EVENTS_DROPPED          0x00000100UL
+#define HV_INJECTION_DIAG_FLAG_PROCESS_EXITED          0x00000200UL
+#define HV_INJECTION_DIAG_FLAG_CLEANUP_FAILED          0x00000400UL
+
+#define HV_INJECTION_DIAG_DETAIL_DEFAULT_SEARCH 0x80000000UL
+#define HV_INJECTION_DIAG_DETAIL_INDEX_MASK     0x7FFFFFFFUL
 
 // ============================================================
 // 注入模式枚举
@@ -44,6 +65,84 @@ typedef enum _HV_EXECUTION_METHOD {
     HvExecMethodHijack,         // 线程劫持
     HvExecMethodCallback,       // 回调注入
 } HV_EXECUTION_METHOD;
+
+typedef enum _HV_INJECTION_DIAGNOSTIC_PHASE {
+    HvInjectDiagnosticPhaseOperation = 1,
+    HvInjectDiagnosticPhaseCleanup = 2,
+    HvInjectDiagnosticPhaseWarning = 3
+} HV_INJECTION_DIAGNOSTIC_PHASE;
+
+typedef enum _HV_INJECTION_DIAGNOSTIC_STAGE {
+    HvInjectStageNone = 0,
+    HvInjectStageRequestValidate = 1,
+    HvInjectStageManagerInitialize = 2,
+    HvInjectStageOperationAcquire = 3,
+    HvInjectStageRequestSnapshot = 4,
+    HvInjectStageFileNormalizePath = 10,
+    HvInjectStageFileOpen = 11,
+    HvInjectStageFileQuery = 12,
+    HvInjectStageFileValidateSize = 13,
+    HvInjectStageFileAllocateBuffer = 14,
+    HvInjectStageFileRead = 15,
+    HvInjectStageFileValidateDos = 16,
+    HvInjectStageManualValidateInput = 30,
+    HvInjectStageManualValidateEnvironment = 31,
+    HvInjectStageManualValidatePe = 32,
+    HvInjectStageManualValidateFeatures = 33,
+    HvInjectStageManualAllocateMetadata = 34,
+    HvInjectStageManualBuildSearchPath = 35,
+    HvInjectStageManualAllocateImage = 36,
+    HvInjectStageManualAttachProcess = 37,
+    HvInjectStageManualValidateTarget = 38,
+    HvInjectStageManualMapSections = 39,
+    HvInjectStageManualRelocate = 40,
+    HvInjectStageManualCollectImports = 41,
+    HvInjectStageManualCollectTls = 42,
+    HvInjectStageManualFindNtdll = 43,
+    HvInjectStageManualResolveDependencyLoader = 44,
+    HvInjectStageManualResolveFlush = 45,
+    HvInjectStageManualValidateUnwind = 46,
+    HvInjectStageManualResolveUnwind = 47,
+    HvInjectStageManualLoadDependencies = 48,
+    HvInjectStageManualReattachProcess = 49,
+    HvInjectStageManualValidateProcessIdentity = 50,
+    HvInjectStageManualResolveImports = 51,
+    HvInjectStageManualProtectImage = 52,
+    HvInjectStageManualFlushInstructionCache = 53,
+    HvInjectStageManualRegisterUnwind = 54,
+    HvInjectStageManualAttachTls = 55,
+    HvInjectStageManualCallDllMain = 56,
+    HvInjectStageManualTrackModule = 57,
+    HvInjectStageLoaderValidateInput = 70,
+    HvInjectStageLoaderValidateEnvironment = 71,
+    HvInjectStageLoaderAllocateMetadata = 72,
+    HvInjectStageLoaderNormalizePath = 73,
+    HvInjectStageLoaderBuildSearchPath = 74,
+    HvInjectStageLoaderAttachProcess = 75,
+    HvInjectStageLoaderValidateTarget = 76,
+    HvInjectStageLoaderFindNtdll = 77,
+    HvInjectStageLoaderResolveRoutines = 78,
+    HvInjectStageLoaderAllocateContext = 79,
+    HvInjectStageLoaderWriteContext = 80,
+    HvInjectStageLoaderCallLdrLoadDll = 81,
+    HvInjectStageLoaderReadModuleHandle = 82,
+    HvInjectStageLoaderQueryImage = 83,
+    HvInjectStageLoaderTrackModule = 84,
+    HvInjectStageDependencyAllocateContext = 90,
+    HvInjectStageDependencyWriteContext = 91,
+    HvInjectStageDependencyCallLoader = 92,
+    HvInjectStageDependencyReadModuleHandle = 93,
+    HvInjectStageDependencyFreeContext = 94,
+    HvInjectStageCleanupDllMain = 110,
+    HvInjectStageCleanupTls = 111,
+    HvInjectStageCleanupUnwind = 112,
+    HvInjectStageCleanupDependencies = 113,
+    HvInjectStageCleanupImage = 114,
+    HvInjectStageCleanupTrackRetained = 115,
+    HvInjectStageCleanupLoaderUnload = 116,
+    HvInjectStageCleanupLoaderContext = 117,
+    HvInjectStageComplete = 200
+} HV_INJECTION_DIAGNOSTIC_STAGE;
 
 // ============================================================
 // PE 结构定义（用于手动映射）
@@ -181,6 +280,12 @@ typedef struct _IMAGE_TLS_DIRECTORY64_INJ {
     ULONG Characteristics;
 } IMAGE_TLS_DIRECTORY64_INJ, *PIMAGE_TLS_DIRECTORY64_INJ;
 
+typedef struct _IMAGE_RUNTIME_FUNCTION_ENTRY_INJ {
+    ULONG BeginAddress;
+    ULONG EndAddress;
+    ULONG UnwindInfoAddress;
+} IMAGE_RUNTIME_FUNCTION_ENTRY_INJ, *PIMAGE_RUNTIME_FUNCTION_ENTRY_INJ;
+
 // 数据目录索引
 #define IMAGE_DIRECTORY_ENTRY_EXPORT          0
 #define IMAGE_DIRECTORY_ENTRY_IMPORT          1
@@ -223,6 +328,31 @@ typedef struct _HV_INJECTION_REQUEST {
     BOOLEAN HideMemory;                 // 是否隐藏注入的内存
 } HV_INJECTION_REQUEST, *PHV_INJECTION_REQUEST;
 
+typedef struct _HV_INJECTION_DIAGNOSTIC_EVENT {
+    USHORT Stage;
+    USHORT Phase;
+    NTSTATUS Status;
+    ULONG Detail;
+} HV_INJECTION_DIAGNOSTIC_EVENT, *PHV_INJECTION_DIAGNOSTIC_EVENT;
+
+typedef struct _HV_INJECTION_DIAGNOSTICS {
+    USHORT Version;
+    USHORT Size;
+    ULONG Flags;
+    USHORT PrimaryStage;
+    USHORT CleanupStage;
+    NTSTATUS PrimaryStatus;
+    NTSTATUS CleanupStatus;
+    ULONG DependencyIndex;
+    ULONG DependencyCount;
+    ULONG EventCount;
+    ULONG DroppedEventCount;
+    WCHAR FailureSubject[HV_INJECTION_DIAGNOSTIC_SUBJECT_CHARS];
+    WCHAR CleanupSubject[HV_INJECTION_DIAGNOSTIC_SUBJECT_CHARS];
+    HV_INJECTION_DIAGNOSTIC_EVENT Events[
+        HV_INJECTION_DIAGNOSTIC_MAX_EVENTS];
+} HV_INJECTION_DIAGNOSTICS, *PHV_INJECTION_DIAGNOSTICS;
+
 // 注入结果
 typedef struct _HV_INJECTION_RESULT {
     NTSTATUS Status;                    // 操作状态
@@ -230,17 +360,49 @@ typedef struct _HV_INJECTION_RESULT {
     SIZE_T ModuleSize;                  // 模块大小
     PVOID EntryPointAddress;            // 实际入口点地址
     PVOID ExecutionResult;              // 执行结果
+    HV_INJECTION_DIAGNOSTICS Diagnostics;
 } HV_INJECTION_RESULT, *PHV_INJECTION_RESULT;
+
+C_ASSERT(sizeof(HV_INJECTION_DIAGNOSTIC_EVENT) == 12);
+C_ASSERT(sizeof(HV_INJECTION_DIAGNOSTICS) == 4388);
 
 // 已注入模块信息
 typedef struct _INJECTED_MODULE_ENTRY {
     LIST_ENTRY ListEntry;
     ULONG ProcessId;
+    UINT64 ProcessCreateTime;
     PVOID ModuleBase;
     SIZE_T ModuleSize;
+    PVOID EntryPoint;
+    ULONG TlsCallbackCount;
+    PVOID TlsCallbacks[MAX_INJECTION_TLS_CALLBACKS];
+    ULONG TlsAttachedCount;
+    ULONG TlsDetachIndex;
+    PVOID FunctionTable;
+    PVOID FunctionTableDeleteRoutine;
+    PVOID LoaderUnloadRoutine;
+    PVOID DependencyUnloadRoutine;
+    ULONG FunctionTableCount;
+    ULONG DependencyCount;
+    PVOID DependencyModules[MAX_INJECTION_DEPENDENCIES];
     WCHAR ModuleName[MAX_MODULE_NAME_LENGTH];
     BOOLEAN IsHidden;
+    BOOLEAN FunctionTableRegistered;
+    BOOLEAN TlsAttached;
+    BOOLEAN EntryPointAttached;
+    BOOLEAN UnsafeToUnload;
+    BOOLEAN LoaderManaged;
+    volatile LONG Removing;
 } INJECTED_MODULE_ENTRY, *PINJECTED_MODULE_ENTRY;
+
+typedef struct _HV_MEMORY_ALLOCATION_ENTRY {
+    LIST_ENTRY ListEntry;
+    ULONG ProcessId;
+    UINT64 ProcessCreateTime;
+    PVOID BaseAddress;
+    SIZE_T RegionSize;
+    ULONG Protection;
+} HV_MEMORY_ALLOCATION_ENTRY, *PHV_MEMORY_ALLOCATION_ENTRY;
 
 // APC 上下文
 typedef struct _HV_APC_CONTEXT {
@@ -256,6 +418,9 @@ typedef struct _HV_INJECTION_MANAGER {
     // 已注入模块列表
     LIST_ENTRY InjectedModuleList;
     ULONG InjectedModuleCount;
+
+    LIST_ENTRY AllocationList;
+    ULONG AllocationCount;
     
     // 同步
     KSPIN_LOCK Lock;
@@ -276,10 +441,19 @@ typedef struct _HV_INJECTION_MANAGER {
 NTSTATUS
 HvInjectionInitialize(VOID);
 
+/* Phase one: close admission and synchronously detach process notification. */
+NTSTATUS
+HvInjectionBeginShutdown(VOID);
+
+/* Phase two: release list ownership after operation and hook rundown. */
+NTSTATUS
+HvInjectionFinalizeCleanup(VOID);
+
 /*
  * 清理注入管理器
  */
-VOID
+/* Compatibility entry point; fail-closed because it cannot prove hook rundown. */
+NTSTATUS
 HvInjectionCleanup(VOID);
 
 /*
@@ -328,6 +502,13 @@ HvInjectDll(
  */
 NTSTATUS
 HvInjectDllFromFile(
+    _In_ ULONG ProcessId,
+    _In_ PCWSTR DllPath,
+    _Out_opt_ PHV_INJECTION_RESULT OutResult
+);
+
+NTSTATUS
+HvInjectDllViaLoader(
     _In_ ULONG ProcessId,
     _In_ PCWSTR DllPath,
     _Out_opt_ PHV_INJECTION_RESULT OutResult
@@ -441,6 +622,15 @@ HvMemoryWrite(
     _In_ ULONG ProcessId,
     _In_ PVOID Address,
     _In_ PVOID Buffer,
+    _In_ SIZE_T Size,
+    _Out_opt_ PSIZE_T BytesWritten
+);
+
+NTSTATUS
+HvMemoryWriteCow(
+    _In_ ULONG ProcessId,
+    _In_ PVOID Address,
+    _In_reads_bytes_(Size) PVOID Buffer,
     _In_ SIZE_T Size,
     _Out_opt_ PSIZE_T BytesWritten
 );
@@ -716,6 +906,7 @@ typedef enum _HV_HIDE_MODE {
 typedef struct _HIDDEN_MEMORY_ENTRY {
     LIST_ENTRY ListEntry;
     ULONG ProcessId;
+    UINT64 ProcessCreateTime;
     PVOID BaseAddress;
     SIZE_T RegionSize;
     ULONG HideMode;

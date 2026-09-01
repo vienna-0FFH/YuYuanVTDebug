@@ -1,0 +1,238 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-23_globals.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.015 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             C:\ProgramData\Dbg\sym
+OK                                             E:\Symbols
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;C:\ProgramData\Dbg\sym;E:\Symbols
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff803`ee200000 PsLoadedModuleList = 0xfffff803`ef0f5350
+Debug session time: Thu Jul 23 23:07:14.205 2026 (UTC + 8:00)
+System Uptime: 0 days 0:01:53.937
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+....................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 0000002f`0e979018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+7: kd> .reload /f GuardMetaCore.sys
+7: kd> .echo === HYPERVISOR ===
+=== HYPERVISOR ===
+7: kd> dt -r2 GuardMetaCore!_HYPERVISOR_CONTEXT GuardMetaCore!g_HypervisorContext
+Cannot find specified field members.
+7: kd> dq GuardMetaCore!g_HypervisorContext L3
+fffff803`c1e06480  00000000`00000010 ffffd687`21af0000
+fffff803`c1e06490  00000000`00000001
+7: kd> .echo === TYPES ===
+=== TYPES ===
+7: kd> ?? sizeof(GuardMetaCore!_VCPU_DATA)
+unsigned int64 0x948
+7: kd> dt GuardMetaCore!_VCPU_DATA
+   +0x000 ProcessorNumber  : Uint4B
+   +0x004 IsVirtualized    : UChar
+   +0x005 IsVmxOn          : UChar
+   +0x008 VmExitStack      : Ptr64 Void
+   +0x010 VmExitStackPhysical : Uint8B
+   +0x018 VmxonRegion      : Ptr64 Void
+   +0x020 VmxonRegionPhysical : _LARGE_INTEGER
+   +0x028 VmcsRegion       : Ptr64 Void
+   +0x030 VmcsRegionPhysical : _LARGE_INTEGER
+   +0x038 MsrBitmap        : Ptr64 Void
+   +0x040 MsrBitmapPhysical : _LARGE_INTEGER
+   +0x048 EptTables        : Ptr64 _EPT_TABLES
+   +0x050 Vpid             : Uint2B
+   +0x058 EptPebSpoof      : Ptr64 _EPT_TABLES
+   +0x060 EptpMain         : Uint8B
+   +0x068 EptpPebSpoof     : Uint8B
+   +0x070 ActiveEptpIsPebSpoof : Int4B
+   +0x078 LastSnoopedCr3   : Uint8B
+   +0x080 LastCallerClass  : Uint4B
+   +0x088 Vmcb             : Ptr64 _VMCB
+   +0x090 VmcbPhysical     : _LARGE_INTEGER
+   +0x098 HostSaveArea     : Ptr64 Void
+   +0x0a0 HostSaveAreaPhysical : _LARGE_INTEGER
+   +0x0a8 MsrPermissionMap : Ptr64 Void
+   +0x0b0 MsrPermissionMapPhysical : _LARGE_INTEGER
+   +0x0b8 NptTables        : Ptr64 _NPT_TABLES
+   +0x0c0 NestedVmx        : _NESTED_VMX_STATE
+   +0x5c0 NestedSvm        : _NESTED_SVM_STATE
+   +0x7f0 IsInL2           : UChar
+   +0x7f8 GuestState       : _VCPU_STATE
+   +0x8b0 HostRsp          : Uint8B
+   +0x8b8 HostRip          : Uint8B
+   +0x8c0 RestoreRsp       : Uint8B
+   +0x8c8 RestoreRip       : Uint8B
+   +0x8d0 RestoreRbx       : Uint8B
+   +0x8d8 RestoreRbp       : Uint8B
+   +0x8e0 RestoreRsi       : Uint8B
+   +0x8e8 RestoreRdi       : Uint8B
+   +0x8f0 RestoreR12       : Uint8B
+   +0x8f8 RestoreR13       : Uint8B
+   +0x900 RestoreR14       : Uint8B
+   +0x908 RestoreR15       : Uint8B
+   +0x910 VtRootGadget     : <unnamed-tag>
+   +0x930 LastVmExitHostTsc : Uint8B
+   +0x938 TscOffsetCompensation : Int8B
+   +0x940 SvmSingleStepBlockInterrupts : Int4B
+7: kd> dt GuardMetaCore!_VMCB_CONTROL_AREA
+   +0x000 InterceptCrRead  : Uint2B
+   +0x002 InterceptCrWrite : Uint2B
+   +0x004 InterceptDrRead  : Uint2B
+   +0x006 InterceptDrWrite : Uint2B
+   +0x008 InterceptExceptions : Uint4B
+   +0x00c InterceptMisc1   : Uint4B
+   +0x010 InterceptMisc2   : Uint4B
+   +0x014 InterceptMisc3   : Uint4B
+   +0x018 Reserved1        : [36] UChar
+   +0x03c PauseFilterThreshold : Uint2B
+   +0x03e PauseFilterCount : Uint2B
+   +0x040 IopmBasePa       : Uint8B
+   +0x048 MsrpmBasePa      : Uint8B
+   +0x050 TscOffset        : Uint8B
+   +0x058 GuestAsid        : Uint4B
+   +0x05c TlbControl       : Uint4B
+   +0x060 VIntr            : Uint8B
+   +0x068 InterruptShadow  : Uint8B
+   +0x070 ExitCode         : Uint8B
+   +0x078 ExitInfo1        : Uint8B
+   +0x080 ExitInfo2        : Uint8B
+   +0x088 ExitIntInfo      : Uint8B
+   +0x090 NpEnable         : Uint8B
+   +0x098 AvicApicBar      : Uint8B
+   +0x0a0 GhcbPa           : Uint8B
+   +0x0a8 EventInj         : Uint8B
+   +0x0b0 NCr3             : Uint8B
+   +0x0b8 LbrVirtualizationEnable : Uint8B
+   +0x0c0 VmcbCleanBits    : Uint8B
+   +0x0c8 NRip             : Uint8B
+   +0x0d0 NumOfBytesFetched : UChar
+   +0x0d1 GuestInstructionBytes : [15] UChar
+   +0x0e0 AvicApicBackingPagePtr : Uint8B
+   +0x0e8 Reserved3        : Uint8B
+   +0x0f0 AvicLogicalTablePtr : Uint8B
+   +0x0f8 AvicPhysicalTablePtr : Uint8B
+   +0x100 Reserved4        : [768] UChar
+7: kd> dt GuardMetaCore!_VMCB_STATE_SAVE_AREA
+   +0x000 Es               : _SVM_SEGMENT_REGISTER
+   +0x010 Cs               : _SVM_SEGMENT_REGISTER
+   +0x020 Ss               : _SVM_SEGMENT_REGISTER
+   +0x030 Ds               : _SVM_SEGMENT_REGISTER
+   +0x040 Fs               : _SVM_SEGMENT_REGISTER
+   +0x050 Gs               : _SVM_SEGMENT_REGISTER
+   +0x060 Gdtr             : _SVM_SEGMENT_REGISTER
+   +0x070 Ldtr             : _SVM_SEGMENT_REGISTER
+   +0x080 Idtr             : _SVM_SEGMENT_REGISTER
+   +0x090 Tr               : _SVM_SEGMENT_REGISTER
+   +0x0a0 Reserved1        : [43] UChar
+   +0x0cb Cpl              : UChar
+   +0x0cc Reserved2        : [4] UChar
+   +0x0d0 Efer             : Uint8B
+   +0x0d8 Reserved3        : [112] UChar
+   +0x148 Cr4              : Uint8B
+   +0x150 Cr3              : Uint8B
+   +0x158 Cr0              : Uint8B
+   +0x160 Dr7              : Uint8B
+   +0x168 Dr6              : Uint8B
+   +0x170 Rflags           : Uint8B
+   +0x178 Rip              : Uint8B
+   +0x180 Reserved4        : [88] UChar
+   +0x1d8 Rsp              : Uint8B
+   +0x1e0 SCet             : Uint8B
+   +0x1e8 Ssp              : Uint8B
+   +0x1f0 IsstAddr         : Uint8B
+   +0x1f8 Rax              : Uint8B
+   +0x200 Star             : Uint8B
+   +0x208 LStar            : Uint8B
+   +0x210 CStar            : Uint8B
+   +0x218 SfMask           : Uint8B
+   +0x220 KernelGsBase     : Uint8B
+   +0x228 SysenterCs       : Uint8B
+   +0x230 SysenterEsp      : Uint8B
+   +0x238 SysenterEip      : Uint8B
+   +0x240 Cr2              : Uint8B
+   +0x248 Reserved6        : [32] UChar
+   +0x268 GPat             : Uint8B
+   +0x270 DbgCtl           : Uint8B
+   +0x278 BrFrom           : Uint8B
+   +0x280 BrTo             : Uint8B
+   +0x288 LastExcepFrom    : Uint8B
+   +0x290 LastExcepTo      : Uint8B
+   +0x298 Reserved7        : [2408] UChar
+7: kd> .echo === DEBUG_STEP_GLOBALS ===
+=== DEBUG_STEP_GLOBALS ===
+7: kd> x GuardMetaCore!g_NptDebugStepCpu
+fffff803`c1e33a70 GuardMetaCore!g_NptDebugStepCpu = struct _NPT_DEBUG_STEP_CPU [64]
+7: kd> x GuardMetaCore!g_NptHookManager
+fffff803`c1e22c90 GuardMetaCore!g_NptHookManager = struct _NPT_HOOK_MANAGER
+7: kd> dt GuardMetaCore!_NPT_DEBUG_STEP_CPU GuardMetaCore!g_NptDebugStepCpu
+Cannot find specified field members.
+7: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

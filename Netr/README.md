@@ -15,13 +15,13 @@
 
 ## 1. 项目概览
 
-- **类型**：Type-1 Windows 内核模式 Hypervisor（`Netr.sys`）
+- **类型**：Type-1 Windows 内核模式 Hypervisor（`GuardMetaCore.sys`）
 - **平台**：Intel VMX + AMD SVM 双路径，全部 VM Exit 用统一 dispatcher 处理
 - **代码规模**：~48,000 行 C + ~1,200 行 ASM，30+ 源文件
 - **WDK**：`WindowsKernelModeDriver10.0` (KMDF 1.15)
 - **目标**：Win10 22H2 / Win11 21H2 / 22H2 / 23H2 / 24H2 / 25H2 / Canary
-- **测试签名**：默认产物 `x64\Release\Netr.sys` 用 `WDKTestCert` 测试签名
-- **GUI**：`tools/netr-gui/dist/Netr-GUI.exe`（PySide6 桌面程序，45MB 单文件）
+- **测试签名**：`SignDriver.ps1` 使用 `GuardMetaCore Test Signing` 证书对 driver 自动测试签名
+- **GUI**：`tools\netr-gui-rs\src-tauri\target\release\guardmeta-vsp.exe`（Rust/Tauri）
 
 ### 主要功能列表
 
@@ -30,10 +30,10 @@
 | **核心** | VMX/SVM 启动、VM Exit 主分发、Guest 状态保存恢复 | `HvCore`, `HvVmExit`, `AsmVmx`, `AsmSvm` |
 | **页表** | EPT (2TB, 2MB+1GB 大页) / NPT (默认 512GB, hardening 后 2TB) | `HvEpt`, `HvNpt` |
 | **Hook** | EPT/NPT 隐身 Hook 框架（含完整 LDE、原子 PTE 写、跳板池） | `EptHook` (6446 行), `NptHook` (4116 行) |
-| **嵌套** | L0-L1-L2 完整 Intel VMX (11 条指令) / AMD SVM (5 条指令) | `HvNested`, `HvNestedEpt`, `HvNestedSvm`, `HvNestedNpt` |
+| **嵌套** | L0-L1-L2 Intel VMX / AMD SVM（实验性发布，VMCS12/VMCB12 语义仍不完整） | `HvNested`, `HvNestedEpt`, `HvNestedSvm`, `HvNestedNpt` |
 | **反检测** | CPUID 伪装、MSR 拦截、RDTSC 补偿、CR4.VMXE 隐藏 | `HvVmcs`, `HvVmcb`, `HvHook` |
 | **隐藏** | 进程/驱动/文件/内存/注册表 | `HvHook`, `HvRegistryHook` |
-| **注入** | DLL 手动映射 + Shellcode + PEB 脱链 + VAD 欺骗 + PE 头擦除 | `HvInjection` |
+| **注入** | Shellcode/APC 与受限 x64 DLL manual-map；同步 TLS/DllMain、unwind 与回滚已实现，仍需真机矩阵验证 | `HvInjection` |
 | **HWBP** | 透明硬件断点（DR0-DR3 shadow + event ring） | `HvDebugger` |
 | **输入注入** | PS/2 端口 0x60/0x64 拦截 + xHCI USB HID 注入（Layer 4） | `HvInput`, `HvUsbXhci`, `HvXhciEptTrap` |
 | **网络伪造** | netio.sys!NsiGetParameter Hook，按规则改写返回的流量统计 | `HvNetworkHook` |
@@ -59,7 +59,7 @@
 - **Visual Studio**：2019 或 2022，附带 C++ 桌面工作负载 + Spectre Mitigation 库
 - **测试签名**：`bcdedit /set testsigning on`
 - **关闭 Hyper-V**：`bcdedit /set hypervisorlaunchtype off`（重启生效）
-- **Python**（GUI 工具开发用）：3.10+ + PySide6 6.6+；运行 EXE 不需要 Python
+- **前端工具链**：Node.js/npm + Rust 1.77+（Tauri）；Python 仅供 legacy GUI/辅助脚本使用
 
 ### 2.3 Windows 版本支持矩阵
 
@@ -76,19 +76,27 @@
 
 ## 3. 快速开始
 
-### 3.1 编译
+### 3.1 编译、签名与测试包
 
 ```cmd
-:: 方式 A: 使用项目内 build_test.bat（路径需根据实际 VS 安装调整）
-build_test.bat
+:: 首次使用：在管理员 PowerShell 中为当前构建账户初始化测试证书
+powershell.exe -ExecutionPolicy Bypass -File SetupTestSigning.ps1
 
-:: 方式 B: 直接调用 MSBuild
-msbuild Netr.vcxproj /p:Configuration=Release /p:Platform=x64
+:: 完整构建：driver + Bridge/injector + Rust GUI + 签名 + 严格收集
+build_test.bat Release
+
+:: 仅迭代 driver：仍会自动签名并刷新测试目录，但不代表完整产品构建
+build_test.bat Release DriverOnly
 ```
 
-产物：`x64\Release\Netr.sys`（约 240 KB，已用 `WDKTestCert` 测试签名）。
+所有测试交付件统一从 `test-package` 取得；`x64`、`DebuggerBridge\bin` 和 Rust `target` 目录只视为中间输出。完整构建成功后，测试目录至少包含：
 
-预期输出：`0 个错误 0 个警告`（已清理 9 类历史警告）。
+- 已测试签名的 `GuardMetaCore.sys` 与 driver PDB
+- `NetrDebuggerBridge32/64.dll`、`NetrBridgeInjector32/64.exe` 及其 PDB
+- `guardmeta-vsp.exe` 与 GUI PDB
+- `GuardMetaCore-Test.cer` 和最新 `SHA256SUMS.txt`
+
+构建收口会验证 driver 签名、源产物与测试包 SHA-256 一致性，并在缺少必需产物时失败。构建不会自动安装或加载 driver。
 
 ### 3.2 BIOS / 系统准备
 
@@ -108,7 +116,7 @@ BIOS 中确认：Intel VT-x / VT-d 启用，或 AMD SVM Mode 启用。
 ### 3.3 加载驱动
 
 ```cmd
-sc create Netr type= kernel binPath= "C:\path\to\Netr.sys"
+sc create Netr type= kernel binPath= "C:\path\to\test-package\GuardMetaCore.sys"
 sc start Netr
 ```
 
@@ -126,7 +134,7 @@ sc start Netr
 
 ```cmd
 :: 双击或命令行启动
-tools\netr-gui\dist\Netr-GUI.exe
+test-package\guardmeta-vsp.exe
 ```
 
 GUI 会：
@@ -179,7 +187,7 @@ VM Exit 统一分发
 └── HvVmExit.c (2775 行)                  Intel 与 AMD 两个独立 dispatcher 共存
 
 嵌套虚拟化
-├── HvNested.c (1986 行)                  Intel VMX 嵌套（11 条指令完整实现）
+├── HvNested.c                            Intel VMX 嵌套（实验性，非完整 VMCS12）
 ├── HvNestedEpt.c (1109 行)               EPT02 翻译链（L2 GPA → L1 GPA → HPA）
 ├── HvNestedSvm.c (1345 行)               AMD SVM 嵌套（5 条指令 + vGIF 门控）
 └── HvNestedNpt.c (1019 行)               NPT02 翻译链
@@ -258,7 +266,7 @@ KVAS 与物理访问
 | TLB control | FLUSH_ALL（启动期）+ FLUSH_GUEST（按需） | |
 | V_INTR_MASKING | 启用（bit 24） | |
 
-启用 hardening：在 `HvCompat.h` 把 `HV_ENABLE_SVM_HARDENING` 改为 1，或在项目属性页 PreprocessorDefinitions 加 `HV_ENABLE_SVM_HARDENING=1`。
+`HV_ENABLE_SVM_HARDENING` 当前默认值为 1；AMD 真机矩阵尚未完成，运行结果必须按实验性能力处理。
 
 ### 5.3 嵌套虚拟化（L0-L1-L2）
 
@@ -267,7 +275,7 @@ KVAS 与物理访问
 | VMXON/VMXOFF | ✅ | — | 包含 revision-ID 验证、CR0/CR4/CPL 检查 |
 | VMCLEAR/VMPTRLD | ✅ | — | VMPTRLD 拒绝 shadow VMCS bit31 |
 | VMREAD/VMWRITE | ✅ | — | 86+ 字段索引；VMWRITE 检查只读字段 |
-| VMLAUNCH/VMRESUME | ✅ | — | 完整状态机校验 |
+| VMLAUNCH/VMRESUME | 🧪 | — | 已接状态机，但控制位、MSR list 与完整 VM-entry/exit 语义仍需补齐 |
 | INVEPT/INVVPID | ✅ | — | 全 context 失效（细粒度可后续优化） |
 | VMRUN | — | ✅ | |
 | VMLOAD/VMSAVE | — | ✅ | |
@@ -321,7 +329,7 @@ AMD NPT Hook（`NptHook.c`，4116 行）：
 
 | API | IOCTL | 状态 |
 |---|---|---|
-| `HvHookInstallFileHideHook()` | — | **当前禁用** (`ENABLE_FILE_HIDE_HOOK=0`)，2026-05-21 BISECT #80 确认这条 hook 触发 services.exe 0x1E BSOD |
+| `HvHookInstallFileHideHook()` | — | `ENABLE_FILE_HIDE_HOOK=1`；先解析真实 `NtQueryDirectoryFile` SSDT 实现，只有 hook 与 trampoline 均有效才发布，失败事务回滚 |
 
 ### 6.4 内存隐藏
 
@@ -336,23 +344,32 @@ AMD NPT Hook（`NptHook.c`，4116 行）：
 - `HvRegHookAddHiddenKeyName(KeyName)` 加入隐藏列表
 - 当前隐藏 `NetrSvc`（保护 GUI 读取的设备名注册表项）
 
-### 6.6 DLL 注入
+### 6.6 DLL 注入（受限 x64 实现，实验性）
 
 | API | IOCTL | 说明 |
 |---|---|---|
-| `HvInjectDll(...)` | `IOCTL_HV_INJECT_DLL` (0x60) | 完整 PE 手动映射（节映射 + 重定位 + 导入解析 + TLS callback） |
+| `HvInjectDllViaLoader(...)` | `IOCTL_HV_INJECT_DLL` (0x60), `UseManualMap=0` | 默认路径；在目标进程同步调用 `ntdll!LdrLoadDll`，由 Windows loader 加载依赖并管理 TLS、unwind、PEB loader graph 和引用计数 |
+| `HvInjectDllFromFile(...)` | `IOCTL_HV_INJECT_DLL` (0x60), `UseManualMap=1` | 实验性手动映射；映射原生 x64 PE，由目标 loader 获取直接/传递依赖引用，再解析 IAT、注册 x64 unwind 表、应用最终节权限并同步执行 TLS callback 与 DllMain |
 
-`NETR_INJECT_DLL_REQUEST` 字段：
-- `ProcessId` / `DllSize` / `DllBuffer`
-- `ErasePeHeader`：擦零 DOS+NT header（默认 0x1000 字节）
-- `UnlinkFromPeb`：从 PEB LdrModuleList 三链表脱链
-- `UseManualMap` / `StealthLevel` (0-3)
+当前 driver 请求结构为固定路径 ABI：`TargetPid + DllPath[520] + Flags`。路径必须在 520 个 `WCHAR` 内终止；`UseManualMap=0` 是正常 Windows loader 注入，`UseManualMap=1` 才进入受限 manual-map。DOS、UNC、Win32 extended 和原生 NT 路径会按所选模式分别规范化。
 
-PEB 偏移（`HvInjection.c:2141`）使用 Win7→Win11 x64 用户态稳定偏移（PEB+0x18=Ldr 等），不需要版本分支；若未来支持 32-bit guest 进程需要 WOW64 PEB 分支。
+执行路径使用两个同线程用户 APC 形成完成栅栏，并用 Unreal/BlackBone 风格的强制 alert 内核 APC 促使投递。只有第二个 APC 的 kernel routine 到达后，driver 才认定前一个用户例程已经返回并回收调用桩。进程创建时间和线程所属进程对象都会重新校验，避免 PID 复用命中错误目标。
+
+Windows loader 模式通过 `LdrLoadDll` 自动建立依赖图，卸载时对同一记录调用 `LdrUnloadDll`；不会把 loader 管理的模块当手工映像直接释放。当前 manual-map 支持边界：
+- 仅原生 x64 目标；WOW64、delay import、CLR 映像和带静态 TLS 模板的 DLL 明确返回 `STATUS_NOT_SUPPORTED`。
+- 普通 import、序号 import、转发导出和 Win10/Win11 API Set v6 已处理。每个唯一直接依赖都会通过目标 `LdrLoadDll` 获取真实 loader 引用：先搜索注入 DLL 所在目录，找不到时使用目标进程默认搜索路径；传递依赖、API Set 与 SxS 由目标 loader 处理，显式卸载或失败回滚时按相反顺序调用 `LdrUnloadDll`。
+- callback-only TLS、DllMain `PROCESS_ATTACH/DETACH`、`.pdata` 的 `RtlAddFunctionTable/RtlDeleteFunctionTable`、最终节权限及失败逆序回滚已实现；不会生成未来线程的 `THREAD_ATTACH/DETACH`，也不会把模块加入 PEB loader list。
+- APC 完成状态一旦无法证明，manual-map 映像、依赖引用记录、loader 参数和调用桩会按所属阶段保留并标记为不可卸载，直到目标退出；禁止在可能仍执行代码或依赖状态未知时释放父映像。
+- `KeRemoveQueueApc`、`KeTestAlertThread` 和 `PsGetThreadProcess` 均由 `MmGetSystemRoutineAddress` 动态解析。缺少任一安全必需能力时，driver 仍可加载，但所有 APC 执行（包括两种 DLL 注入和 Shellcode 执行）返回 `STATUS_NOT_SUPPORTED`。
+- `HideFromPeb`、`ErasePeHeader` 和 `StealthLevel` 尚未接入这两条新生命周期路径，当前不执行这些高风险后处理，也不会把它们误报为成功。
+
+该路径已通过构建、签名和导入表审计，但尚未完成 Win10/Win11 的目标进程运行矩阵，因此不能视为 production-ready。
+
+PEB 遍历当前仅覆盖 x64 PEB/Ldr 和 Win10/Win11 API Set v6；未来若支持 32-bit guest，必须增加独立 WOW64 PEB 分支，不能复用当前偏移。
 
 ### 6.7 Shellcode 注入
 
-`IOCTL_HV_INJECT_SHELLCODE` (0x70)：写入 + 执行（APC 调度），最大 4KB。
+`IOCTL_HV_INJECT_SHELLCODE` (0x70)：写入 + 执行（APC 调度），最大 4KB；与两种 DLL 注入模式共用上述动态 APC 安全能力门槛。
 
 ### 6.8 反反调试 (Anti-Anti-Debug)
 
@@ -384,7 +401,7 @@ Guest 看到的 DR0-DR3 是 shadow 值，hypervisor 维护真实的 DR0-DR3。�
 - `HvUsbXhci.c` 直接扫描 xHCI 控制器
 - 找到 HID device 后，按三段式锁分离设计写入 Transfer Ring + Event Ring
 - 通过 IPI 强制 VMEXIT 触发 Windows kbdclass/mouclass 处理
-- **Item 2**：USBSTS/IMAN EPT 读 trap（拦截 ISR fast-bail）默认 OFF，需 `IOCTL_HV_XHCI_TRAP_ENABLE` (0x55) 显式启用
+- **Item 2**：USBSTS/IMAN EPT 读 trap 的实现保留，但当前 core 未初始化该 manager；`IOCTL_HV_XHCI_TRAP_ENABLE` 会 fail-closed。基础 PS/2/xHCI HID 后端与它分开。
 
 完整 xHCI 注入流程：
 ```
@@ -400,8 +417,8 @@ Guest 看到的 DR0-DR3 是 shadow 值，hypervisor 维护真实的 DR0-DR3。�
 `HvNetworkHook.c` Hook `netio.sys!NsiGetParameter`：
 - 拦截 GetIfEntry2 / GetIfTable2 用户态调用链
 - 改写返回的字节数 / 包数 / 速率
-- 支持 4 种模式：固定值 / 缩放百分比 / 减去固定值 / 随机
-- `IOCTL_HV_SET_FAKE_TRAFFIC` 配置参数
+- rewrite 规则实现保留，但默认关闭；当前没有公开的 versioned 配置/status IOCTL
+- 因此现阶段只发布 hook pass-through，不能宣称流量改写已启用
 
 ### 6.12 物理内存直通访问
 
@@ -510,9 +527,9 @@ GUI 端解析 (tools/netr-gui/netr/ioctl.py:30 resolve_device_path):
 
 完整结构体定义见 `tools/netr-gui/netr/structs.py`（Python ctypes，`_pack_=1` 与驱动 `#pragma pack(push,1)` 严格对齐）。
 
-### 7.3 GUI 工具速览
+### 7.3 Legacy Python GUI 工具速览
 
-`tools/netr-gui/` 是基于 PySide6 (Qt for Python) 的桌面应用，纯 ctypes 通信（不依赖 pywin32）：
+当前主前端为 Rust/Tauri `guardmeta-vsp.exe`。`tools/netr-gui/` 是保留的 PySide6 legacy 桌面应用，使用纯 ctypes 通信（不依赖 pywin32）：
 
 - **入口**：`main.py` 检查管理员 + 启用 `SeLoadDriverPrivilege` → `MainWindow`
 - **页面**：11 个，覆盖服务管理 / 状态 / DSE / 进程隐藏 / 驱动隐藏 / 调试器 (3 tab) / 进程保护 / 内存读写 / 注入 / HWBP / 输入注入
@@ -532,16 +549,20 @@ GUI 端解析 (tools/netr-gui/netr/ioctl.py:30 resolve_device_path):
 
 | 宏 | 默认 | 说明 |
 |---|---|---|
+| `ENABLE_DRIVER_HIDE_HOOK` | `1` | 启用独立 DriverHide owner；安装与自隐藏按事务发布 |
 | `ENABLE_DRIVER_SELF_HIDE` | `1` | 启用驱动 EPT Hook 自隐藏 |
 | `ENABLE_INJECTION_FRAMEWORK` | `1` | 启用 DLL/Shellcode 注入 |
-| `ENABLE_FILE_HIDE_HOOK` | `0` | **禁用**：BISECT #80 确认触发 services.exe 0x1E BSOD |
+| `ENABLE_FILE_HIDE_HOOK` | `1` | 启用文件枚举隐藏，缺失真实目标或 trampoline 时 fail-closed |
+| `ENABLE_REGISTRY_HIDE_HOOK` | `1` | 隐藏 `NetrSvc` 枚举项，直接路径访问不受影响 |
+| `ENABLE_NETWORK_HOOK` | `1` | 安装 NSI 控制面；流量改写默认仍关闭，需显式配置 |
+| `ENABLE_PE_IMAGE_OBFUSCATION` | `0` | 保留旧实现但不发布；等待 VT read-shadow、回滚与完整生命周期 |
 | `HV_USE_FIXED_DEVICE_NAME` | `0` | 1 = 用 `HvControl` 固定名；0 = 16 字符随机 |
 
 `HvCompat.h` 顶部：
 
 | 宏 | 默认 | 说明 |
 |---|---|---|
-| **`HV_ENABLE_SVM_HARDENING`** | **`0`** | AMD 加固：ASID 池 / NPT 2TB / vGIF 门控 / IOPM-MSRPM 按位 OR；只有 Intel 真机时建议保持 OFF |
+| **`HV_ENABLE_SVM_HARDENING`** | **`1`** | AMD 加固：ASID 池 / NPT 2TB / vGIF 门控 / IOPM-MSRPM 按位 OR；仍需 AMD 真机验证 |
 
 `HvTypes.h` 顶部：
 
@@ -553,12 +574,11 @@ GUI 端解析 (tools/netr-gui/netr/ioctl.py:30 resolve_device_path):
 
 | 项 | 风险 | 启用方式 |
 |---|---|---|
-| `IOCTL_HV_XHCI_TRAP_ENABLE` (0x55) | xHCI USBSTS/IMAN EPT 读 trap，启用前必须 CPU 支持 MTF | IOCTL 显式调用 |
+| `IOCTL_HV_XHCI_TRAP_ENABLE` (0x55) | staged manager 已补 per-vCPU leaf、原子 PTE 更新与跨 CPU rollback，但尚未由 core 发布；当前固定 fail-closed | focused runtime validation 后再接入 core 初始化/卸载链 |
 | `IOCTL_HV_ENABLE_ACCESS_BYPASS` (0x4A) | NtOpenProcess 绕过 PPL/System=4 保护 | IOCTL 显式调用 |
 | 进程隐藏 | 高频 NQSI hook 可能在 Win11 上 race | IOCTL 显式调用 |
-| FileHideHook | services.exe 启动期 0x1E（BISECT #80） | 编译期 `ENABLE_FILE_HIDE_HOOK=1` |
-| RegistryHook NtEnumerateKey | NtEnumerateKey trampoline 短跳跨页可能不可靠（BISECT #78） | 取消 `Driver.c:2507` 的 `#if 0` |
-| AMD 加固 | 仅 Intel 真机验证过 | 编译期 `HV_ENABLE_SVM_HARDENING=1` |
+| PE live-image obfuscation | 直接改写已加载镜像，无 VT read-shadow/回滚 | 完成 VT shadow 后再开 `ENABLE_PE_IMAGE_OBFUSCATION` |
+| AMD NPT overlay cloak | `HV_ENABLE_SVM_CLOAK=0`，尚无完整 NPT overlay | 完成对称实现和 AMD 真机验证后启用 |
 
 ---
 
@@ -606,8 +626,8 @@ Win11 23H2/24H2+ 的 KVAS shadow CR3 与 user CR3 kernel-half 不再是 byte-ide
 |---|---|---|
 | 24H2 加载 0-3s 卡死无 dump | ✅ 已修（CR4.CET 修补） | `HvVmcs.c:541` |
 | 加载 1s 卡死无 dump（INVEPT 死锁） | ✅ 已修（root 模式判定先于 IRQL） | `EptHook.c:179` |
-| services.exe 0x1E（FileHideHook） | ✅ 默认禁用 | `Driver.c:41` `ENABLE_FILE_HIDE_HOOK=0` |
-| NtEnumerateKey trampoline 不可靠 | ⚠️ 怀疑 | `Driver.c:2507` `#if 0`，未确认根因 |
+| services.exe 0x1E（旧 FileHideHook） | 🛠 已修真实 SSDT 解析、trampoline 校验和失败回滚；待真机 | `ENABLE_FILE_HIDE_HOOK=1` |
+| NtEnumerateKey 旧 Zw stub trampoline | 🛠 已改为 syscall index→SSDT 真实实现并加 rundown；待真机 | `ENABLE_REGISTRY_HIDE_HOOK=1` |
 | 25H2 / Canary 偏移漂移 | ⚠️ Best-effort | 待 BISECT |
 
 ---
@@ -735,4 +755,4 @@ Win11 23H2/24H2+ 的 KVAS shadow CR3 与 user CR3 kernel-half 不再是 byte-ide
 
 ---
 
-> **当前版本状态**：Phase 8（2026 年）；最近构建 0 警告 0 错误；Intel VMX 路径主线验证；AMD SVM 路径代码完整但加固功能（`HV_ENABLE_SVM_HARDENING`）默认 OFF，等 AMD 真机验证后打开。
+> **当前版本状态**：Phase 8（2026 年）；驱动编译/链接已通过但本轮未做真机运行测试。Intel VT-root/Vwatch 为主线，Nested 与 AMD hardening（默认 ON）仍属实验性；签名私钥缺失时测试包保持旧版本且构建 fail-closed。

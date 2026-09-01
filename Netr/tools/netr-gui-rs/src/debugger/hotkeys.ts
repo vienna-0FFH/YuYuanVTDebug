@@ -1,7 +1,13 @@
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
-import { useSession } from "./sessionStore";
+import {
+  beginStepExecution,
+  cancelActiveRunExecution,
+  endStepExecution,
+  useSession,
+} from "./sessionStore";
 import { dbgIpc, errMsg } from "./ipc";
+import { stepUnavailableReason, swBreakpointUnavailableReason } from "./capabilities";
 
 /**
  * 全局调试器快捷键(在 DebuggerApp 顶层挂一次)。
@@ -9,6 +15,13 @@ import { dbgIpc, errMsg } from "./ipc";
  */
 export function useGlobalDebuggerHotkeys() {
   const session = useSession();
+  const swBpReason = swBreakpointUnavailableReason(session.debugMode, session.capabilities);
+  const activeStepReason = session.activeStep
+    ? `线程 ${session.activeStep.tid} 的调试器步进仍在执行`
+    : null;
+  const stepIntoReason = activeStepReason ?? stepUnavailableReason("into", session.debugMode, session.capabilities);
+  const stepOverReason = activeStepReason ?? stepUnavailableReason("over", session.debugMode, session.capabilities);
+  const stepOutReason = activeStepReason ?? stepUnavailableReason("out", session.debugMode, session.capabilities);
 
   // Ctrl+G — 聚焦跳转输入框(由 MainViewPanel 自己监听 focus 失败时这里至少切到 disasm)
   useHotkeys(
@@ -61,12 +74,19 @@ export function useGlobalDebuggerHotkeys() {
       if (!session.selectedTid) return toast.error("先选线程");
       try {
         await dbgIpc.suspendThread(session.selectedTid);
+        if (session.pid) {
+          try {
+            await cancelActiveRunExecution(session.pid, session.selectedTid);
+          } catch (error) {
+            toast.error(`步进一次性断点清理失败: ${errMsg(error)}`);
+          }
+        }
         toast.success(`线程 ${session.selectedTid} 已暂停`);
       } catch (err) {
         toast.error(`F6 失败: ${errMsg(err)}`);
       }
     },
-    [session.selectedTid]
+    [session.pid, session.selectedTid]
   );
 
   // F9 — 在当前地址切软断点
@@ -75,6 +95,7 @@ export function useGlobalDebuggerHotkeys() {
     async (e) => {
       e.preventDefault();
       if (!session.pid) return;
+      if (swBpReason) return toast.error(swBpReason);
       const addr = Number(session.address);
       try {
         const exist = session.bps.find((b) => b.address === addr);
@@ -91,7 +112,7 @@ export function useGlobalDebuggerHotkeys() {
         toast.error(`F9 失败: ${errMsg(err)}`);
       }
     },
-    [session.pid, session.address, session.bps]
+    [session.pid, session.address, session.bps, swBpReason]
   );
 
   // F11 — 步入(TF + #DB)
@@ -100,14 +121,19 @@ export function useGlobalDebuggerHotkeys() {
     async (e) => {
       e.preventDefault();
       if (!session.selectedTid) return toast.error("先选线程");
+      if (stepIntoReason) return toast.error(stepIntoReason);
+      const conflict = beginStepExecution(session.selectedTid, "into");
+      if (conflict) return toast.error(conflict);
       try {
-        await dbgIpc.stepInto(session.selectedTid);
+        await dbgIpc.stepInto(session.selectedTid, session.syntheticMtfStep);
         // 命中事件由 driver dbgevt 回传, BreakHitToast 自动跳转 RIP
       } catch (err) {
         toast.error(`F11 失败: ${errMsg(err)}`);
+      } finally {
+        endStepExecution(session.selectedTid, "into");
       }
     },
-    [session.selectedTid]
+    [session.selectedTid, session.syntheticMtfStep, stepIntoReason]
   );
 
   // F8 — 步过: 看是 call/int 就在 RIP+len 装临时 sw bp + resume;否则等价 step-into
@@ -116,13 +142,26 @@ export function useGlobalDebuggerHotkeys() {
     async (e) => {
       e.preventDefault();
       if (!session.pid || !session.selectedTid) return toast.error("先选线程");
+      if (stepOverReason) return toast.error(stepOverReason);
+      const conflict = beginStepExecution(session.selectedTid, "over");
+      if (conflict) return toast.error(conflict);
       try {
-        await dbgIpc.stepOver(session.pid, session.selectedTid);
+        const result = await dbgIpc.stepOver(
+          session.pid,
+          session.selectedTid,
+          session.syntheticMtfStep,
+        );
+        if (result.kind !== "run-over") endStepExecution(session.selectedTid, "over");
       } catch (err) {
+        try {
+          await cancelActiveRunExecution(session.pid, session.selectedTid, "over");
+        } catch (cleanupError) {
+          toast.error(`F8 步进回滚失败: ${errMsg(cleanupError)}`);
+        }
         toast.error(`F8 失败: ${errMsg(err)}`);
       }
     },
-    [session.pid, session.selectedTid]
+    [session.pid, session.selectedTid, session.syntheticMtfStep, stepOverReason]
   );
 
   // Shift+F11 — 步出: 拿 [RSP] 当 ret addr,装临时 sw bp + resume
@@ -131,13 +170,21 @@ export function useGlobalDebuggerHotkeys() {
     async (e) => {
       e.preventDefault();
       if (!session.pid || !session.selectedTid) return toast.error("先选线程");
+      if (stepOutReason) return toast.error(stepOutReason);
+      const conflict = beginStepExecution(session.selectedTid, "out");
+      if (conflict) return toast.error(conflict);
       try {
         await dbgIpc.stepOut(session.pid, session.selectedTid);
       } catch (err) {
+        try {
+          await cancelActiveRunExecution(session.pid, session.selectedTid, "out");
+        } catch (cleanupError) {
+          toast.error(`Shift+F11 步进回滚失败: ${errMsg(cleanupError)}`);
+        }
         toast.error(`Shift+F11 失败: ${errMsg(err)}`);
       }
     },
-    [session.pid, session.selectedTid]
+    [session.pid, session.selectedTid, stepOutReason]
   );
 
   // Esc — 解附 / 关右停靠
@@ -154,7 +201,7 @@ export function useGlobalDebuggerHotkeys() {
   // Ctrl+1/2/3 — 切主区子 tab
   useHotkeys("ctrl+1", (e) => { e.preventDefault(); session.setMainTab("disasm"); }, [session]);
   useHotkeys("ctrl+2", (e) => { e.preventDefault(); session.setMainTab("hex"); }, [session]);
-  useHotkeys("ctrl+3", (e) => { e.preventDefault(); session.setMainTab("regs"); }, [session]);
-  useHotkeys("ctrl+4", (e) => { e.preventDefault(); session.setMainTab("stack"); }, [session]);
+  useHotkeys("ctrl+3", (e) => { e.preventDefault(); session.setRightTab("regs"); }, [session]);
+  useHotkeys("ctrl+4", (e) => { e.preventDefault(); session.setRightTab("regs"); }, [session]);
   useHotkeys("ctrl+5", (e) => { e.preventDefault(); session.setMainTab("bps"); }, [session]);
 }

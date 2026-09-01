@@ -1,0 +1,17 @@
+*** Begin Patch
+*** Update File: Netr/HvNestedSvm.h
+@@
+ #define VMCB_INTERCEPT_CR_WRITE         0x002
+ #define VMCB_INTERCEPT_DR_READ          0x004
+ #define VMCB_INTERCEPT_DR_WRITE         0x006
+ #define VMCB_INTERCEPT_EXCEPTIONS       0x008
+ #define VMCB_INTERCEPT_MISC1            0x00C
+-#define VMCB_INTERCEPT_MISC2            0x010
+-#define VMCB_INTERCEPT_MISC3            0x014
++#define VMCB_INTERCEPT_MISC2            0x014
+ #define VMCB_PAUSE_FILTER_THRESHOLD     0x03C
+ #define VMCB_PAUSE_FILTER_COUNT         0x03E
+ #define VMCB_IOPM_BASE_PA               0x040
+ #define VMCB_MSRPM_BASE_PA              0x048
+ #define VMCB_TSC_OFFSET                 0x050
+*** End Patch

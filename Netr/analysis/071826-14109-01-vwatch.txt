@@ -1,0 +1,340 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\071826-14109-01-vwatch.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\071826-14109-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Symbol search path is: srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff805`27600000 PsLoadedModuleList = 0xfffff805`282135f0
+Debug session time: Sat Jul 18 20:53:37.065 2026 (UTC + 8:00)
+System Uptime: 0 days 4:12:53.734
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+6: kd> .symopt+ 0x40; .reload /f GuardMetaCore.sys; lmvm GuardMetaCore; x GuardMetaCore!*Vwatch*; x GuardMetaCore!g_VwatchManager; dt GuardMetaCore!_HV_VWATCH_MANAGER GuardMetaCore!g_VwatchManager; !dbgprint; !blackboxpnp; !blackboxntfs; !blackboxbsd; q
+Symbol options are 0xB0367:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000040 - SYMOPT_LOAD_ANYTHING
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+Browse full module list
+start             end                 module name
+fffff805`6e6c0000 fffff805`6ea6f000   GuardMetaCore   (private pdb symbols)  e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.pdb
+    Loaded symbol image file: GuardMetaCore.sys
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.sys
+    Image path: GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Sat Jul 18 20:31:50 2026 (6A5B7236)
+    CheckSum:         00080C59
+    ImageSize:        003AF000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+fffff805`6e738940 GuardMetaCore!g_VwatchManager = struct _HV_VWATCH_MANAGER
+fffff805`6e6cb864 GuardMetaCore!HvVwatchpArmSwBpStepOverRoot (struct _VCPU_DATA *, struct _HV_PRIVATE_SWBP_ENTRY *)
+fffff805`6e6c86e8 GuardMetaCore!HvVwatchClearAllForDebuggerTarget (void *, void *)
+fffff805`6e6cca20 GuardMetaCore!HvVwatchpGvaToGpa (unsigned long, unsigned int64, unsigned int64 *)
+fffff805`6e6ca4cc GuardMetaCore!HvVwatchSwBpAdd (void *, void *, unsigned int64, void *)
+fffff805`6e6cb488 GuardMetaCore!HvVwatchTryIsOverlayTargetCr3Ex (unsigned int64, unsigned char *, unsigned long *)
+fffff805`6e6cd4a8 GuardMetaCore!HvVwatchpResolveSwBpPtes (struct _HV_PRIVATE_SWBP_PAGE *)
+fffff805`6e6c9bdc GuardMetaCore!HvVwatchSetEx (void *, void *, unsigned long, unsigned int64, unsigned char, unsigned char, unsigned char)
+fffff805`6e6cb2ec GuardMetaCore!HvVwatchTryAdoptScopedOverlayCr3ByMappingRoot (struct _VCPU_DATA *, unsigned int64)
+fffff805`6e6c86bc GuardMetaCore!HvVwatchClearAllForDebugger (void *)
+fffff805`6e6cc860 GuardMetaCore!HvVwatchpFindSwBpEntryRoot (unsigned int64, unsigned int64)
+fffff805`6e6c8748 GuardMetaCore!HvVwatchClearOwned (void *, void *, unsigned long)
+fffff805`6e6cb0f8 GuardMetaCore!HvVwatchSwBpRemove (void *, void *, unsigned int64)
+fffff805`6e6c95c8 GuardMetaCore!HvVwatchIsPrivateSoftwareBreakpointSupported (void)
+fffff805`6e6c95e8 GuardMetaCore!HvVwatchIsVirtualHardwareBreakpointSupported (void)
+fffff805`6e6ca3c8 GuardMetaCore!HvVwatchStepClear (void *, void *, void *)
+fffff805`6e6cb594 GuardMetaCore!HvVwatchpAcquireRefreshLockPassive (struct _HV_PRIVATE_SWBP_PAGE *)
+fffff805`6e6cb69c GuardMetaCore!HvVwatchpApplyMaskAllVcpus (struct _HV_VWATCH_PAGE *, unsigned long)
+fffff805`6e6cd660 GuardMetaCore!HvVwatchpTryAdoptScopedOverlayCr3Root (unsigned int64, void *)
+fffff805`6e6cca70 GuardMetaCore!HvVwatchpInvalidateOverlayClassifierCache (void)
+fffff805`6e6cbd60 GuardMetaCore!HvVwatchpClearOwnedInternal (void *, void *, unsigned long)
+fffff805`6e6ccc34 GuardMetaCore!HvVwatchpRebindSwBpPagePassive (struct _HV_PRIVATE_SWBP_PAGE *, long, unsigned int64, unsigned int64)
+fffff805`6e6c8720 GuardMetaCore!HvVwatchClearAllForTarget (void *)
+fffff805`6e6cd7b4 GuardMetaCore!HvVwatchpWritePtSlot (union _EPT_PTE_ENTRY *, unsigned int64, unsigned long)
+fffff805`6e6ca258 GuardMetaCore!HvVwatchStepArm (void *, void *, void *, void *, unsigned int64)
+fffff805`6e6cc2a0 GuardMetaCore!HvVwatchpDestroySwBpPage (struct _HV_PRIVATE_SWBP_PAGE *)
+fffff805`6e6cd838 GuardMetaCore!HvVwatchpWriteSwBpSlot (union _EPT_PTE_ENTRY *, unsigned int64, unsigned char, unsigned char, unsigned char)
+fffff805`6e6cbacc GuardMetaCore!HvVwatchpBeginRetirePageLocked (struct _HV_VWATCH_PAGE *)
+fffff805`6e6c9650 GuardMetaCore!HvVwatchOverlayGenerationIsCurrent (unsigned long)
+fffff805`6e6c94f8 GuardMetaCore!HvVwatchHasOverlayTargets (void)
+fffff805`6e6c8758 GuardMetaCore!HvVwatchHandleEptViolation (struct _VCPU_DATA *, unsigned int64, unsigned int64, struct _GUEST_CONTEXT *)
+fffff805`6e6ca0e8 GuardMetaCore!HvVwatchShutdown (void)
+fffff805`6e6cd114 GuardMetaCore!HvVwatchpRecomputeMaskLocked (long)
+fffff805`6e6caf08 GuardMetaCore!HvVwatchSwBpContinue (void *, void *, void *, void *, unsigned int64, unsigned long)
+fffff805`6e6cbf48 GuardMetaCore!HvVwatchpClearSwBpMatching (void *, void *)
+fffff805`6e6c95c8 GuardMetaCore!HvVwatchIsVtStepSupported (void)
+fffff805`6e6cb5dc GuardMetaCore!HvVwatchpActivateSwBpPage (struct _HV_PRIVATE_SWBP_PAGE *)
+fffff805`6e6cc424 GuardMetaCore!HvVwatchpDetachSwBpEntryLocked (struct _HV_PRIVATE_SWBP_ENTRY *, struct _HV_PRIVATE_SWBP_PAGE **)
+fffff805`6e6c8c68 GuardMetaCore!HvVwatchHandleMtfExit (struct _VCPU_DATA *, struct _GUEST_CONTEXT *)
+fffff805`6e6c970c GuardMetaCore!HvVwatchRefreshPrivateSwBpRange (void *, unsigned int64, unsigned int64)
+fffff805`6e6cc574 GuardMetaCore!HvVwatchpFindFreeSwBpEntryLocked (void)
+fffff805`6e6cc754 GuardMetaCore!HvVwatchpFindScopedSwBpEntryRoot (unsigned int64, unsigned int64, void *)
+fffff805`6e6cc5c0 GuardMetaCore!HvVwatchpFindHitEntry (unsigned int64, unsigned int64, long, unsigned int64, unsigned char *, unsigned char *, unsigned char *, void **, void **)
+fffff805`6e6cd60c GuardMetaCore!HvVwatchpResolveUserCr3 (void *, unsigned int64 *)
+fffff805`6e6cc4bc GuardMetaCore!HvVwatchpDisableSwBpPageRoot (struct _HV_PRIVATE_SWBP_PAGE *)
+fffff805`6e6ccb70 GuardMetaCore!HvVwatchpMaterializePrivateSwBpPage (void *, unsigned int64, unsigned char)
+fffff805`6e6ccac0 GuardMetaCore!HvVwatchpIsScopedOverlayCr3Root (unsigned int64)
+fffff805`6e6c91a0 GuardMetaCore!HvVwatchHandleSwBpException (struct _VCPU_DATA *, struct _GUEST_CONTEXT *, unsigned int64)
+fffff805`6e6c73c0 GuardMetaCore!HvVwatchpFindOrSplitPtSlot (struct _EPT_TABLES *, unsigned int64)
+fffff805`6e6cbb1c GuardMetaCore!HvVwatchpClearAllMatching (void *, void *)
+fffff805`6e6c9578 GuardMetaCore!HvVwatchInitialize (void)
+fffff805`6e6cd000 GuardMetaCore!HvVwatchpRebuildOverlaySnapshotLocked (void)
+fffff805`6e6cd170 GuardMetaCore!HvVwatchpRefreshSwBpShadowRoot (struct _HV_PRIVATE_SWBP_PAGE *, unsigned long)
+fffff805`6e6cd76c GuardMetaCore!HvVwatchpWaitForRootRundown (long *)
+fffff805`6e6cc95c GuardMetaCore!HvVwatchpGetOrAllocPageLocked (unsigned int64)
+fffff805`6e6c86ac GuardMetaCore!HvVwatchClear (void *, unsigned long)
+fffff805`6e6c9bb8 GuardMetaCore!HvVwatchSet (void *, void *, unsigned long, unsigned int64, unsigned char, unsigned char)
+fffff805`6e6c9670 GuardMetaCore!HvVwatchOverlayPageOwned (unsigned int64)
+fffff805`6e6cc90c GuardMetaCore!HvVwatchpFinishRetirePagePassive (struct _HV_VWATCH_PAGE *)
+fffff805`6e6cb768 GuardMetaCore!HvVwatchpArmPrivateStepInterruptShadow (struct _HV_VWATCH_MTF_CONTEXT *)
+fffff805`6e6c83c8 GuardMetaCore!HvVwatchBuildVirtualDrState (void *, unsigned int64 *, unsigned int64 *, unsigned int64 *, unsigned int64 *, unsigned int64 *)
+fffff805`6e6c8456 GuardMetaCore!HvVwatchpGetOrAllocVDrCacheLocked =  (inline caller) GuardMetaCore!HvVwatchBuildVirtualDrState+8e
+fffff805`6e6c87e2 GuardMetaCore!HvVwatchpFindSwBpPageRoot =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+8a
+fffff805`6e6c8836 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+de
+fffff805`6e6c87ff GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+a7
+fffff805`6e6c8880 GuardMetaCore!HvVwatchpCpuIndex =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+128
+fffff805`6e6c888d GuardMetaCore!HvVwatchpGetActiveSwBpPte =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+135
+fffff805`6e6c8a0a GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+2b2
+fffff805`6e6c89fd GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+2a5
+fffff805`6e6c88f6 GuardMetaCore!HvVwatchpTryReserveMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+19e
+fffff805`6e6c89bd GuardMetaCore!HvVwatchpPublishMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+265
+fffff805`6e6c89d0 GuardMetaCore!HvVwatchpSetMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+278
+fffff805`6e6c89f0 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+298
+fffff805`6e6c8a5b GuardMetaCore!HvVwatchpCpuIndex =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+303
+fffff805`6e6c8857 GuardMetaCore!HvVwatchpFindPageRoot =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+ff
+fffff805`6e6c8a38 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+2e0
+fffff805`6e6c886e GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+116
+fffff805`6e6c8a80 GuardMetaCore!HvVwatchpTryReserveMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+328
+fffff805`6e6c8b14 GuardMetaCore!HvVwatchpGuestCr3 =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+3bc
+fffff805`6e6c8bd2 GuardMetaCore!HvVwatchpCurrentThreadToken =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+47a
+fffff805`6e6c8c1f GuardMetaCore!HvVwatchpPublishMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+4c7
+fffff805`6e6c8c28 GuardMetaCore!HvVwatchpSetMtf =  (inline caller) GuardMetaCore!HvVwatchHandleEptViolation+4d0
+fffff805`6e6c8cba GuardMetaCore!HvVwatchpCpuIndex =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+52
+fffff805`6e6c8fb8 GuardMetaCore!HvVwatchpReleasePrivateStepInterruptShadow =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+350
+fffff805`6e6c8f94 GuardMetaCore!HvVwatchpSetMtf =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+32c
+fffff805`6e6c8fe7 GuardMetaCore!HvVwatchpTryInjectPrivateStepDb =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+37f
+fffff805`6e6c9110 GuardMetaCore!HvVwatchpInjectDb =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+4a8
+fffff805`6e6c9157 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+4ef
+fffff805`6e6c9161 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+4f9
+fffff805`6e6c8d8a GuardMetaCore!HvVwatchpSetMtf =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+122
+fffff805`6e6c8ef8 GuardMetaCore!HvVwatchpInjectDb =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+290
+fffff805`6e6c8f12 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleMtfExit+2aa
+fffff805`6e6c923b GuardMetaCore!HvVwatchpCurrentThreadToken =  (inline caller) GuardMetaCore!HvVwatchHandleSwBpException+9b
+fffff805`6e6c9202 GuardMetaCore!HvVwatchpGuestCr3 =  (inline caller) GuardMetaCore!HvVwatchHandleSwBpException+62
+fffff805`6e6c927b GuardMetaCore!HvVwatchpSetGuestRip =  (inline caller) GuardMetaCore!HvVwatchHandleSwBpException+db
+fffff805`6e6c9434 GuardMetaCore!HvVwatchpCpuIndex =  (inline caller) GuardMetaCore!HvVwatchHandleSwBpException+294
+fffff805`6e6c9487 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchHandleSwBpException+2e7
+fffff805`6e6c95cc GuardMetaCore!HvVwatchIsPrivateSoftwareBreakpointSupported =  (inline caller) GuardMetaCore!HvVwatchIsVtStepSupported+4
+fffff805`6e6c9819 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchRefreshPrivateSwBpRange+10d
+fffff805`6e6c98a1 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchRefreshPrivateSwBpRange+195
+fffff805`6e6c9b4b GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchRefreshPrivateSwBpRange+43f
+fffff805`6e6c9ab7 GuardMetaCore!HvVwatchpWriteSwBpPageSlots =  (inline caller) GuardMetaCore!HvVwatchRefreshPrivateSwBpRange+3ab
+fffff805`6e6c9eb0 GuardMetaCore!HvVwatchpTypeToMask =  (inline caller) GuardMetaCore!HvVwatchSetEx+2d4
+fffff805`6e6c9ee6 GuardMetaCore!HvVwatchpTypeToMask =  (inline caller) GuardMetaCore!HvVwatchSetEx+30a
+fffff805`6e6ca052 GuardMetaCore!HvVwatchpInvalidateVDrCacheForTarget =  (inline caller) GuardMetaCore!HvVwatchSetEx+476
+fffff805`6e6ca281 GuardMetaCore!HvVwatchIsVtStepSupported =  (inline caller) GuardMetaCore!HvVwatchStepArm+29
+fffff805`6e6ca281 GuardMetaCore!HvVwatchIsPrivateSoftwareBreakpointSupported =  (inline caller) GuardMetaCore!HvVwatchStepArm+29
+fffff805`6e6ca318 GuardMetaCore!HvVwatchpFindSwBpEntryLocked =  (inline caller) GuardMetaCore!HvVwatchStepArm+c0
+fffff805`6e6ca6cc GuardMetaCore!HvVwatchpFindSwBpEntryLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpAdd+200
+fffff805`6e6ca6eb GuardMetaCore!HvVwatchpFindSwBpPageForVaLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpAdd+21f
+fffff805`6e6cac67 GuardMetaCore!HvVwatchpFindFreeSwBpPageLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpAdd+79b
+fffff805`6e6cb06d GuardMetaCore!HvVwatchpTakeSwBpScopeThreadLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpContinue+165
+fffff805`6e6cb181 GuardMetaCore!HvVwatchpFindSwBpEntryLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpRemove+89
+fffff805`6e6cb248 GuardMetaCore!HvVwatchpBeginRootRundown =  (inline caller) GuardMetaCore!HvVwatchSwBpRemove+150
+fffff805`6e6cb214 GuardMetaCore!HvVwatchpTakeSwBpScopeThreadLocked =  (inline caller) GuardMetaCore!HvVwatchSwBpRemove+11c
+fffff805`6e6cb379 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchTryAdoptScopedOverlayCr3ByMappingRoot+8d
+fffff805`6e6cb451 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchTryAdoptScopedOverlayCr3ByMappingRoot+165
+fffff805`6e6cb568 GuardMetaCore!HvVwatchpCurrentThreadToken =  (inline caller) GuardMetaCore!HvVwatchTryIsOverlayTargetCr3Ex+e0
+fffff805`6e6cb8e9 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+85
+fffff805`6e6cb8d6 GuardMetaCore!HvVwatchpCurrentThreadToken =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+72
+fffff805`6e6cb8a2 GuardMetaCore!HvVwatchpCpuIndex =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+3e
+fffff805`6e6cb978 GuardMetaCore!HvVwatchpTryReserveMtf =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+114
+fffff805`6e6cb931 GuardMetaCore!HvVwatchpGetActiveSwBpPte =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+cd
+fffff805`6e6cb9e1 GuardMetaCore!HvVwatchpCurrentThreadToken =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+17d
+fffff805`6e6cba7b GuardMetaCore!HvVwatchpCancelMtfPublish =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+217
+fffff805`6e6cba48 GuardMetaCore!HvVwatchpPublishMtf =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+1e4
+fffff805`6e6cba50 GuardMetaCore!HvVwatchpSetMtf =  (inline caller) GuardMetaCore!HvVwatchpArmSwBpStepOverRoot+1ec
+fffff805`6e6cbad6 GuardMetaCore!HvVwatchpBeginRootRundown =  (inline caller) GuardMetaCore!HvVwatchpBeginRetirePageLocked+a
+fffff805`6e6cbc32 GuardMetaCore!HvVwatchpInvalidateVDrCacheForTarget =  (inline caller) GuardMetaCore!HvVwatchpClearAllMatching+116
+fffff805`6e6cbed4 GuardMetaCore!HvVwatchpInvalidateVDrCacheForTarget =  (inline caller) GuardMetaCore!HvVwatchpClearOwnedInternal+174
+fffff805`6e6cc03b GuardMetaCore!HvVwatchpBeginRootRundown =  (inline caller) GuardMetaCore!HvVwatchpClearSwBpMatching+f3
+fffff805`6e6cc166 GuardMetaCore!HvVwatchpTakeSwBpScopeThreadLocked =  (inline caller) GuardMetaCore!HvVwatchpClearSwBpMatching+21e
+fffff805`6e6cc2b8 GuardMetaCore!HvVwatchpBeginRootRundown =  (inline caller) GuardMetaCore!HvVwatchpDestroySwBpPage+18
+fffff805`6e6cc503 GuardMetaCore!HvVwatchpWriteSwBpPageSlots =  (inline caller) GuardMetaCore!HvVwatchpDisableSwBpPageRoot+47
+fffff805`6e6cc7c8 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpFindScopedSwBpEntryRoot+74
+fffff805`6e6cc80a GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchpFindScopedSwBpEntryRoot+b6
+fffff805`6e6cc8ef GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchpFindSwBpEntryRoot+8f
+fffff805`6e6cc8a9 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpFindSwBpEntryRoot+49
+fffff805`6e6ccb15 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpIsScopedOverlayCr3Root+55
+fffff805`6e6ccb57 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchpIsScopedOverlayCr3Root+97
+fffff805`6e6ccc8f GuardMetaCore!HvVwatchpWriteSwBpPageSlots =  (inline caller) GuardMetaCore!HvVwatchpRebindSwBpPagePassive+5b
+fffff805`6e6cd135 GuardMetaCore!HvVwatchpTypeToMask =  (inline caller) GuardMetaCore!HvVwatchpRecomputeMaskLocked+21
+fffff805`6e6cd321 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpRefreshSwBpShadowRoot+1b1
+fffff805`6e6cd3e4 GuardMetaCore!HvVwatchpWriteSwBpPageSlots =  (inline caller) GuardMetaCore!HvVwatchpRefreshSwBpShadowRoot+274
+fffff805`6e6cd465 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchpRefreshSwBpShadowRoot+2f5
+fffff805`6e6cd6c2 GuardMetaCore!HvVwatchpAcquireRootRundown =  (inline caller) GuardMetaCore!HvVwatchpTryAdoptScopedOverlayCr3Root+62
+fffff805`6e6cd748 GuardMetaCore!HvVwatchpReleaseRootRundown =  (inline caller) GuardMetaCore!HvVwatchpTryAdoptScopedOverlayCr3Root+e8
+fffff805`6e738940 GuardMetaCore!g_VwatchManager = struct _HV_VWATCH_MANAGER
+Cannot find specified field members.
+Can't find DbgPrint buffer
+    PnpActivityId      : {00000000-0000-0000-0000-000000000000}
+    PnpActivityTime    : 134288506733277466
+    PnpEventInformation: 3
+    PnpEventInProgress : 0
+    PnpProblemCode     : 24
+    PnpVetoType        : 0
+    DeviceId           : SW\{96E080C7-143C-11D1-B40F-00A0C9223196}\{3C0D501A-140B-11D1-B40F-00A0C9223196}
+    VetoString         : 
+
+
+NTFS Blackbox Data
+
+0 Slow I/O Timeout Records Found
+0 Oplock Break Timeout Records Found
+Version: 0xc0
+Product type: 1
+
+Auto advanced boot: FALSE
+Advanced boot menu timeout: 30
+Last boot succeeded: TRUE
+Last boot shutdown: FALSE
+Sleep in progress: FALSE
+
+Power button timestamp: 0x1dd169122357a69
+	2026-07-18T08:40:49.98Z
+System running: TRUE
+Connected standby in progress: FALSE
+User shutdown in progress: FALSE
+System shutdown in progress: FALSE
+Sleep in progress: 0
+Connected standby scenario instance id: 0
+Connected standby entry reason: 0
+Connected standby exit reason: 0
+System sleep transitions to on: 0
+Last reference time: 0x1dd16912320a3c5
+	2026-07-18T08:40:50.639Z
+Last reference time checksum: 0xfe2cddec
+Last update boot id: 171
+
+Boot attempt count: 1
+Last boot checkpoint: TRUE
+Checksum: 0x2a
+Last boot id: 171
+Last successful shutdown boot id: 169
+Last reported abnormal shutdown boot id: 170
+
+Error info boot id: 0
+Error info repeat count: 0
+Error info other error count: 0
+Error info code: 0
+Error info status: 0x0
+
+Power button last press time: 0x0
+Power button cumulative press count: 0
+Power button last press boot id: 0
+Power button last power watchdog stage: 0
+Power button watchdog armed: FALSE
+Power button shutdown in progress: FALSE
+Power button last release time: 0x0
+Power button cumulative release count: 0
+Power button last release boot id: 0
+Power button error count: 0
+Power button current connected standby phase: 0
+Power button transition latest checkpoint id: 0
+Power button transition latest checkpoint type: 0
+Power button transition latest checkpoint sequence number: 0
+
+Power transition Shutdown Device Type: 0
+Power transition Setup In Progress: FALSE
+Power transition OOBE In Progress: FALSE
+Power transition Sleep Checkpoint Source: 0
+Power transition Sleep Checkpoint: 0
+Power transition Connected Standby Entry Reason Category: 0
+Power transition Connected Standby Exit Reason Category: 0
+Power transition Connected Standby Entry Scenario Instance Id: 0x0
+
+Feature Configuration State : Committed
+
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

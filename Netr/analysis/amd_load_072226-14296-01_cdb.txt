@@ -1,0 +1,303 @@
+﻿
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.046 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072226-14296-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff807`eea00000 PsLoadedModuleList = 0xfffff807`ef8f5350
+Debug session time: Wed Jul 22 23:40:52.188 2026 (UTC + 8:00)
+System Uptime: 0 days 1:53:25.922
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+................................................................
+......
+Loading User Symbols
+
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+0: kd> cdb: Reading initial command '.lines; .reload /f nt; .reload /f GuardMetaCore.sys; .bugcheck; !analyze -v; lmvm GuardMetaCore; !thread; r; kv; !running -it; ~*k; q'
+Line number information will be loaded
+Bugcheck code 00000133
+Arguments 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 00000000`00000000
+*******************************************************************************
+*                                                                             *
+*                        Bugcheck Analysis                                    *
+*                                                                             *
+*******************************************************************************
+
+DPC_WATCHDOG_VIOLATION (133)
+The DPC watchdog detected a prolonged run time at an IRQL of DISPATCH_LEVEL
+or above.
+Arguments:
+Arg1: 0000000000000001, The system cumulatively spent an extended period of time at
+	DISPATCH_LEVEL or above.
+Arg2: 0000000000001e00, The watchdog period (in ticks).
+Arg3: fffff807ef9c53c8, cast to nt!DPC_WATCHDOG_GLOBAL_TRIAGE_BLOCK, which contains
+	additional information regarding the cumulative timeout
+Arg4: 0000000000000000
+
+Debugging Details:
+------------------
+
+*** WARNING: Unable to verify timestamp for nvlddmkm.sys
+*************************************************************************
+***                                                                   ***
+***                                                                   ***
+***    Either you specified an unqualified symbol, or your debugger   ***
+***    doesn't have full symbol information.  Unqualified symbol      ***
+***    resolution is turned off by default. Please either specify a   ***
+***    fully qualified symbol module!symbolname, or enable resolution ***
+***    of unqualified symbols by typing ".symopt- 100". Note that     ***
+***    enabling unqualified symbol resolution with network symbol     ***
+***    server shares in the symbol path may cause the debugger to     ***
+***    appear to hang for long periods of time when an incorrect      ***
+***    symbol name is typed or the network symbol server is down.     ***
+***                                                                   ***
+***    For some commands to work properly, your symbol path           ***
+***    must point to .pdb files that have full type information.      ***
+***                                                                   ***
+***    Certain .pdb files (such as the public OS symbols) do not      ***
+***    contain the required information.  Contact the group that      ***
+***    provided you with these symbols if you need this command to    ***
+***    work.                                                          ***
+***                                                                   ***
+***    Type referenced: TickPeriods                                   ***
+***                                                                   ***
+*************************************************************************
+
+KEY_VALUES_STRING: 1
+
+    Key  : Analysis.CPU.mSec
+    Value: 359
+
+    Key  : Analysis.Elapsed.mSec
+    Value: 2039
+
+    Key  : Analysis.IO.Other.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Read.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Write.Mb
+    Value: 0
+
+    Key  : Analysis.Init.CPU.mSec
+    Value: 46
+
+    Key  : Analysis.Init.Elapsed.mSec
+    Value: 479
+
+    Key  : Analysis.Memory.CommitPeak.Mb
+    Value: 92
+
+    Key  : Bugcheck.Code.LegacyAPI
+    Value: 0x133
+
+    Key  : Dump.Attributes.AsUlong
+    Value: 21008
+
+    Key  : Dump.Attributes.DiagDataWrittenToHeader
+    Value: 1
+
+    Key  : Dump.Attributes.ErrorCode
+    Value: 0
+
+    Key  : Dump.Attributes.KernelGeneratedTriageDump
+    Value: 1
+
+    Key  : Dump.Attributes.LastLine
+    Value: Dump completed successfully.
+
+    Key  : Dump.Attributes.ProgressPercentage
+    Value: 0
+
+    Key  : Failure.Bucket
+    Value: 0x133_ISR_nt!KeAccumulateTicks
+
+    Key  : Failure.Hash
+    Value: {65350307-c3b9-f4b5-8829-4d27e9ff9b06}
+
+
+BUGCHECK_CODE:  133
+
+BUGCHECK_P1: 1
+
+BUGCHECK_P2: 1e00
+
+BUGCHECK_P3: fffff807ef9c53c8
+
+BUGCHECK_P4: 0
+
+FILE_IN_CAB:  072226-14296-01.dmp
+
+DUMP_FILE_ATTRIBUTES: 0x21008
+  Kernel Generated Triage Dump
+
+DPC_TIMEOUT_TYPE:  DPC_QUEUE_EXECUTION_TIMEOUT_EXCEEDED
+
+BLACKBOXBSD: 1 (!blackboxbsd)
+
+
+BLACKBOXNTFS: 1 (!blackboxntfs)
+
+
+BLACKBOXPNP: 1 (!blackboxpnp)
+
+
+BLACKBOXWINLOGON: 1
+
+CUSTOMER_CRASH_COUNT:  1
+
+PROCESS_NAME:  System
+
+STACK_TEXT:  
+fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e
+fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c
+fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73
+fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c
+fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+
+
+SYMBOL_NAME:  nt!KeAccumulateTicks+59c
+
+MODULE_NAME: nt
+
+IMAGE_NAME:  ntkrnlmp.exe
+
+IMAGE_VERSION:  10.0.26100.8875
+
+STACK_COMMAND:  .cxr; .ecxr ; kb
+
+BUCKET_ID_FUNC_OFFSET:  59c
+
+FAILURE_BUCKET_ID:  0x133_ISR_nt!KeAccumulateTicks
+
+OSPLATFORM_TYPE:  x64
+
+OSNAME:  Windows 10
+
+FAILURE_ID_HASH:  {65350307-c3b9-f4b5-8829-4d27e9ff9b06}
+
+Followup:     MachineOwner
+---------
+
+Browse full module list
+start             end                 module name
+fffff807`c2610000 fffff807`c29c4000   GuardMetaCore   (private pdb symbols)  e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.pdb
+    Loaded symbol image file: GuardMetaCore.sys
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.sys
+    Image path: GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Wed Jul 22 23:29:21 2026 (6A60E1D1)
+    CheckSum:         0007EDE5
+    ImageSize:        003B4000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+THREAD fffff807ef9d25c0  Cid 0000.0000  Teb: 0000000000000000 Win32Thread: 0000000000000000 STANDBY
+Not impersonating
+GetUlongFromAddress: unable to read from fffff807ef80b3b4
+Owning Process            fffff807ef9cff00       Image:         
+Attached Process          ffffb305e6753040       Image:         System
+Wait Start TickCount      427311         Ticks: 8268 (0:00:02:09.187)
+Context Switch Count      5244587        IdealProcessor: 0             
+ReadMemory error: Cannot get nt!KeMaximumIncrement value.
+UserTime                  00:00:00.000
+KernelTime                00:00:00.000
+Win32 Start Address nt!KiIdleLoop (0xfffff807ef0acbd0)
+Stack Init fffff80781648c30 Current fffff80781648bc0
+Base fffff80781649000 Limit fffff80781642000 Call 0000000000000000
+Priority 0  BasePriority 0  IoPriority 0  PagePriority 5
+Child-SP          RetAddr               : Args to Child                                                           : Call Site
+fffff807`81648c00 00000000`00000000     : fffff807`81649000 fffff807`81642000 00000000`00000000 00000000`00000000 : nt!KiIdleLoop+0x9e
+
+rax=0000000000000000 rbx=fffff8077e6e4180 rcx=0000000000000133
+rdx=0000000000000001 rsi=0000000000000000 rdi=0000000000000001
+rip=fffff807eeef9250 rsp=fffff80781658968 rbp=fffff807ef9d25c0
+ r8=0000000000001e00  r9=fffff807ef9c53c8 r10=0000000000000002
+r11=fffff807ef9c53c8 r12=0000000000000001 r13=0000000000001e00
+r14=0000000000000001 r15=0000000000000000
+iopl=0         nv up ei pl zr na po nc
+cs=0010  ss=0018  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+nt!KeBugCheckEx:
+fffff807`eeef9250 48894c2408      mov     qword ptr [rsp+8],rcx ss:0018:fffff807`81658970=0000000000000133
+ # Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00 fffff807`81658968 fffff807`eecab44c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff807`ef9c53c8 : nt!KeBugCheckEx
+01 fffff807`81658970 fffff807`eecaa97b     : 00000000`00000000 00000000`0006a57a 00000000`00000000 fffff807`7e6e4180 : nt!KeAccumulateTicks+0x59c
+02 fffff807`816589e0 fffff807`eed19eae     : 00000000`00000000 0000000f`d8a54bba fffff807`7e6e4180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+03 fffff807`81658ba0 fffff807`eed1a8ac     : fffff807`ef810f90 fffff807`ef811040 fffff807`ef98f148 fffff807`81658d20 : nt!KeClockInterruptNotify+0x3ee
+04 fffff807`81658ca0 fffff807`ef0addde     : 00000000`b7084f08 fffff807`ef810f90 fffff807`ef0a6db0 fffff807`eee0813a : nt!KiCallInterruptServiceRoutine+0x32c
+05 fffff807`81658d10 fffff807`ef0ae5ec     : 00000000`00000002 00000000`00000018 00000000`00000001 00000000`00500a02 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e (TrapFrame @ fffff807`81658bd0)
+06 fffff807`81658d60 fffff807`eec8529c     : 00000000`00000f32 fffff807`81658fb0 00000000`00000000 fffff807`eedaebff : nt!KiInterruptDispatchNoLockNoEtw+0x3c (TrapFrame @ fffff807`81658d60)
+07 fffff807`81658ef0 fffff807`eed1a638     : ffffc901`0937fc80 00000000`0000000c ffffb305`f0f60f32 fffff807`00500a02 : nt!KxWaitForSpinLockAndAcquire+0x1c
+08 fffff807`81658f20 fffff807`ef0adcc3     : ffffb305`f1be9000 ffffc901`0937fc80 ffffc901`0937fc80 fffff807`ef0addde : nt!KiCallInterruptServiceRoutine+0xb8
+09 fffff807`81658f90 fffff807`ef0ade2c     : ffffb305`f8bac000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiInterruptSubDispatch+0x73 (TrapFrame @ fffff807`81658e70)
+0a fffff807`81646ef0 fffff807`b9d7fca0     : ffffb305`fc1ad840 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 : nt!KiInterruptDispatch+0x3c (TrapFrame @ fffff807`81646ef0)
+0b fffff807`81647080 ffffb305`fc1ad840     : 00000000`00000000 ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 : nvlddmkm+0xd2fca0
+0c fffff807`81647088 00000000`00000000     : ffffb305`f1be9000 fffff807`81647110 ffffb305`fc1ad840 fffff807`b9d7e371 : 0xffffb305`fc1ad840
+GetUlongFromAddress: unable to read from fffff807ef9c6ac0
+Couldn't find processor info
+                                                                                                                                      ^ Syntax error in '.lines; .reload /f nt; .reload /f GuardMetaCore.sys; .bugcheck; !analyze -v; lmvm GuardMetaCore; !thread; r; kv; !running -it; ~*k; q'
+0: kd> NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

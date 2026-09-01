@@ -1,0 +1,16 @@
+{
+  "start": "2026-07-23T06:42:36.054Z",
+  "end": "2026-07-23T06:42:36.054Z",
+  "only_file": "Netr/tools/netr-gui-rs/src-tauri/src/dbgevt/poller.rs",
+  "candidate_calls": 1,
+  "applied_product_calls": 1,
+  "changed_operations": 1,
+  "changed_files": [
+    "Netr/tools/netr-gui-rs/src-tauri/src/dbgevt/poller.rs"
+  ],
+  "skipped_failed_calls": [],
+  "skipped_dynamic_analysis_calls": [],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": []
+}

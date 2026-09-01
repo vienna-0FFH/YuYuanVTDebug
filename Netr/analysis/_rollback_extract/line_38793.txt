@@ -1,0 +1,94 @@
+$path = "E:\project_learning\YuYuanVTDebug\Netr\DebuggerBridge\Bridge.cpp"
+$content = Get-Content -LiteralPath $path -Raw
+$old = @'
+    const auto acknowledge_discarded = [&]() {
+        if (!ContinuePrivateEvent(private_event, DBG_CONTINUE)) {
+            Trace(L"[PRIVATE] discard ack failed pid=%lu tid=%lu seq=%llu win32=%lu\n",
+                  private_event.ProcessId, private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  GetLastError());
+        }
+    };
+
+    if (!debug_event || g_stop.load() ||
+        private_event.Kind != HV_BRIDGE_PRIVATE_EVENT_SWBP ||
+        private_event.ThreadId == 0 ||
+        private_event.Rip > static_cast<std::uint64_t>(UINTPTR_MAX)) {
+        Trace(L"[PRIVATE] discarded kind=%lu pid=%lu tid=%lu rip=0x%llX seq=%llu\n",
+              private_event.Kind, private_event.ProcessId,
+              private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence));
+        acknowledge_discarded();
+        return PrivateDeliveryResult::Skipped;
+    }
+'@
+$new = @'
+    const auto acknowledge_discarded = [&]() {
+        if (!ContinuePrivateEvent(private_event, DBG_CONTINUE)) {
+            Trace(L"[PRIVATE] discard ack failed pid=%lu tid=%lu seq=%llu win32=%lu\n",
+                  private_event.ProcessId, private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  GetLastError());
+        }
+    };
+
+    if (!debug_event || g_stop.load() ||
+        private_event.Kind != HV_BRIDGE_PRIVATE_EVENT_SWBP ||
+        private_event.ThreadId == 0 ||
+        private_event.Rip > static_cast<std::uint64_t>(UINTPTR_MAX)) {
+        Trace(L"[PRIVATE] discarded kind=%lu pid=%lu tid=%lu rip=0x%llX seq=%llu\n",
+              private_event.Kind, private_event.ProcessId,
+              private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence));
+        acknowledge_discarded();
+        return PrivateDeliveryResult::Skipped;
+    }
+
+    // External x64dbg path: VT single-step installs a temporary SWBP gate at
+    // the current RIP.  When the driver fails to consume that gate in the
+    // step-over MTF path, the same SWBP is enqueued as a private user BP.
+    // Delivering it to the debugger makes x64dbg CONTINUE with
+    // DBG_EXCEPTION_NOT_HANDLED, which normalizes the gate and free-runs.
+    // Keep the gate internal: continue it without clearing the armed VT step
+    // and keep waiting for the real EXCEPTION_SINGLE_STEP (0x80000004).
+    {
+        PendingVtStep pending_step = {};
+        if (LookupPendingVtStep(
+                private_event.ProcessId,
+                private_event.ThreadId,
+                &pending_step) &&
+            pending_step.Address == private_event.Rip) {
+            Trace(L"[VT-STEP] suppressed gate SWBP route=%s pid=%lu tid=%lu "
+                  L"rip=0x%llX seq=%llu owns_gate=%d\n",
+                  route ? route : L"unknown",
+                  private_event.ProcessId,
+                  private_event.ThreadId,
+                  static_cast<unsigned long long>(private_event.Rip),
+                  static_cast<unsigned long long>(private_event.Sequence),
+                  pending_step.OwnsSwBpGate ? 1 : 0);
+            if (!ContinuePrivateEvent(private_event, DBG_CONTINUE)) {
+                const DWORD cont_error = GetLastError();
+                Trace(L"[VT-STEP] gate SWBP continue failed route=%s "
+                      L"pid=%lu tid=%lu seq=%llu win32=%lu\n",
+                      route ? route : L"unknown",
+                      private_event.ProcessId,
+                      private_event.ThreadId,
+                      static_cast<unsigned long long>(private_event.Sequence),
+                      cont_error);
+                SetLastError(cont_error);
+                return PrivateDeliveryResult::Error;
+            }
+            return PrivateDeliveryResult::Skipped;
+        }
+    }
+'@
+if ($content.Contains($old)) {
+  $content = $content.Replace($old, $new)
+  Set-Content -LiteralPath $path -Value $content -NoNewline -Encoding UTF8
+  Write-Output "PATCH_OK"
+} else {
+  Write-Output "PATCH_MISS"
+  Select-String -Path $path -Pattern "acknowledge_discarded" | Select-Object -First 5 LineNumber, Line
+}

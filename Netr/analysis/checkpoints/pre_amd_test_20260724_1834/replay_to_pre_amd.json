@@ -1,0 +1,33 @@
+{
+  "start": "2026-07-22T12:00:00.000Z",
+  "end": "2026-07-23T06:42:36.053Z",
+  "only_file": null,
+  "candidate_calls": 34,
+  "applied_product_calls": 16,
+  "changed_operations": 30,
+  "changed_files": [
+    "Netr/AsmSvm.asm",
+    "Netr/Driver.c",
+    "Netr/HvCore.c",
+    "Netr/HvCore.h",
+    "Netr/HvCpu.c",
+    "Netr/HvCpu.h",
+    "Netr/HvNestedSvm.c",
+    "Netr/HvNestedSvm.h",
+    "Netr/HvTypes.h",
+    "Netr/HvVmcb.c",
+    "Netr/HvVmcb.h",
+    "Netr/README.md"
+  ],
+  "skipped_failed_calls": [
+    "call_9Aiu1w18ei8FX9RihahkAMNS",
+    "call_Ur4BEw4J7C46fBGiZ5vVyg9a",
+    "call_Eiv3kVx8xsz8GJ7RFko0ykLo",
+    "call_UwLWTFO2dbDgqswkKCMydUgo",
+    "call_ttiDQALkHpyhiaFKQRX5vhVm"
+  ],
+  "skipped_dynamic_analysis_calls": [],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": []
+}

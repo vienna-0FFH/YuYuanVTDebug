@@ -1,0 +1,122 @@
+diff --git a/Netr/NptHook.h b/Netr/NptHook.h
+--- a/Netr/NptHook.h
++++ b/Netr/NptHook.h
+@@ -347,8 +347,5 @@
+ ULONG NptHookHandleDebugStepDb(
+     _In_ PVCPU_DATA VcpuData);
+-
+-BOOLEAN NptHookSvmTerminationReady(
+-    _In_ PVCPU_DATA VcpuData);
+ 
+ //
+ // NPT 页表操作
+diff --git a/Netr/NptHook.c b/Netr/NptHook.c
+--- a/Netr/NptHook.c
++++ b/Netr/NptHook.c
+@@ -1286,30 +1286,7 @@
+     return reinject
+         ? NPT_DEBUG_STEP_DB_REINJECT
+         : NPT_DEBUG_STEP_DB_CONSUME;
+ }
+-
+-BOOLEAN NptHookSvmTerminationReady(
+-    _In_ PVCPU_DATA VcpuData)
+-{
+-    ULONG cpu;
+-
+-    if (!VcpuData || !VcpuData->Vmcb || VcpuData->ProcessorNumber >= 64) {
+-        return TRUE;
+-    }
+-
+-    cpu = VcpuData->ProcessorNumber;
+-    if (InterlockedCompareExchange(
+-            &g_NptDebugStepCpu[cpu].Active,
+-            0,
+-            0) != 0) {
+-        return FALSE;
+-    }
+-
+-    return InterlockedCompareExchange(
+-        &g_NptHookManager.StepContext[cpu].StepActive,
+-        0,
+-        0) == 0;
+-}
+ 
+ // ============================================================
+ // Hook 安装
+diff --git a/Netr/HvVmExit.c b/Netr/HvVmExit.c
+--- a/Netr/HvVmExit.c
++++ b/Netr/HvVmExit.c
+@@ -2398,10 +2398,4 @@
+     case SVM_VMMCALL_TERMINATE:
+-        if (!NptHookSvmTerminationReady(VcpuData)) {
+-            Vmcb->StateSaveArea.Rax = STATUS_DEVICE_BUSY;
+-            SvmAdvanceGuestRip(Vmcb);
+-            return TRUE;
+-        }
+-
+         // 终止虚拟化
+         Vmcb->StateSaveArea.Rax = 0;
+         SvmAdvanceGuestRip(Vmcb);
+diff --git a/Netr/HvCore.c b/Netr/HvCore.c
+--- a/Netr/HvCore.c
++++ b/Netr/HvCore.c
+@@ -1201,11 +1201,8 @@
+         __try {
+             if (cpuVendor == CPU_VENDOR_INTEL) {
+                 AsmVmCall(0x1337DEAD);
+-                vcpuData->IsVirtualized = FALSE;
+-                vcpuData->IsVmxOn = FALSE;
+             } else {
+                 AsmVmmcall(0x1337DEAD);
+-                KeMemoryBarrier();
+             }
+         }
+         __except (EXCEPTION_EXECUTE_HANDLER) {
+@@ -1225,5 +1222,7 @@
+             AsmLoadTr(g_VmoffDescSave[cpuNumber].TrSel);
+             AsmLoadLdtr(g_VmoffDescSave[cpuNumber].LdtrSel);
+         }
+ 
++        vcpuData->IsVirtualized = FALSE;
++        vcpuData->IsVmxOn = FALSE;
+     }
+@@ -1274,36 +1273,4 @@
+-    if (cpuVendor == CPU_VENDOR_AMD) {
+-        ULONG unloadPass = 0;
+-
+-        for (;;) {
+-            ULONG remainingVirtualized = 0;
+-
+-            g_UnloadBarrierCount = 0;
+-            KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+-            KeMemoryBarrier();
+-
+-            for (i = 0; i < g_HypervisorContext.ProcessorCount; i++) {
+-                if (g_HypervisorContext.VcpuData[i].IsVirtualized) {
+-                    remainingVirtualized++;
+-                }
+-            }
+-            if (remainingVirtualized == 0) {
+-                break;
+-            }
+-
+-            if ((unloadPass++ & 0x3F) == 0) {
+-                DbgPrint("[SVM] Waiting for %lu synthetic single-step owner(s) before devirtualization\n",
+-                         remainingVirtualized);
+-            }
+-
+-            {
+-                LARGE_INTEGER delay;
+-                delay.QuadPart = -10000;
+-                KeDelayExecutionThread(KernelMode, FALSE, &delay);
+-            }
+-        }
+-    } else {
+-        g_UnloadBarrierCount = 0;
+-        KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+-    }
++    g_UnloadBarrierCount = 0;
++    KeIpiGenericCall(HvUnloadIpiCallback, (ULONG_PTR)cpuVendor);
+ 
+     // 等待所有 CPU 完成卸载（IPI 是同步的，这里是额外保障）

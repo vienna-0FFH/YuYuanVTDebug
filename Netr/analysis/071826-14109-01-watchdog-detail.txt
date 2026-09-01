@@ -1,0 +1,266 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\071826-14109-01-watchdog-detail.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.032 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\071826-14109-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Symbol search path is: srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff805`27600000 PsLoadedModuleList = 0xfffff805`282135f0
+Debug session time: Sat Jul 18 20:53:37.065 2026 (UTC + 8:00)
+System Uptime: 0 days 4:12:53.734
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+6: kd> .symopt+ 0x40; uf nt!KiSwapDirectoryTableBaseTarget; !intstats /w; !intstats /d; !logdump 0x2; q
+Symbol options are 0xB0367:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000040 - SYMOPT_LOAD_ANYTHING
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+nt!KiSwapDirectoryTableBaseTarget:
+fffff805`279d2930 48895c2408      mov     qword ptr [rsp+8],rbx
+fffff805`279d2935 55              push    rbp
+fffff805`279d2936 56              push    rsi
+fffff805`279d2937 57              push    rdi
+fffff805`279d2938 4154            push    r12
+fffff805`279d293a 4156            push    r14
+fffff805`279d293c 4883ec20        sub     rsp,20h
+fffff805`279d2940 488b6a08        mov     rbp,qword ptr [rdx+8]
+fffff805`279d2944 498bd9          mov     rbx,r9
+fffff805`279d2947 4d8bf0          mov     r14,r8
+fffff805`279d294a 488bf2          mov     rsi,rdx
+fffff805`279d294d 83c8ff          or      eax,0FFFFFFFFh
+fffff805`279d2950 f0410fc101      lock xadd dword ptr [r9],eax
+fffff805`279d2955 ffc8            dec     eax
+fffff805`279d2957 41bc00000080    mov     r12d,80000000h
+fffff805`279d295d 8bf8            mov     edi,eax
+fffff805`279d295f f7d7            not     edi
+fffff805`279d2961 4123fc          and     edi,r12d
+fffff805`279d2964 a9ffffff7f      test    eax,7FFFFFFFh
+fffff805`279d2969 741e            je      nt!KiSwapDirectoryTableBaseTarget+0x59 (fffff805`279d2989)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x3b:
+fffff805`279d296b 8364245800      and     dword ptr [rsp+58h],0
+
+nt!KiSwapDirectoryTableBaseTarget+0x40:
+fffff805`279d2970 8b03            mov     eax,dword ptr [rbx]
+fffff805`279d2972 4123c4          and     eax,r12d
+fffff805`279d2975 3bc7            cmp     eax,edi
+fffff805`279d2977 0f8483000000    je      nt!KiSwapDirectoryTableBaseTarget+0xd0 (fffff805`279d2a00)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x4d:
+fffff805`279d297d 488d4c2458      lea     rcx,[rsp+58h]
+fffff805`279d2982 e88951f0ff      call    nt!KeYieldProcessorEx (fffff805`278d7b10)
+fffff805`279d2987 ebe7            jmp     nt!KiSwapDirectoryTableBaseTarget+0x40 (fffff805`279d2970)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x59:
+fffff805`279d2989 410b7904        or      edi,dword ptr [r9+4]
+fffff805`279d298d 418939          mov     dword ptr [r9],edi
+
+nt!KiSwapDirectoryTableBaseTarget+0x60:
+fffff805`279d2990 488b4e10        mov     rcx,qword ptr [rsi+10h]
+fffff805`279d2994 e8cb000000      call    nt!MmStealTopLevelPage (fffff805`279d2a64)
+fffff805`279d2999 85c0            test    eax,eax
+fffff805`279d299b 7569            jne     nt!KiSwapDirectoryTableBaseTarget+0xd6 (fffff805`279d2a06)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x6d:
+fffff805`279d299d 83c8ff          or      eax,0FFFFFFFFh
+fffff805`279d29a0 f00fc103        lock xadd dword ptr [rbx],eax
+fffff805`279d29a4 ffc8            dec     eax
+fffff805`279d29a6 8bf8            mov     edi,eax
+fffff805`279d29a8 f7d7            not     edi
+fffff805`279d29aa 4123fc          and     edi,r12d
+fffff805`279d29ad a9ffffff7f      test    eax,7FFFFFFFh
+fffff805`279d29b2 741a            je      nt!KiSwapDirectoryTableBaseTarget+0x9e (fffff805`279d29ce)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x84:
+fffff805`279d29b4 8364246800      and     dword ptr [rsp+68h],0
+
+nt!KiSwapDirectoryTableBaseTarget+0x89:
+fffff805`279d29b9 8b03            mov     eax,dword ptr [rbx]
+fffff805`279d29bb 4123c4          and     eax,r12d
+fffff805`279d29be 3bc7            cmp     eax,edi
+fffff805`279d29c0 7441            je      nt!KiSwapDirectoryTableBaseTarget+0xd3 (fffff805`279d2a03)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x92:
+fffff805`279d29c2 488d4c2468      lea     rcx,[rsp+68h]
+fffff805`279d29c7 e84451f0ff      call    nt!KeYieldProcessorEx (fffff805`278d7b10)
+fffff805`279d29cc ebeb            jmp     nt!KiSwapDirectoryTableBaseTarget+0x89 (fffff805`279d29b9)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x9e:
+fffff805`279d29ce 0b7b04          or      edi,dword ptr [rbx+4]
+fffff805`279d29d1 893b            mov     dword ptr [rbx],edi
+
+nt!KiSwapDirectoryTableBaseTarget+0xa3:
+fffff805`279d29d3 803e00          cmp     byte ptr [rsi],0
+fffff805`279d29d6 7412            je      nt!KiSwapDirectoryTableBaseTarget+0xba (fffff805`279d29ea)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xa8:
+fffff805`279d29d8 65488b042588010000 mov   rax,qword ptr gs:[188h]
+fffff805`279d29e1 4839a8b8000000  cmp     qword ptr [rax+0B8h],rbp
+fffff805`279d29e8 7421            je      nt!KiSwapDirectoryTableBaseTarget+0xdb (fffff805`279d2a0b)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xba:
+fffff805`279d29ea f041ff0e        lock dec dword ptr [r14]
+fffff805`279d29ee 488b5c2450      mov     rbx,qword ptr [rsp+50h]
+fffff805`279d29f3 4883c420        add     rsp,20h
+fffff805`279d29f7 415e            pop     r14
+fffff805`279d29f9 415c            pop     r12
+fffff805`279d29fb 5f              pop     rdi
+fffff805`279d29fc 5e              pop     rsi
+fffff805`279d29fd 5d              pop     rbp
+fffff805`279d29fe c3              ret
+
+nt!KiSwapDirectoryTableBaseTarget+0xd0:
+fffff805`279d2a00 90              nop
+fffff805`279d2a01 eb8d            jmp     nt!KiSwapDirectoryTableBaseTarget+0x60 (fffff805`279d2990)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xd3:
+fffff805`279d2a03 90              nop
+fffff805`279d2a04 ebcd            jmp     nt!KiSwapDirectoryTableBaseTarget+0xa3 (fffff805`279d29d3)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xd6:
+fffff805`279d2a06 c60601          mov     byte ptr [rsi],1
+fffff805`279d2a09 eb92            jmp     nt!KiSwapDirectoryTableBaseTarget+0x6d (fffff805`279d299d)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xdb:
+fffff805`279d2a0b 803d2eeea20000  cmp     byte ptr [nt!KiKvaShadow (fffff805`28401840)],0
+fffff805`279d2a12 488b5d28        mov     rbx,qword ptr [rbp+28h]
+fffff805`279d2a16 0f84ee470800    je      nt!KiSwapDirectoryTableBaseTarget+0x848da (fffff805`27a5720a)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0xec:
+fffff805`279d2a1c 48b90000000000000080 mov rcx,8000000000000000h
+fffff805`279d2a26 488bc3          mov     rax,rbx
+fffff805`279d2a29 480bc1          or      rax,rcx
+fffff805`279d2a2c f6c302          test    bl,2
+fffff805`279d2a2f 480f44c3        cmove   rax,rbx
+fffff805`279d2a33 654889042500a00000 mov   qword ptr gs:[0A000h],rax
+fffff805`279d2a3c 0fb68d90030000  movzx   ecx,byte ptr [rbp+390h]
+fffff805`279d2a43 e8c8f5efff      call    nt!KiSetAddressPolicy (fffff805`278d2010)
+fffff805`279d2a48 90              nop
+fffff805`279d2a49 e9bc470800      jmp     nt!KiSwapDirectoryTableBaseTarget+0x848da (fffff805`27a5720a)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x11e:
+fffff805`279d2a4e 803df1bf940000  cmp     byte ptr [nt!KiFlushPcid (fffff805`2831ea46)],0
+fffff805`279d2a55 7593            jne     nt!KiSwapDirectoryTableBaseTarget+0xba (fffff805`279d29ea)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x127:
+fffff805`279d2a57 e9ce470800      jmp     nt!KiSwapDirectoryTableBaseTarget+0x848fa (fffff805`27a5722a)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x848da:
+fffff805`27a5720a 8b0558788c00    mov     eax,dword ptr [nt!HvlEnlightenments (fffff805`2831ea68)]
+fffff805`27a57210 a801            test    al,1
+fffff805`27a57212 740e            je      nt!KiSwapDirectoryTableBaseTarget+0x848f2 (fffff805`27a57222)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x848e4:
+fffff805`27a57214 488bcb          mov     rcx,rbx
+fffff805`27a57217 e8f42e0f00      call    nt!HvlSwitchVirtualAddressSpace (fffff805`27b4a110)
+fffff805`27a5721c 90              nop
+fffff805`27a5721d e92cb8f7ff      jmp     nt!KiSwapDirectoryTableBaseTarget+0x11e (fffff805`279d2a4e)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x848f2:
+fffff805`27a57222 0f22db          mov     cr3,rbx
+fffff805`27a57225 e924b8f7ff      jmp     nt!KiSwapDirectoryTableBaseTarget+0x11e (fffff805`279d2a4e)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x848fa:
+fffff805`27a5722a 803d0fa69a0000  cmp     byte ptr [nt!KiKvaShadow (fffff805`28401840)],0
+fffff805`27a57231 0f84b3b7f7ff    je      nt!KiSwapDirectoryTableBaseTarget+0xba (fffff805`279d29ea)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x84907:
+fffff805`27a57237 0f20e1          mov     rcx,cr4
+fffff805`27a5723a 48f7c180000200  test    rcx,20080h
+fffff805`27a57241 7413            je      nt!KiSwapDirectoryTableBaseTarget+0x84926 (fffff805`27a57256)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x84913:
+fffff805`27a57243 488bc1          mov     rax,rcx
+fffff805`27a57246 480fbaf807      btc     rax,7
+fffff805`27a5724b 0f22e0          mov     cr4,rax
+fffff805`27a5724e 0f22e1          mov     cr4,rcx
+fffff805`27a57251 e994b7f7ff      jmp     nt!KiSwapDirectoryTableBaseTarget+0xba (fffff805`279d29ea)  Branch
+
+nt!KiSwapDirectoryTableBaseTarget+0x84926:
+fffff805`27a57256 0f20d8          mov     rax,cr3
+fffff805`27a57259 0f22d8          mov     cr3,rax
+fffff805`27a5725c e989b7f7ff      jmp     nt!KiSwapDirectoryTableBaseTarget+0xba (fffff805`279d29ea)  Branch
+logdump is not extension gallery command
+No export logdump found
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

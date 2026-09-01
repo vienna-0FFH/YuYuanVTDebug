@@ -1,0 +1,505 @@
+/*
+ * ARCHIVED, NOT COMPILED.
+ *
+ * Restored from YuYuanVTDebug_备份\\Netr\\HvPhysAccess.c on 2026-07-13
+ * after the deletion audit.  This preserves the former raw-PTE allocator and
+ * its private page-table helpers for a future VAD/PFN/commit-aware redesign.
+ *
+ * Do not add this file to Netr.vcxproj and do not include it from the active
+ * driver.  The implementation below has no VAD/PFN/working-set ownership,
+ * weak process-exit rollback, and direct page-table mutation.  The active
+ * HvPhysAllocateInProcess/HvPhysFreeInProcess stubs intentionally remain
+ * fail-closed with STATUS_NOT_SUPPORTED.
+ */
+
+/*
+ * HvPhysAccess.c (#27, Phase 1)
+ *
+ * 物理页直通访问 —— 见 HvPhysAccess.h 的接口注释。
+ *
+ * 设计思路:
+ *   1) HvPhysGetProcessCr3: 读 EPROCESS+0x28 的 DirectoryTableBase
+ *      (Win10/11 x64 稳定偏移)。是唯一保留的 Ps* 调用。
+ *   2) HvPhysGvaToHpa: 在 PASSIVE_LEVEL 用 MmMapIoSpace 临时映射
+ *      PML4/PDPT/PD/PT 各一页,读出 entry,Unmap。处理 1GB/2MB/4KB 大页。
+ *   3) HvPhysReadProcessMemory / HvPhysWriteProcessMemory: 4KB 切分,
+ *      逐页 MmMapIoSpace → memcpy → MmUnmapIoSpace。
+ *
+ * IRQL: 所有 API 均要求 PASSIVE_LEVEL 调用 (MmMapIoSpace 限制)。
+ *
+ * 不锁页: 我们没有 MmProbeAndLockPages 保护,如果目标页在 memcpy 期间
+ *         被换出,会读到旧值/写到错误位置。对游戏/常驻进程的代码段、
+ *         栈、堆,这种概率极低 —— 第一版可接受。
+ */
+
+#include "HvPhysAccess.h"
+#include "HvVtRoot.h"
+#include "HvCompat.h"
+#include "HvCr3Snoop.h"
+#include "HvHook.h"  // P114: HV_HOT_DBG 宏 (高频 walk 日志默认关)
+#include <intrin.h>
+
+// P122: 全 driver DbgPrint → GUI ring
+#define HV_TRACE_THIS_CAT HV_TRACE_CAT_PHYS
+#include "HvTrace.h"
+
+// PsLookupProcessByProcessId 在 ntifs.h 中,我们沿用项目其他文件的做法
+// (HvInjection.c 等) —— 内联声明原型,避免和 ntddk.h 的双重包含冲突。
+NTKERNELAPI NTSTATUS PsLookupProcessByProcessId(
+    _In_ HANDLE ProcessId,
+    _Out_ PEPROCESS* Process
+);
+
+// MmProbeAndLockProcessPages: Vista+ 起的"显式 PEPROCESS"版本,内部不
+// KeStackAttachProcess,反作弊监控少。原型在 wdm.h,但项目 include 链未必
+// 拉到,这里 extern 一下避免缺声明。
+NTKERNELAPI VOID MmProbeAndLockProcessPages(
+    _Inout_ PMDL          MemoryDescriptorList,
+    _In_    PEPROCESS     Process,
+    _In_    KPROCESSOR_MODE AccessMode,
+    _In_    LOCK_OPERATION Operation);
+
+// PsGetProcessImageFileName: 返回 EPROCESS::ImageFileName 字段指针 (16 byte
+// 截断的可执行映像名)。文档导出函数,无 ETWTI 风险 —— 这里只在 user-half=0
+// 异常分支打印,正常路径不调。
+NTKERNELAPI PUCHAR PsGetProcessImageFileName(_In_ PEPROCESS Process);
+
+// PsGetProcessPeb: 返回 EPROCESS::Peb (PEB 的 user-mode VA, 每个进程独立)。
+// 用于 CR3 归属校验 —— 拿到候选 CR3 后,走它去访问 PEB VA 并检查 PEB
+// 内容是否符合 "属于目标进程" 的特征。
+NTKERNELAPI PVOID PsGetProcessPeb(_In_ PEPROCESS Process);
+
+// PsInitialSystemProcess —— System (PID 4) 的 EPROCESS, 全进程链表头。
+// 通过 MmGetSystemRoutineAddress 在 init 阶段一次性解析为指针, 保存到
+// g_HvPhysRootCtx.PsInitialSystemProcess (PEPROCESS*) ——
+// 注意: ntoskrnl 导出的是一个全局变量, MmGetSystemRoutineAddress 返回的
+// 是该变量自身的地址 (PEPROCESS 的地址), 需再解引用一次才能拿到 EPROCESS。
+
+// ============================================================
+// 分配跟踪 (#30, Phase 4) —— 类型与全局
+// ============================================================
+
+typedef struct _HV_PHYS_ALLOC_PAGE {
+    PVOID  KernelVa;          // MmAllocateContiguousMemory 返回的 VA (用于 Free)
+    UINT64 PhysicalAddress;   // 4KB HPA
+    UINT64 GuestVa;           // 目标进程的 GVA
+} HV_PHYS_ALLOC_PAGE;
+
+typedef struct _HV_PHYS_ALLOC_RECORD {
+    LIST_ENTRY ListEntry;
+    ULONG  ProcessId;
+    UINT64 BaseGva;
+    SIZE_T SizeBytes;
+    ULONG  PageCount;
+    HV_PHYS_ALLOC_PAGE* Pages;
+} HV_PHYS_ALLOC_RECORD;
+
+static LIST_ENTRY  g_PhysAllocList;
+static KSPIN_LOCK  g_PhysAllocLock;
+static KSPIN_LOCK  g_PhysInvlpgLock;
+static BOOLEAN     g_PhysAllocInitialized = FALSE;
+
+// IPI INVLPG 协作变量 —— 仅在 g_PhysInvlpgLock 持有时写入
+static UINT64      g_InvlpgTargetCr3 = 0;
+static UINT64      g_InvlpgTargetVa = 0;
+
+{
+    return HvPhysCopyAcrossPages(TargetPid, Gva, Buffer, Size, 1, BytesWritten);
+}
+
+// ============================================================
+// 分配 / 释放 (#30, Phase 4)
+// ============================================================
+
+/*
+ * 内部辅助 —— 在目标页表里写一个 entry。
+ * MmMapIoSpace 临时映射 → 写 → Unmap。
+ */
+static NTSTATUS
+HvPhysWriteTableEntry(_In_ UINT64 TablePa, _In_ ULONG Index, _In_ UINT64 Value)
+{
+    PVOID mapped = HvPhysMapPage(TablePa, PAGE_SIZE);
+    if (!mapped) {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    ((volatile UINT64*)mapped)[Index] = Value;
+    HvPhysUnmapPage(mapped, PAGE_SIZE);
+    return STATUS_SUCCESS;
+}
+
+/*
+ * 分配一个零填充的 4KB 物理对齐页 (NonPaged)。
+ * MmAllocateContiguousMemory 保证页对齐 + 物理连续 (我们只取 PAGE_SIZE,
+ * 反正一定单页)。返回 VA 和 HPA。失败返回 NULL。
+ */
+static NTSTATUS
+HvPhysAllocOnePage(_Out_ PVOID* OutVa, _Out_ UINT64* OutPa)
+{
+    PHYSICAL_ADDRESS highest;
+    highest.QuadPart = (LONGLONG)0xFFFFFFFFFFFFFFFFULL;
+
+    PVOID va = MmAllocateContiguousMemory(PAGE_SIZE, highest);
+    if (!va) {
+        *OutVa = NULL;
+        *OutPa = 0;
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    RtlZeroMemory(va, PAGE_SIZE);
+    *OutVa = va;
+    *OutPa = (UINT64)MmGetPhysicalAddress(va).QuadPart;
+    return STATUS_SUCCESS;
+}
+
+static VOID
+HvPhysFreeOnePage(_In_opt_ PVOID Va)
+{
+    if (Va) {
+        MmFreeContiguousMemory(Va);
+    }
+}
+
+/*
+ * 在目标 CR3 下,确保 (GVA -> PT) 路径上的所有中间表都存在。
+ * 缺失的从我们的池里分配并写入父表;父表的 PFN 在 USER/RW/PRESENT 模式建立。
+ *
+ * 撞上 PS=1 (2MB/1GB 大页) → 返回 STATUS_NOT_SUPPORTED,调用者跳过该 VA。
+ *
+ * 注意: 中间表泄漏一份 (我们分配的 KernelVa 没追踪),进程退出统一回收。
+ * 这是 Phase 4 简化版的代价 (~10MB/进程量级),acceptable。
+ */
+static NTSTATUS
+HvPhysEnsurePtForVa(_In_ UINT64 Cr3, _In_ UINT64 Gva, _Out_ UINT64* OutPtPa)
+{
+    UINT64 pml4Pa = Cr3 & ~0xFFFULL;
+    ULONG pml4i = (ULONG)PML4_INDEX(Gva);
+    ULONG pdpti = (ULONG)PDPT_INDEX(Gva);
+    ULONG pdi = (ULONG)PD_INDEX(Gva);
+    NTSTATUS s;
+
+    *OutPtPa = 0;
+
+    // ---- PML4 ----
+    UINT64 pml4e = HvPhysReadTableEntry(pml4Pa, pml4i);
+    UINT64 pdptPa;
+    if (!(pml4e & PTE_PRESENT)) {
+        PVOID newVa; UINT64 newPa;
+        s = HvPhysAllocOnePage(&newVa, &newPa);
+        if (!NT_SUCCESS(s)) return s;
+        UINT64 newEntry = (newPa & PTE_PFN_MASK) | PTE_PRESENT | PTE_RW | PTE_USER;
+        s = HvPhysWriteTableEntry(pml4Pa, pml4i, newEntry);
+        if (!NT_SUCCESS(s)) { HvPhysFreeOnePage(newVa); return s; }
+        pdptPa = newPa;
+    } else {
+        pdptPa = pml4e & PTE_PFN_MASK;
+    }
+
+    // ---- PDPT ----
+    UINT64 pdpte = HvPhysReadTableEntry(pdptPa, pdpti);
+    if ((pdpte & PTE_PRESENT) && (pdpte & PTE_PS)) {
+        return STATUS_NOT_SUPPORTED;  // 1GB 大页,不拆
+    }
+    UINT64 pdPa;
+    if (!(pdpte & PTE_PRESENT)) {
+        PVOID newVa; UINT64 newPa;
+        s = HvPhysAllocOnePage(&newVa, &newPa);
+        if (!NT_SUCCESS(s)) return s;
+        UINT64 newEntry = (newPa & PTE_PFN_MASK) | PTE_PRESENT | PTE_RW | PTE_USER;
+        s = HvPhysWriteTableEntry(pdptPa, pdpti, newEntry);
+        if (!NT_SUCCESS(s)) { HvPhysFreeOnePage(newVa); return s; }
+        pdPa = newPa;
+    } else {
+        pdPa = pdpte & PTE_PFN_MASK;
+    }
+
+    // ---- PD ----
+    UINT64 pde = HvPhysReadTableEntry(pdPa, pdi);
+    if ((pde & PTE_PRESENT) && (pde & PTE_PS)) {
+        return STATUS_NOT_SUPPORTED;  // 2MB 大页,不拆
+    }
+    UINT64 ptPa;
+    if (!(pde & PTE_PRESENT)) {
+        PVOID newVa; UINT64 newPa;
+        s = HvPhysAllocOnePage(&newVa, &newPa);
+        if (!NT_SUCCESS(s)) return s;
+        UINT64 newEntry = (newPa & PTE_PFN_MASK) | PTE_PRESENT | PTE_RW | PTE_USER;
+        s = HvPhysWriteTableEntry(pdPa, pdi, newEntry);
+        if (!NT_SUCCESS(s)) { HvPhysFreeOnePage(newVa); return s; }
+        ptPa = newPa;
+    } else {
+        ptPa = pde & PTE_PFN_MASK;
+    }
+
+    *OutPtPa = ptPa;
+    return STATUS_SUCCESS;
+}
+
+/*
+ * 选址 —— 在目标 CR3 里扫描从 0x300000000 开始的用户空间,找连续 PageCount
+ * 个 4KB 都未映射的窗口。撞到 PTE.PRESENT=1 或大页则跳过。
+ *
+ * 简化实现: 每次失败前进 PAGE_SIZE/2MB/1GB (取决于撞到什么粒度),
+ * 找到连续 PageCount 个空闲后返回。最差线性扫,实测 < 1ms。
+ */
+static NTSTATUS
+HvPhysFindFreeRegion(_In_ UINT64 Cr3, _In_ ULONG PageCount, _Out_ UINT64* OutGva)
+{
+    UINT64 candidate = 0x0000000300000000ULL;            // 12GB into user space
+    const UINT64 maxAddr = 0x00007FFFFFFE0000ULL;        // 安全上限,留尾部不碰
+
+    *OutGva = 0;
+
+    while (candidate < maxAddr) {
+        BOOLEAN regionFree = TRUE;
+        UINT64 testVa = candidate;
+        for (ULONG i = 0; i < PageCount; i++) {
+            PHYSICAL_ADDRESS hpa;
+            SIZE_T pageSize = 0;
+            NTSTATUS s = HvPhysGvaToHpa(Cr3, testVa, &hpa, &pageSize, NULL);
+            if (NT_SUCCESS(s)) {
+                // 已被占用,跳到该 mapping 之后
+                if (pageSize >= 0x200000ULL) {
+                    UINT64 mask = pageSize - 1;
+                    candidate = (testVa & ~mask) + pageSize;
+                } else {
+                    candidate = testVa + PAGE_SIZE;
+                }
+                regionFree = FALSE;
+                break;
+            }
+            testVa += PAGE_SIZE;
+        }
+        if (regionFree) {
+            *OutGva = candidate;
+            return STATUS_SUCCESS;
+        }
+    }
+    return STATUS_NO_MEMORY;
+}
+
+/*
+ * IPI INVLPG —— 让所有 CPU 把目标 CR3 下指定 VA 的 TLB 项无效化。
+ * 每个 CPU 检查自己的 CR3 是否匹配,匹配才 __invlpg (否则该 CPU
+ * 现在跑的不是目标进程,TLB 里根本没这个 VA 的项,no-op 即可)。
+ *
+ * 写入全局变量受 g_PhysInvlpgLock 保护,避免并发 Free 互踩。
+ */
+static ULONG_PTR
+HvPhysInvlpgIpiTarget(_In_ ULONG_PTR Context)
+{
+    UNREFERENCED_PARAMETER(Context);
+    if (__readcr3() == g_InvlpgTargetCr3) {
+        __invlpg((PVOID)g_InvlpgTargetVa);
+    }
+    return 0;
+}
+
+static VOID
+HvPhysInvlpgBroadcast(_In_ UINT64 Cr3, _In_ UINT64 Va)
+{
+    if (KeGetCurrentIrql() > APC_LEVEL) {
+        if (__readcr3() == Cr3) __invlpg((PVOID)Va);
+        return;
+    }
+    KIRQL irql;
+    KeAcquireSpinLock(&g_PhysInvlpgLock, &irql);
+    g_InvlpgTargetCr3 = Cr3;
+    g_InvlpgTargetVa = Va;
+    KeIpiGenericCall(HvPhysInvlpgIpiTarget, 0);
+    KeReleaseSpinLock(&g_PhysInvlpgLock, irql);
+}
+
+/*
+ * 在目标进程页表里清掉一个 PTE (写 0,等于 PRESENT=0)。
+ * 不需要 EnsurePt —— Free 路径上 PT 一定已存在 (Alloc 时建过)。
+ * 但保险起见:遇到中途 PRESENT=0 就跳过 (静默成功,该 VA 反正已不可达)。
+ */
+static NTSTATUS
+HvPhysClearPteForVa(_In_ UINT64 Cr3, _In_ UINT64 Gva)
+{
+    UINT64 pml4Pa = Cr3 & ~0xFFFULL;
+    UINT64 pml4e = HvPhysReadTableEntry(pml4Pa, (ULONG)PML4_INDEX(Gva));
+    if (!(pml4e & PTE_PRESENT)) return STATUS_SUCCESS;
+    UINT64 pdptPa = pml4e & PTE_PFN_MASK;
+
+    UINT64 pdpte = HvPhysReadTableEntry(pdptPa, (ULONG)PDPT_INDEX(Gva));
+    if (!(pdpte & PTE_PRESENT)) return STATUS_SUCCESS;
+    if (pdpte & PTE_PS) return STATUS_NOT_SUPPORTED;
+    UINT64 pdPa = pdpte & PTE_PFN_MASK;
+
+    UINT64 pde = HvPhysReadTableEntry(pdPa, (ULONG)PD_INDEX(Gva));
+    if (!(pde & PTE_PRESENT)) return STATUS_SUCCESS;
+    if (pde & PTE_PS) return STATUS_NOT_SUPPORTED;
+    UINT64 ptPa = pde & PTE_PFN_MASK;
+
+    return HvPhysWriteTableEntry(ptPa, (ULONG)PT_INDEX(Gva), 0);
+}
+
+NTSTATUS
+HvPhysAllocateInProcess(
+    _In_ ULONG TargetPid,
+    _In_ SIZE_T Size,
+    _In_ ULONG Protection,
+    _Inout_ PUINT64 InOutGva
+)
+{
+    if (!InOutGva || Size == 0) return STATUS_INVALID_PARAMETER;
+    if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
+    if (!g_PhysAllocInitialized) HvPhysAccessInitialize();
+
+    UINT64 cr3 = 0;
+    NTSTATUS status = HvPhysGetProcessCr3(TargetPid, &cr3);
+    if (!NT_SUCCESS(status)) return status;
+
+    SIZE_T alignedSize = (Size + PAGE_SIZE - 1) & ~(SIZE_T)(PAGE_SIZE - 1);
+    ULONG pageCount = (ULONG)(alignedSize / PAGE_SIZE);
+    if (pageCount == 0) return STATUS_INVALID_PARAMETER;
+
+    UINT64 gvaBase = *InOutGva;
+    if (gvaBase == 0) {
+        status = HvPhysFindFreeRegion(cr3, pageCount, &gvaBase);
+        if (!NT_SUCCESS(status)) return status;
+    } else {
+        gvaBase &= ~(UINT64)(PAGE_SIZE - 1);
+    }
+
+    // Protection → PTE 位映射
+    //   PAGE_READWRITE         -> R=1 W=1 NX=1
+    //   PAGE_EXECUTE_READ      -> R=1 W=0 NX=0
+    //   PAGE_EXECUTE_READWRITE -> R=1 W=1 NX=0
+    //   其他 (含 EXECUTE only) -> 视为 PAGE_READWRITE,安全保底
+    UINT64 pteFlags = PTE_PRESENT | PTE_USER;
+    BOOLEAN writable = (Protection == PAGE_READWRITE ||
+                        Protection == PAGE_EXECUTE_READWRITE ||
+                        Protection == PAGE_WRITECOPY ||
+                        Protection == PAGE_EXECUTE_WRITECOPY);
+    BOOLEAN executable = (Protection == PAGE_EXECUTE ||
+                          Protection == PAGE_EXECUTE_READ ||
+                          Protection == PAGE_EXECUTE_READWRITE ||
+                          Protection == PAGE_EXECUTE_WRITECOPY);
+    if (writable) pteFlags |= PTE_RW;
+    if (!executable) pteFlags |= PTE_NX;
+
+    // 跟踪记录
+    HV_PHYS_ALLOC_RECORD* record = (HV_PHYS_ALLOC_RECORD*)
+        ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(HV_PHYS_ALLOC_RECORD), HV_PHYS_TAG_RECORD);
+    if (!record) return STATUS_INSUFFICIENT_RESOURCES;
+
+    record->Pages = (HV_PHYS_ALLOC_PAGE*)ExAllocatePool2(
+        POOL_FLAG_NON_PAGED, sizeof(HV_PHYS_ALLOC_PAGE) * pageCount, HV_PHYS_TAG_RECORD);
+    if (!record->Pages) {
+        ExFreePoolWithTag(record, HV_PHYS_TAG_RECORD);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    record->ProcessId = TargetPid;
+    record->BaseGva = gvaBase;
+    record->SizeBytes = alignedSize;
+    record->PageCount = pageCount;
+
+    // 逐页装入
+    ULONG installed = 0;
+    for (ULONG i = 0; i < pageCount; i++) {
+        UINT64 thisGva = gvaBase + (UINT64)i * PAGE_SIZE;
+
+        UINT64 ptPa = 0;
+        status = HvPhysEnsurePtForVa(cr3, thisGva, &ptPa);
+        if (!NT_SUCCESS(status)) break;
+
+        PVOID dataVa = NULL; UINT64 dataPa = 0;
+        status = HvPhysAllocOnePage(&dataVa, &dataPa);
+        if (!NT_SUCCESS(status)) break;
+
+        UINT64 pteValue = (dataPa & PTE_PFN_MASK) | pteFlags;
+        status = HvPhysWriteTableEntry(ptPa, (ULONG)PT_INDEX(thisGva), pteValue);
+        if (!NT_SUCCESS(status)) {
+            HvPhysFreeOnePage(dataVa);
+            break;
+        }
+
+        record->Pages[i].KernelVa = dataVa;
+        record->Pages[i].PhysicalAddress = dataPa;
+        record->Pages[i].GuestVa = thisGva;
+        installed++;
+    }
+
+    if (installed != pageCount) {
+        // 失败回滚: 清已装入的 PTE + 释放物理页
+        for (ULONG j = 0; j < installed; j++) {
+            HvPhysClearPteForVa(cr3, record->Pages[j].GuestVa);
+            HvPhysInvlpgBroadcast(cr3, record->Pages[j].GuestVa);
+            HvPhysFreeOnePage(record->Pages[j].KernelVa);
+        }
+        ExFreePoolWithTag(record->Pages, HV_PHYS_TAG_RECORD);
+        ExFreePoolWithTag(record, HV_PHYS_TAG_RECORD);
+        return status;
+    }
+
+    // 注意: 首次填 PTE (PRESENT 0→1) 无需 INVLPG —— TLB 不缓存 PRESENT=0
+    // 条目。Intel SDM 4.10.4.3 明确说这种场景安全。
+
+    KIRQL irql;
+    KeAcquireSpinLock(&g_PhysAllocLock, &irql);
+    InsertTailList(&g_PhysAllocList, &record->ListEntry);
+    KeReleaseSpinLock(&g_PhysAllocLock, irql);
+
+    *InOutGva = gvaBase;
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+HvPhysFreeInProcess(
+    _In_ ULONG TargetPid,
+    _In_ UINT64 Gva,
+    _In_ SIZE_T Size
+)
+{
+    UNREFERENCED_PARAMETER(Size);  // 按 record 完整释放,忽略调用方的 Size
+
+    if (KeGetCurrentIrql() > APC_LEVEL) return STATUS_INVALID_LEVEL;
+    if (!g_PhysAllocInitialized) HvPhysAccessInitialize();
+
+    Gva &= ~(UINT64)(PAGE_SIZE - 1);
+
+    // 摘出对应记录
+    HV_PHYS_ALLOC_RECORD* record = NULL;
+    KIRQL irql;
+    KeAcquireSpinLock(&g_PhysAllocLock, &irql);
+    PLIST_ENTRY entry = g_PhysAllocList.Flink;
+    while (entry != &g_PhysAllocList) {
+        HV_PHYS_ALLOC_RECORD* r = CONTAINING_RECORD(entry, HV_PHYS_ALLOC_RECORD, ListEntry);
+        if (r->ProcessId == TargetPid && r->BaseGva == Gva) {
+            RemoveEntryList(entry);
+            record = r;
+            break;
+        }
+        entry = entry->Flink;
+    }
+    KeReleaseSpinLock(&g_PhysAllocLock, irql);
+
+    if (!record) return STATUS_NOT_FOUND;
+
+    UINT64 cr3 = 0;
+    NTSTATUS status = HvPhysGetProcessCr3(TargetPid, &cr3);
+    if (!NT_SUCCESS(status)) {
+        // 进程已退,目标页表也消失了,直接释放我们的物理页。
+        for (ULONG i = 0; i < record->PageCount; i++) {
+            HvPhysFreeOnePage(record->Pages[i].KernelVa);
+        }
+        ExFreePoolWithTag(record->Pages, HV_PHYS_TAG_RECORD);
+        ExFreePoolWithTag(record, HV_PHYS_TAG_RECORD);
+        return STATUS_SUCCESS;
+    }
+
+    for (ULONG i = 0; i < record->PageCount; i++) {
+        UINT64 thisGva = record->Pages[i].GuestVa;
+        HvPhysClearPteForVa(cr3, thisGva);
+        HvPhysInvlpgBroadcast(cr3, thisGva);
+        HvPhysFreeOnePage(record->Pages[i].KernelVa);
+    }
+
+    ExFreePoolWithTag(record->Pages, HV_PHYS_TAG_RECORD);
+    ExFreePoolWithTag(record, HV_PHYS_TAG_RECORD);
+    return STATUS_SUCCESS;
+}
+
+// ============================================================
+// 叶 PTE 位置查询 (#27 followup, 阶段 6 gadget 初始化用)

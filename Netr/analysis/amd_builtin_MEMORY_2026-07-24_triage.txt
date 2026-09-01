@@ -1,0 +1,693 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-24_triage.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Windows\System32
+OK                                             C:\Windows\System32\drivers
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols
+OK                                             C:\SymCache
+OK                                             E:\Symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols;C:\SymCache;E:\Symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Windows\System32;C:\Windows\System32\drivers;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff802`93600000 PsLoadedModuleList = 0xfffff802`944f5350
+Debug session time: Fri Jul 24 15:37:08.917 2026 (UTC + 8:00)
+System Uptime: 0 days 16:29:40.649
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+.............................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 00000084`ebb9a018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+12: kd> .lines -e
+Line number information will be loaded
+12: kd> .reload /f nt
+12: kd> .reload /f GuardMetaCore.sys
+12: kd> .echo === DUMP_DEBUG ===
+=== DUMP_DEBUG ===
+12: kd> .dumpdebug
+----- 64 bit Kernel Bitmap Dump Analysis - Kernel address space is available,
+      User address space may not be available.
+
+DUMP_HEADER64:
+MajorVersion        0000000f
+MinorVersion        000065f4
+KdSecondaryVersion  00000002
+DirectoryTableBase  00000006`0ffaf000
+PfnDataBase         ffffbe80`00000000
+PsLoadedModuleList  fffff802`944f5350
+PsActiveProcessHead fffff802`94505bf0
+MachineImageType    00008664
+NumberProcessors    00000010
+BugCheckCode        00000050
+BugCheckParameter1  ffff80c0`60203618
+BugCheckParameter2  00000000`00000000
+BugCheckParameter3  00000000`00000000
+BugCheckParameter4  00000000`00000006
+KdDebuggerDataBlock fffff802`94401040
+SecondaryDataState  00000000
+ProductType         00000001
+SuiteMask           00000110
+Attributes          00021000
+
+BITMAP_DUMP:
+DumpOptions         00000000
+HeaderSize          c6000
+BitmapSize          61e300
+Pages               99e7f
+
+KiProcessorBlock at fffff802`945c8c80
+  16 KiProcessorBlock entries:
+  fffff802`232bf180 ffff8501`f51c0180 ffff8501`f5251180 ffff8501`f52e7180 ffff8501`f5381180 ffff8501`f53c6180 ffff8501`f54b2180 ffff8501`f5548180 ffff8501`f558e180 ffff8501`f56a2180 ffff8501`f5738180 ffff8501`f57d1180 ffff8501`f55e8180 ffff8501`f58d2180 ffff8501`f5918180 ffff8501`f59b1180
+12: kd> .echo === TARGET ===
+=== TARGET ===
+12: kd> vertarget
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff802`93600000 PsLoadedModuleList = 0xfffff802`944f5350
+Debug session time: Fri Jul 24 15:37:08.917 2026 (UTC + 8:00)
+System Uptime: 0 days 16:29:40.649
+12: kd> .echo === BUGCHECK ===
+=== BUGCHECK ===
+12: kd> .bugcheck
+Bugcheck code 00000050
+Arguments ffff80c0`60203618 00000000`00000000 00000000`00000000 00000000`00000006
+12: kd> .echo === ANALYZE ===
+=== ANALYZE ===
+12: kd> !analyze -v
+*******************************************************************************
+*                                                                             *
+*                        Bugcheck Analysis                                    *
+*                                                                             *
+*******************************************************************************
+
+PAGE_FAULT_IN_NONPAGED_AREA (50)
+Invalid system memory was referenced.  This cannot be protected by try-except.
+Typically the address is just plain bad or it is pointing at freed memory.
+Arguments:
+Arg1: ffff80c060203618, memory referenced.
+Arg2: 0000000000000000, X64: bit 0 set if the fault was due to a not-present PTE.
+	bit 1 is set if the fault was due to a write, clear if a read.
+	bit 3 is set if the processor decided the fault was due to a corrupted PTE.
+	bit 4 is set if the fault was due to attempted execute of a no-execute PTE.
+	- ARM64: bit 1 is set if the fault was due to a write, clear if a read.
+	bit 3 is set if the fault was due to attempted execute of a no-execute PTE.
+Arg3: 0000000000000000, If non-zero, the instruction address which referenced the bad memory
+	address.
+Arg4: 0000000000000006, (reserved)
+
+Debugging Details:
+------------------
+
+Unable to load image \SystemRoot\System32\win32kfull.sys, Win32 error 0n2
+Unable to load image \SystemRoot\System32\win32k.sys, Win32 error 0n2
+Unable to load image \SystemRoot\System32\win32kbase.sys, Win32 error 0n2
+
+KEY_VALUES_STRING: 1
+
+    Key  : AV.Type
+    Value: Read
+
+    Key  : Analysis.CPU.mSec
+    Value: 2765
+
+    Key  : Analysis.Elapsed.mSec
+    Value: 5274
+
+    Key  : Analysis.IO.Other.Mb
+    Value: 68
+
+    Key  : Analysis.IO.Read.Mb
+    Value: 0
+
+    Key  : Analysis.IO.Write.Mb
+    Value: 0
+
+    Key  : Analysis.Init.CPU.mSec
+    Value: 921
+
+    Key  : Analysis.Init.Elapsed.mSec
+    Value: 2288
+
+    Key  : Analysis.Memory.CommitPeak.Mb
+    Value: 98
+
+    Key  : Bugcheck.Code.KiBugCheckData
+    Value: 0x50
+
+    Key  : Bugcheck.Code.LegacyAPI
+    Value: 0x50
+
+    Key  : Dump.Attributes.AsUlong
+    Value: 21000
+
+    Key  : Dump.Attributes.DiagDataWrittenToHeader
+    Value: 1
+
+    Key  : Dump.Attributes.ErrorCode
+    Value: 0
+
+    Key  : Dump.Attributes.LastLine
+    Value: Dump completed successfully.
+
+    Key  : Dump.Attributes.ProgressPercentage
+    Value: 100
+
+    Key  : Failure.Bucket
+    Value: AV_R_(null)_win32kfull!NtUserBuildHwndList
+
+    Key  : Failure.Hash
+    Value: {74beab42-c60f-013a-4eb5-48b0f8b04759}
+
+    Key  : Hypervisor.Enlightenments.Value
+    Value: 0
+
+    Key  : Hypervisor.Enlightenments.ValueHex
+    Value: 0
+
+    Key  : Hypervisor.Flags.AnyHypervisorPresent
+    Value: 0
+
+    Key  : Hypervisor.Flags.ApicEnlightened
+    Value: 0
+
+    Key  : Hypervisor.Flags.ApicVirtualizationAvailable
+    Value: 1
+
+    Key  : Hypervisor.Flags.AsyncMemoryHint
+    Value: 0
+
+    Key  : Hypervisor.Flags.CoreSchedulerRequested
+    Value: 0
+
+    Key  : Hypervisor.Flags.CpuManager
+    Value: 0
+
+    Key  : Hypervisor.Flags.DeprecateAutoEoi
+    Value: 0
+
+    Key  : Hypervisor.Flags.DynamicCpuDisabled
+    Value: 0
+
+    Key  : Hypervisor.Flags.Epf
+    Value: 0
+
+    Key  : Hypervisor.Flags.ExtendedProcessorMasks
+    Value: 0
+
+    Key  : Hypervisor.Flags.HardwareMbecAvailable
+    Value: 1
+
+    Key  : Hypervisor.Flags.MaxBankNumber
+    Value: 0
+
+    Key  : Hypervisor.Flags.MemoryZeroingControl
+    Value: 0
+
+    Key  : Hypervisor.Flags.NoExtendedRangeFlush
+    Value: 0
+
+    Key  : Hypervisor.Flags.NoNonArchCoreSharing
+    Value: 0
+
+    Key  : Hypervisor.Flags.Phase0InitDone
+    Value: 0
+
+    Key  : Hypervisor.Flags.PowerSchedulerQos
+    Value: 0
+
+    Key  : Hypervisor.Flags.RootScheduler
+    Value: 0
+
+    Key  : Hypervisor.Flags.SynicAvailable
+    Value: 0
+
+    Key  : Hypervisor.Flags.UseQpcBias
+    Value: 0
+
+    Key  : Hypervisor.Flags.Value
+    Value: 16908288
+
+    Key  : Hypervisor.Flags.ValueHex
+    Value: 1020000
+
+    Key  : Hypervisor.Flags.VpAssistPage
+    Value: 0
+
+    Key  : Hypervisor.Flags.VsmAvailable
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.AccessStats
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.CrashdumpEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.CreateVirtualProcessor
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.DisableHyperthreading
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.HostTimelineSync
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.HypervisorDebuggingEnabled
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.IsHyperV
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.LivedumpEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.MapDeviceInterrupt
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.MceEnlightened
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.Nested
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.StartLogicalProcessor
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.Value
+    Value: 0
+
+    Key  : Hypervisor.RootFlags.ValueHex
+    Value: 0
+
+    Key  : SecureKernel.HalpHvciEnabled
+    Value: 0
+
+    Key  : WER.OS.Branch
+    Value: ge_release
+
+    Key  : WER.OS.Version
+    Value: 10.0.26100.1
+
+
+BUGCHECK_CODE:  50
+
+BUGCHECK_P1: ffff80c060203618
+
+BUGCHECK_P2: 0
+
+BUGCHECK_P3: 0
+
+BUGCHECK_P4: 6
+
+FILE_IN_CAB:  MEMORY.DMP
+
+DUMP_FILE_ATTRIBUTES: 0x21000
+
+READ_ADDRESS:  ffff80c060203618 
+
+MM_INTERNAL_CODE:  6
+
+BLACKBOXBSD: 1 (!blackboxbsd)
+
+
+BLACKBOXNTFS: 1 (!blackboxntfs)
+
+
+BLACKBOXPNP: 1 (!blackboxpnp)
+
+
+BLACKBOXWINLOGON: 1
+
+PROCESS_NAME:  QQEX.exe
+
+TRAP_FRAME:  ffffa80a887ff700 -- (.trap 0xffffa80a887ff700)
+.trap 0xffffa80a887ff700
+NOTE: The trap frame does not contain all registers.
+Some register values may be zeroed or incorrect.
+rax=fffff8029363ac30 rbx=0000000000000000 rcx=0000024c1cbba000
+rdx=00007fffffff0000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802651168aa rsp=ffffa80a887ff890 rbp=0000000000000000
+ r8=00007fffffff0000  r9=ffffa80a887ff6dc r10=fffff80293ebdf40
+r11=ffffe583e67025d0 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei ng nz na po nc
+win32kfull!NtUserBuildHwndList+0x23a:
+fffff802`651168aa 418b00          mov     eax,dword ptr [r8] ds:00007fff`ffff0000=????????
+.trap
+Resetting default scope
+
+STACK_TEXT:  
+ffffa80a`887ff408 fffff802`9390980b     : 00000000`00000050 ffff80c0`60203618 00000000`00000000 ffff80c0`60301018 : nt!KeBugCheckEx
+ffffa80a`887ff410 fffff802`93908139     : ffffa80a`887ff5d0 ffffa80a`887ff590 ffffa80a`887ff598 ffffa80a`887ff5a8 : nt!MiZeroFault+0x63b
+ffffa80a`887ff500 fffff802`9384381e     : 00000000`00000101 ffff8000`00000018 ffff80c0`60203618 00000000`00000000 : nt!MiUserFault+0x459
+ffffa80a`887ff590 fffff802`93cbadcb     : 00000000`004b064e 01000000`00100000 00000000`00000000 00000000`00000103 : nt!MmAccessFault+0x20e
+ffffa80a`887ff700 fffff802`651168aa     : 00000000`00000001 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiPageFault+0x38b
+ffffa80a`887ff890 fffff802`6642e017     : 00000000`00000001 00000000`00000000 00000000`00000000 00000000`000005dc : win32kfull!NtUserBuildHwndList+0x23a
+ffffa80a`887ff950 fffff802`254637ac     : 00000000`00000001 00000000`00000000 00000000`00000000 00007ff8`0325b340 : GuardMetaCore!HookedNtUserBuildHwndList+0xb3 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2562] 
+ffffa80a`887ff9d0 fffff802`93cbf258     : ffff9808`21ab1080 ffffa80a`887ffb20 00000084`83fff0a8 00006564`01f97120 : win32k!EngReleaseSemaphore+0x33c
+ffffa80a`887ffa30 00007ff8`02821604     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : nt!KiSystemServiceCopyEnd+0x28
+00000084`83fff088 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : 0x00007ff8`02821604
+
+
+SYMBOL_NAME:  win32kfull!NtUserBuildHwndList+23a
+
+MODULE_NAME: win32kfull
+
+IMAGE_NAME:  win32kfull.sys
+
+IMAGE_VERSION:  10.0.26100.8875
+
+STACK_COMMAND:  .cxr; .ecxr ; kb
+
+BUCKET_ID_FUNC_OFFSET:  23a
+
+FAILURE_BUCKET_ID:  AV_R_(null)_win32kfull!NtUserBuildHwndList
+
+OS_VERSION:  10.0.26100.1
+
+BUILDLAB_STR:  ge_release
+
+OSPLATFORM_TYPE:  x64
+
+OSNAME:  Windows 10
+
+FAILURE_ID_HASH:  {74beab42-c60f-013a-4eb5-48b0f8b04759}
+
+Followup:     MachineOwner
+---------
+
+12: kd> .echo === MODULE ===
+=== MODULE ===
+12: kd> lmvm GuardMetaCore
+Browse full module list
+start             end                 module name
+fffff802`66400000 fffff802`667b8000   GuardMetaCore   (private pdb symbols)  e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.pdb
+    Loaded symbol image file: GuardMetaCore.sys
+    Mapped memory image file: e:\project_learning\yuyuanvtdebug\netr\test-package\GuardMetaCore.sys
+    Image path: \??\C:\Users\1\Desktop\test-package\test-package\GuardMetaCore.sys
+    Image name: GuardMetaCore.sys
+    Browse all global symbols  functions  data
+    Timestamp:        Fri Jul 24 00:15:29 2026 (6A623E21)
+    CheckSum:         00079B7C
+    ImageSize:        003B8000
+    Translations:     0000.04b0 0000.04e4 0409.04b0 0409.04e4
+    Information from resource tables:
+12: kd> .echo === CPUINFO ===
+=== CPUINFO ===
+12: kd> !cpuinfo
+CP  F/M/S Manufacturer  MHz PRCB Signature    MSR 8B Signature Features ArchitectureClass
+ 0 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 1 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 2 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 3 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 4 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 5 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 6 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 7 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 8 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+ 9 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+10 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+11 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+12 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+13 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+14 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+15 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+                      Cached Update Signature 0000000000000000
+                     Initial Update Signature 000000000a404105
+12: kd> .echo === RUNNING ===
+=== RUNNING ===
+12: kd> !running -it
+
+System Processors:  (000000000000ffff)
+  Idle Processors:  (0000000000000000)
+
+       Prcbs             Current         (pri) Next            (pri) Idle
+  0    fffff802232bf180  ffff980821cec0c0 (16)                       fffff802945d25c0  ................
+
+0k
+Unable to load image \SystemRoot\System32\DriverStore\FileRepository\nvtf.inf_amd64_f7df59a98b1aeb40\nvlddmkm.sys, Win32 error 0n2
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8a2160d0 fffff802`5ea17678     nt!KzLowerIrql+0x22
+01 ffffa80a`8a216100 fffff802`5ea1825e     nvlddmkm+0xf7678
+02 ffffa80a`8a2161d0 fffff802`5eb87013     nvlddmkm+0xf825e
+03 ffffa80a`8a216200 fffff802`5eb671ae     nvlddmkm+0x267013
+04 ffffa80a`8a216230 fffff802`5ececbe6     nvlddmkm+0x2471ae
+05 ffffa80a`8a216260 fffff802`5eb66ddd     nvlddmkm+0x3ccbe6
+06 ffffa80a`8a2162f0 fffff802`5eb76650     nvlddmkm+0x246ddd
+07 ffffa80a`8a216450 fffff802`5eb76963     nvlddmkm+0x256650
+08 ffffa80a`8a2166c0 fffff802`5ea72a40     nvlddmkm+0x256963
+09 ffffa80a`8a216800 fffff802`5ea6b6d5     nvlddmkm+0x152a40
+0a ffffa80a`8a216860 fffff802`5ea6bac8     nvlddmkm+0x14b6d5
+0b ffffa80a`8a216930 fffff802`5e9f9e8d     nvlddmkm+0x14bac8
+0c ffffa80a`8a216960 fffff802`60166997     nvlddmkm+0xd9e8d
+0d ffffa80a`8a216a10 fffff802`5f6a9b87     nvlddmkm!nvDumpConfig+0x7e82a7
+0e ffffa80a`8a216ab0 fffff802`60166e04     nvlddmkm+0xd89b87
+0f ffffa80a`8a216ae0 fffff802`600dcc2b     nvlddmkm!nvDumpConfig+0x7e8714
+10 ffffa80a`8a216b20 fffff802`600db1c8     nvlddmkm!nvDumpConfig+0x75e53b
+11 ffffa80a`8a216cb0 fffff802`600da691     nvlddmkm!nvDumpConfig+0x75cad8
+12 ffffa80a`8a216e90 fffff802`600d735b     nvlddmkm!nvDumpConfig+0x75bfa1
+13 ffffa80a`8a216f70 fffff802`600d0e91     nvlddmkm!nvDumpConfig+0x758c6b
+14 ffffa80a`8a217010 fffff802`600a9f94     nvlddmkm!nvDumpConfig+0x7527a1
+15 ffffa80a`8a217160 fffff802`60084ff8     nvlddmkm!nvDumpConfig+0x72b8a4
+Unable to load image \SystemRoot\System32\drivers\dxgkrnl.sys, Win32 error 0n2
+16 ffffa80a`8a2171c0 fffff802`258861c9     nvlddmkm!nvDumpConfig+0x706908
+17 ffffa80a`8a217270 fffff802`258c0df2     dxgkrnl!NtGdiDdDDICloseAdapter+0xad9
+18 ffffa80a`8a2173d0 fffff802`258eba78     dxgkrnl!NtGdiDdDDIOpenResource+0x6762
+19 ffffa80a`8a2177d0 fffff802`258eb16b     dxgkrnl!NtGdiDdDDICreateAllocation+0x918
+1a ffffa80a`8a217a70 fffff802`93cbf258     dxgkrnl!NtGdiDdDDICreateAllocation+0xb
+1b ffffa80a`8a217aa0 00007ff8`02824b24     nt!KiSystemServiceCopyEnd+0x28
+1c 0000006d`4cff71a8 00000000`00000000     0x00007ff8`02824b24
+
+  1    ffff8501f51c0180  ffff98080758e040 (12)                       ffff9807f0762040  ................
+
+1k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8f6b6a50 fffff802`6642bbba     nt!NtQueryInformationProcess+0x69
+01 ffffa80a`8f6b7460 fffff802`93cbf258     GuardMetaCore!HookedNtQueryInformationProcess+0x1c2 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 1648] 
+02 ffffa80a`8f6b7510 fffff802`93cad720     nt!KiSystemServiceCopyEnd+0x28
+Unable to load image \SystemRoot\system32\drivers\bam.sys, Win32 error 0n2
+03 ffffa80a`8f6b7718 fffff802`5cce5bd7     nt!KiServiceLinkage
+04 ffffa80a`8f6b7720 fffff802`93f04905     bam+0x15bd7
+05 ffffa80a`8f6b7930 fffff802`93f044d6     nt!ExpWnfDispatchKernelSubscription+0x3f5
+06 ffffa80a`8f6b79d0 fffff802`9392f459     nt!ExpWnfWorkItemRoutine+0x26
+07 ffffa80a`8f6b7a00 fffff802`93a8212a     nt!ExpWorkerThread+0x1b9
+08 ffffa80a`8f6b7bb0 fffff802`93cacd94     nt!PspSystemThreadStartup+0x5a
+09 ffffa80a`8f6b7c00 00000000`00000000     nt!KiStartSystemThread+0x34
+
+  2    ffff8501f5251180  ffff980834a92080 ( 2)                       ffff9807f07dc280  ................
+
+2k
+ # Child-SP          RetAddr               Call Site
+00 0000006d`5b9cea40 00000000`00000000     0x00007fff`f6bf50cb
+
+  3    ffff8501f52e7180  ffff9808340d5080 (13)                       ffff9807f07eb280  ................
+
+3k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8e1e7590 fffff802`93e3c1c7     nt!ObDuplicateObject+0x445
+01 ffffa80a`8e1e78f0 fffff802`6642a515     nt!NtDuplicateObject+0x147
+02 ffffa80a`8e1e7980 fffff802`93cbf258     GuardMetaCore!HookedNtDuplicateObject+0x301 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 10032] 
+03 ffffa80a`8e1e7a30 00007ff8`04e007e4     nt!KiSystemServiceCopyEnd+0x28
+04 0000002e`d05fa6a8 00000000`00000000     0x00007ff8`04e007e4
+
+  4    ffff8501f5381180  ffff98081afa6080 ( 9)                       ffff9807f0811280  ................
+
+4k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`89a77820 fffff802`94025094     nt!AlpcpProbeMessageAttributes+0xbe
+01 ffffa80a`89a77850 fffff802`93e4656e     nt!AlpcpProcessSynchronousRequest+0xe8
+02 ffffa80a`89a77960 fffff802`93cbf258     nt!NtAlpcSendWaitReceivePort+0x1fe
+03 ffffa80a`89a77a30 00007ff8`04e01214     nt!KiSystemServiceCopyEnd+0x28
+04 0000003a`6767d968 00000000`00000000     0x00007ff8`04e01214
+
+  5    ffff8501f53c6180  ffff980807f07080 ( 8)                       ffff9807f0820280  ................
+
+5k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8aad7870 fffff802`93f55708     nt!IopCreateFile+0x13a
+01 ffffa80a`8aad7940 fffff802`6642b338     nt!NtOpenFile+0x58
+02 ffffa80a`8aad79d0 fffff802`93cbf258     GuardMetaCore!HookedNtOpenFile+0x168 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 10530] 
+03 ffffa80a`8aad7a30 00007ff8`04e006c4     nt!KiSystemServiceCopyEnd+0x28
+04 00000000`057ed678 00000000`00000000     0x00007ff8`04e006c4
+
+  6    ffff8501f54b2180  ffff98081e211080 (14)                       ffff9807f0832280  ................
+
+6k
+ # Child-SP          RetAddr               Call Site
+00 00000050`8cffee20 00000000`00000000     0x00007fff`fc1592c8
+
+  7    ffff8501f5548180  ffff980834a8f080 ( 2)                       ffff9807f0841280  ................
+
+7k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8b978a10 fffff802`93cbf258     nt!NtSetInformationVirtualMemory+0xa
+01 ffffa80a`8b978a30 00007ff8`04e03654     nt!KiSystemServiceCopyEnd+0x28
+02 0000006d`5ba2ed28 00000000`00000000     0x00007ff8`04e03654
+
+  8    ffff8501f558e180  ffff980806e6d080 (16)                       ffff9807f0853280  ................
+
+8k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`86b47770 fffff802`93ede3a6     nt!MiMapViewOfSection+0xf0
+01 ffffa80a`86b47860 fffff802`64c56a92     nt!MmMapViewOfSection+0x146
+02 ffffa80a`86b47950 fffff802`64c6712c     win32kbase!IOCPDispatcher::Dispatch+0x8e2
+03 ffffa80a`86b47a10 fffff802`25461f8c     win32kbase!NtDCompositionGetConnectionBatch+0xac
+04 ffffa80a`86b47a70 fffff802`93cbf258     win32k+0x1f8c
+05 ffffa80a`86b47aa0 00007ff8`028237a4     nt!KiSystemServiceCopyEnd+0x28
+06 000000ad`ad8ff7d8 00000000`00000000     0x00007ff8`028237a4
+
+  9    ffff8501f56a2180  ffff980834b55080 (11)                       ffff9807f0863280  ................
+
+9k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`869ef610 fffff802`93ea224d     nt!MiMapViewOfSection+0x19d
+01 ffffa80a`869ef700 fffff802`6642af05     nt!NtMapViewOfSection+0x24d
+02 ffffa80a`869ef9b0 fffff802`93cbf258     GuardMetaCore!HookedNtMapViewOfSection+0x2a5 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 6414] 
+03 ffffa80a`869efa30 00007ff8`04e00564     nt!KiSystemServiceCopyEnd+0x28
+04 0000003e`824ff438 00000000`00000000     0x00007ff8`04e00564
+
+ 10    ffff8501f5738180  ffff98081bedb080 ( 9)                       ffff9807f0875280  ................
+
+10k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`87c17a30 fffff802`93cbf258     nt!NtOpenProcessTokenEx+0x24
+01 ffffa80a`87c17aa0 00007ff8`04e00664     nt!KiSystemServiceCopyEnd+0x28
+02 00000001`00d1afa8 00000000`00000000     0x00007ff8`04e00664
+
+ 11    ffff8501f57d1180  ffff98081e395080 ( 9)                       ffff9807f07f2280  ................
+
+11k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8c9d7250 fffff802`9393c2f0     nt!ExpInterlockedPopEntrySListFault+0x3
+01 ffffa80a`8c9d7260 fffff802`93907694     nt!MiGetPage+0x3b0
+02 ffffa80a`8c9d73b0 fffff802`93908e11     nt!MiGetPageChain+0x154
+03 ffffa80a`8c9d7460 fffff802`93943076     nt!MiResolvePrivateZeroFault+0x621
+04 ffffa80a`8c9d7620 fffff802`93933b0e     nt!MiResolveDemandZeroFault+0x246
+05 ffffa80a`8c9d77c0 fffff802`93843836     nt!MiDispatchFault+0x5ee
+06 ffffa80a`8c9d7930 fffff802`93cbadcb     nt!MmAccessFault+0x226
+07 ffffa80a`8c9d7aa0 00007fff`984866cf     nt!KiPageFault+0x38b
+08 000000f3`e35fd3f0 00000000`00000000     0x00007fff`984866cf
+
+ 12    ffff8501f55e8180  ffff980821ab1080 ( 9)                       ffff9807f088a280  ................
+
+12k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`887ff408 fffff802`9390980b     nt!KeBugCheckEx
+01 ffffa80a`887ff410 fffff802`93908139     nt!MiZeroFault+0x63b
+02 ffffa80a`887ff500 fffff802`9384381e     nt!MiUserFault+0x459
+03 ffffa80a`887ff590 fffff802`93cbadcb     nt!MmAccessFault+0x20e
+04 ffffa80a`887ff700 fffff802`651168aa     nt!KiPageFault+0x38b
+05 ffffa80a`887ff890 fffff802`6642e017     win32kfull!NtUserBuildHwndList+0x23a
+06 ffffa80a`887ff950 fffff802`254637ac     GuardMetaCore!HookedNtUserBuildHwndList+0xb3 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 2562] 
+07 ffffa80a`887ff9d0 fffff802`93cbf258     win32k!EngReleaseSemaphore+0x33c
+08 ffffa80a`887ffa30 00007ff8`02821604     nt!KiSystemServiceCopyEnd+0x28
+09 00000084`83fff088 00000000`00000000     0x00007ff8`02821604
+
+ 13    ffff8501f58d2180  ffff98081c0de080 ( 9)                       ffff9807f089b280  ................
+
+13k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`874bf8f0 fffff802`6642a515     nt!NtDuplicateObject+0x13f
+01 ffffa80a`874bf980 fffff802`93cbf258     GuardMetaCore!HookedNtDuplicateObject+0x301 [E:\project_learning\YuYuanVTDebug\Netr\HvHook.c @ 10032] 
+02 ffffa80a`874bfa30 00007ff8`04e007e4     nt!KiSystemServiceCopyEnd+0x28
+03 000000f3`e3dff1c8 00000000`00000000     0x00007ff8`04e007e4
+
+ 14    ffff8501f5918180  ffff98082e7f4080 ( 8)                       ffff9807f08ac280  ................
+
+14k
+ # Child-SP          RetAddr               Call Site
+00 0000001f`c9e76950 00000000`00000000     0x00007fff`65d2dc64
+
+ 15    ffff8501f59b1180  ffff98081eb41080 ( 8)                       ffff9807f08bd280  ................
+
+15k
+ # Child-SP          RetAddr               Call Site
+00 ffffa80a`8e08f9b0 fffff802`93f94fa7     nt!AlpcpPortQueryBasicInfo+0x35
+01 ffffa80a`8e08f9d0 fffff802`93cbf258     nt!NtAlpcQueryInformation+0x147
+02 ffffa80a`8e08fa30 00007ff8`04e011b4     nt!KiSystemServiceCopyEnd+0x28
+03 0000003a`67e7f0d8 00000000`00000000     0x00007ff8`04e011b4
+
+12: kd> .echo === ALL_CPUS ===
+=== ALL_CPUS ===
+12: kd> ~*
+        ^ Syntax error in '~*'
+12: kd> ~*kP 80
+        ^ Syntax error in '~*kP 80'
+12: kd> .echo === DPCS ===
+=== DPCS ===
+12: kd> !dpcs
+CPU Type      KDPC       Function
+
+dpcs: no pending DPCs found
+12: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

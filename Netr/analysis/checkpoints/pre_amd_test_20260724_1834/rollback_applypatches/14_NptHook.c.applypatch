@@ -1,0 +1,509 @@
+*** Begin Patch
+*** Update File: Netr/NptHook.c
+@@
+ #define NPT_DEBUG_STEP_FREE 0
+ #define NPT_DEBUG_STEP_ARMED 1
+ #define NPT_DEBUG_STEP_COMPLETING 2
+ #define NPT_DEBUG_STEP_COMPLETED 3
+ 
+-#define NPT_GUEST_RFLAGS_TF              0x100ULL
+-#define NPT_ALL_EXCEPTION_INTERCEPTS     0xFFFFFFFFu
+-#define NPT_DR6_BS_MASK                  (1ULL << 14)
+-#define NPT_DR6_NON_SYNTHETIC_CAUSE_MASK 0xB00FULL
+-#define NPT_SVM_VTPR_MASK                0xFULL
+-#define NPT_SVM_VINTR_MASKING_MASK       (1ULL << 24)
+-#define NPT_SVM_SAVED_VINTR_MASKING      0x10u
+-#define NPT_SVM_SAVED_INTR_INTERCEPT     0x20u
+-#define NPT_SVM_SAVED_NMI_INTERCEPT      0x40u
+-#define NPT_SVM_STEP_OWNER_NONE          0
+-#define NPT_SVM_STEP_OWNER_DEBUG         1
+-#define NPT_SVM_STEP_OWNER_HOOK          2
+-
+ typedef struct _NPT_DEBUG_STEP_ENTRY {
+     volatile LONG State;
+     volatile LONG Sequence;
+     HANDLE DebuggerPid;
+     HANDLE TargetPid;
+@@
+ 
+ typedef struct _NPT_DEBUG_STEP_CPU {
+     volatile LONG Active;
+     BOOLEAN Deliver;
+     BOOLEAN GuestTfWasSet;
+-    UCHAR SavedSvmInterruptState;
++    BOOLEAN DbInterceptWasSet;
+     UCHAR Reserved;
+-    ULONG SavedExceptionIntercepts;
+     PNPT_PTE TargetPte;
+     ULONG64 TrapPteValue;
+     PNPT_DEBUG_STEP_ENTRY Entry;
+ } NPT_DEBUG_STEP_CPU, *PNPT_DEBUG_STEP_CPU;
+ 
+ static NPT_DEBUG_STEP_ENTRY g_NptDebugSteps[NPT_DEBUG_STEP_MAX] = { 0 };
+ static NPT_DEBUG_STEP_CPU g_NptDebugStepCpu[64] = { 0 };
+-
+-static __forceinline BOOLEAN
+-NptHookpArmGuestSingleStepState(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ LONG Owner,
+-    _Out_ PBOOLEAN GuestTfWasSet,
+-    _Out_ PUCHAR SavedSvmInterruptState,
+-    _Out_ PULONG SavedExceptionIntercepts)
+-{
+-    ULONG64 rflags = VcpuData->Vmcb->StateSaveArea.Rflags;
+-    ULONG64 vintr = VcpuData->Vmcb->ControlArea.VIntr;
+-    UCHAR savedInterruptState;
+-
+-    if (Owner != NPT_SVM_STEP_OWNER_DEBUG &&
+-        Owner != NPT_SVM_STEP_OWNER_HOOK) {
+-        return FALSE;
+-    }
+-    if (InterlockedCompareExchange(
+-            &VcpuData->SvmSingleStepBlockInterrupts,
+-            Owner,
+-            NPT_SVM_STEP_OWNER_NONE) != NPT_SVM_STEP_OWNER_NONE) {
+-        return FALSE;
+-    }
+-
+-    *GuestTfWasSet = (rflags & NPT_GUEST_RFLAGS_TF) != 0;
+-    *SavedExceptionIntercepts =
+-        VcpuData->Vmcb->ControlArea.InterceptExceptions;
+-
+-    savedInterruptState = (UCHAR)(vintr & NPT_SVM_VTPR_MASK);
+-    if ((vintr & NPT_SVM_VINTR_MASKING_MASK) != 0) {
+-        savedInterruptState |= NPT_SVM_SAVED_VINTR_MASKING;
+-    } else {
+-        /* Keep guest RFLAGS.IF unchanged.  With V_INTR_MASKING enabled,
+-         * VMRUN captures host IF as the physical-IRQ gate, while guest CR8
+-         * moves through V_TPR for the duration of this owned TF window. */
+-        vintr &= ~NPT_SVM_VTPR_MASK;
+-        vintr |= __readcr8() & NPT_SVM_VTPR_MASK;
+-        vintr |= NPT_SVM_VINTR_MASKING_MASK;
+-    }
+-    if ((VcpuData->Vmcb->ControlArea.InterceptMisc1 &
+-         SVM_INTERCEPT_INTR) != 0) {
+-        savedInterruptState |= NPT_SVM_SAVED_INTR_INTERCEPT;
+-    }
+-    if ((VcpuData->Vmcb->ControlArea.InterceptMisc1 &
+-         SVM_INTERCEPT_NMI) != 0) {
+-        savedInterruptState |= NPT_SVM_SAVED_NMI_INTERCEPT;
+-    }
+-    *SavedSvmInterruptState = savedInterruptState;
+-
+-    VcpuData->Vmcb->ControlArea.VIntr = vintr;
+-    VcpuData->Vmcb->ControlArea.InterceptMisc1 |=
+-        (ULONG)(SVM_INTERCEPT_INTR | SVM_INTERCEPT_NMI);
+-    VcpuData->Vmcb->StateSaveArea.Rflags = rflags | NPT_GUEST_RFLAGS_TF;
+-    VcpuData->Vmcb->ControlArea.InterceptExceptions =
+-        NPT_ALL_EXCEPTION_INTERCEPTS;
+-    VcpuData->Vmcb->ControlArea.VmcbCleanBits = 0;
+-    KeMemoryBarrier();
+-    return TRUE;
+-}
+-
+-static __forceinline BOOLEAN
+-NptHookpRestoreGuestSingleStepState(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ LONG Owner,
+-    _In_ BOOLEAN GuestTfWasSet,
+-    _In_ UCHAR SavedSvmInterruptState,
+-    _In_ ULONG SavedExceptionIntercepts)
+-{
+-    ULONG64 rflags = VcpuData->Vmcb->StateSaveArea.Rflags;
+-    ULONG64 vintr = VcpuData->Vmcb->ControlArea.VIntr;
+-    ULONG interceptMisc1 = VcpuData->Vmcb->ControlArea.InterceptMisc1;
+-    BOOLEAN reinject = FALSE;
+-
+-    rflags &= ~NPT_GUEST_RFLAGS_TF;
+-    if (GuestTfWasSet) {
+-        rflags |= NPT_GUEST_RFLAGS_TF;
+-        reinject = TRUE;
+-    }
+-    VcpuData->Vmcb->StateSaveArea.Rflags = rflags;
+-
+-    if ((SavedSvmInterruptState & NPT_SVM_SAVED_VINTR_MASKING) == 0) {
+-        /* Publish any guest CR8 change made while V_INTR_MASKING redirected
+-         * CR8 to V_TPR, then restore the previously dormant V_TPR bits. */
+-        __writecr8(vintr & NPT_SVM_VTPR_MASK);
+-        vintr &= ~(NPT_SVM_VINTR_MASKING_MASK | NPT_SVM_VTPR_MASK);
+-        vintr |= SavedSvmInterruptState & NPT_SVM_VTPR_MASK;
+-    } else {
+-        vintr |= NPT_SVM_VINTR_MASKING_MASK;
+-    }
+-    VcpuData->Vmcb->ControlArea.VIntr = vintr;
+-
+-    interceptMisc1 &=
+-        ~(ULONG)(SVM_INTERCEPT_INTR | SVM_INTERCEPT_NMI);
+-    if ((SavedSvmInterruptState & NPT_SVM_SAVED_INTR_INTERCEPT) != 0) {
+-        interceptMisc1 |= (ULONG)SVM_INTERCEPT_INTR;
+-    }
+-    if ((SavedSvmInterruptState & NPT_SVM_SAVED_NMI_INTERCEPT) != 0) {
+-        interceptMisc1 |= (ULONG)SVM_INTERCEPT_NMI;
+-    }
+-    VcpuData->Vmcb->ControlArea.InterceptMisc1 = interceptMisc1;
+-    VcpuData->Vmcb->ControlArea.InterceptExceptions =
+-        SavedExceptionIntercepts;
+-    VcpuData->Vmcb->ControlArea.VmcbCleanBits = 0;
+-
+-    if ((VcpuData->Vmcb->StateSaveArea.Dr6 &
+-         NPT_DR6_NON_SYNTHETIC_CAUSE_MASK) != 0) {
+-        reinject = TRUE;
+-    }
+-    KeMemoryBarrier();
+-    (void)InterlockedCompareExchange(
+-        &VcpuData->SvmSingleStepBlockInterrupts,
+-        NPT_SVM_STEP_OWNER_NONE,
+-        Owner);
+-    return reinject;
+-}
+ 
+ #define NPT_HOOK_ROOT_ACQUIRE_RETRIES 8
+ #define NPT_HOOK_DRAIN_RETRIES        200
+ 
+ static BOOLEAN
+@@
+     }
+ 
+     NPT_PTE trap;
+     trap.Value = match->OriginalPteValue[cpu];
+     trap.NoExecute = 1;
+-    if (!NptHookpArmGuestSingleStepState(
+-            VcpuData,
+-            NPT_SVM_STEP_OWNER_DEBUG,
+-            &stepCpu->GuestTfWasSet,
+-            &stepCpu->SavedSvmInterruptState,
+-            &stepCpu->SavedExceptionIntercepts)) {
+-        if (deliver) {
+-            (void)InterlockedCompareExchange(
+-                &match->State,
+-                NPT_DEBUG_STEP_ARMED,
+-                NPT_DEBUG_STEP_COMPLETING);
+-        }
+-        InterlockedExchange(&stepCpu->Active, 0);
+-        return FALSE;
+-    }
+     stepCpu->Deliver = deliver;
++    stepCpu->GuestTfWasSet =
++        (VcpuData->Vmcb->StateSaveArea.Rflags & 0x100ULL) != 0;
++    stepCpu->DbInterceptWasSet =
++        (VcpuData->Vmcb->ControlArea.InterceptExceptions & (1ULL << 1)) != 0;
+     stepCpu->TargetPte = match->TargetPte[cpu];
+     stepCpu->TrapPteValue = trap.Value;
+     stepCpu->Entry = deliver ? match : NULL;
+     KeMemoryBarrier();
+ 
+     InterlockedExchange64(
+         (volatile LONG64*)&match->TargetPte[cpu]->Value,
+         (LONG64)match->OriginalPteValue[cpu]);
++    VcpuData->Vmcb->StateSaveArea.Rflags |= 0x100ULL;
++    VcpuData->Vmcb->ControlArea.InterceptExceptions |= (1ULL << 1);
+     VcpuData->Vmcb->ControlArea.TlbControl = SVM_TLB_CONTROL_FLUSH_GUEST;
+     return TRUE;
+ }
+ 
+ ULONG NptHookHandleDebugStepDb(
+@@
+     if (stepCpu->TargetPte) {
+         InterlockedExchange64(
+             (volatile LONG64*)&stepCpu->TargetPte->Value,
+             (LONG64)stepCpu->TrapPteValue);
+     }
+-    reinject = NptHookpRestoreGuestSingleStepState(
+-        VcpuData,
+-        NPT_SVM_STEP_OWNER_DEBUG,
+-        stepCpu->GuestTfWasSet,
+-        stepCpu->SavedSvmInterruptState,
+-        stepCpu->SavedExceptionIntercepts);
++    if (stepCpu->GuestTfWasSet) {
++        VcpuData->Vmcb->StateSaveArea.Rflags |= 0x100ULL;
++    } else {
++        VcpuData->Vmcb->StateSaveArea.Rflags &= ~0x100ULL;
++    }
++    if (stepCpu->DbInterceptWasSet) {
++        VcpuData->Vmcb->ControlArea.InterceptExceptions |= (1ULL << 1);
++    } else {
++        VcpuData->Vmcb->ControlArea.InterceptExceptions &= ~(1ULL << 1);
++    }
+     VcpuData->Vmcb->ControlArea.TlbControl = SVM_TLB_CONTROL_FLUSH_GUEST;
+ 
+-    reinject = stepCpu->Deliver || reinject;
++    reinject = stepCpu->Deliver || stepCpu->GuestTfWasSet ||
++        ((VcpuData->Vmcb->StateSaveArea.Dr6 & 0xB00FULL) != 0);
+     if (stepCpu->Deliver && stepCpu->Entry) {
+         (void)InterlockedCompareExchange(
+             &stepCpu->Entry->State,
+             NPT_DEBUG_STEP_COMPLETED,
+             NPT_DEBUG_STEP_COMPLETING);
+     }
+     if (!reinject) {
+-        VcpuData->Vmcb->StateSaveArea.Dr6 &= ~NPT_DR6_BS_MASK;
++        VcpuData->Vmcb->StateSaveArea.Dr6 &= ~(1ULL << 14);
+     }
+ 
+     stepCpu->Deliver = FALSE;
+     stepCpu->GuestTfWasSet = FALSE;
+-    stepCpu->SavedSvmInterruptState = 0;
+-    stepCpu->SavedExceptionIntercepts = 0;
++    stepCpu->DbInterceptWasSet = FALSE;
+     stepCpu->TargetPte = NULL;
+     stepCpu->TrapPteValue = 0;
+     stepCpu->Entry = NULL;
+     KeMemoryBarrier();
+     InterlockedExchange(&stepCpu->Active, 0);
+     return reinject
+         ? NPT_DEBUG_STEP_DB_REINJECT
+         : NPT_DEBUG_STEP_DB_CONSUME;
+-}
+-
+-static BOOLEAN
+-NptHookpAbortDebugSingleStep(
+-    _In_ PVCPU_DATA VcpuData)
+-{
+-    ULONG cpu;
+-    PNPT_DEBUG_STEP_CPU stepCpu;
+-
+-    if (!VcpuData || !VcpuData->Vmcb || VcpuData->ProcessorNumber >= 64) {
+-        return FALSE;
+-    }
+-
+-    cpu = VcpuData->ProcessorNumber;
+-    stepCpu = &g_NptDebugStepCpu[cpu];
+-    if (InterlockedCompareExchange(&stepCpu->Active, 2, 1) != 1) {
+-        return FALSE;
+-    }
+-    KeMemoryBarrier();
+-
+-    if (stepCpu->TargetPte) {
+-        InterlockedExchange64(
+-            (volatile LONG64*)&stepCpu->TargetPte->Value,
+-            (LONG64)stepCpu->TrapPteValue);
+-    }
+-    (void)NptHookpRestoreGuestSingleStepState(
+-        VcpuData,
+-        NPT_SVM_STEP_OWNER_DEBUG,
+-        stepCpu->GuestTfWasSet,
+-        stepCpu->SavedSvmInterruptState,
+-        stepCpu->SavedExceptionIntercepts);
+-    VcpuData->Vmcb->ControlArea.TlbControl = SVM_TLB_CONTROL_FLUSH_GUEST;
+-
+-    if (stepCpu->Deliver && stepCpu->Entry) {
+-        (void)InterlockedCompareExchange(
+-            &stepCpu->Entry->State,
+-            NPT_DEBUG_STEP_ARMED,
+-            NPT_DEBUG_STEP_COMPLETING);
+-    }
+-
+-    stepCpu->Deliver = FALSE;
+-    stepCpu->GuestTfWasSet = FALSE;
+-    stepCpu->SavedSvmInterruptState = 0;
+-    stepCpu->SavedExceptionIntercepts = 0;
+-    stepCpu->TargetPte = NULL;
+-    stepCpu->TrapPteValue = 0;
+-    stepCpu->Entry = NULL;
+-    KeMemoryBarrier();
+-    InterlockedExchange(&stepCpu->Active, 0);
+-    return TRUE;
+-}
+-
+-BOOLEAN NptHookSvmTerminationReady(
+-    _In_ PVCPU_DATA VcpuData)
+-{
+-    ULONG cpu;
+-
+-    if (!VcpuData || !VcpuData->Vmcb || VcpuData->ProcessorNumber >= 64) {
+-        return TRUE;
+-    }
+-
+-    cpu = VcpuData->ProcessorNumber;
+-    if (InterlockedCompareExchange(
+-            &VcpuData->SvmSingleStepBlockInterrupts,
+-            NPT_SVM_STEP_OWNER_NONE,
+-            NPT_SVM_STEP_OWNER_NONE) != NPT_SVM_STEP_OWNER_NONE) {
+-        return FALSE;
+-    }
+-    if (InterlockedCompareExchange(
+-            &g_NptDebugStepCpu[cpu].Active,
+-            0,
+-            0) != 0) {
+-        return FALSE;
+-    }
+-
+-    return InterlockedCompareExchange(
+-        &g_NptHookManager.StepContext[cpu].StepActive,
+-        0,
+-        0) == 0;
+ }
+ 
+ // ============================================================
+ // Hook 安装
+ // ============================================================
+@@
+     if (!VcpuData || !VcpuData->Vmcb || !StepContext || !PageOwner) {
+         return FALSE;
+     }
+ 
+     if (InterlockedCompareExchange(&StepContext->StepActive, 0, 0) != 0) {
+-        if (InterlockedCompareExchange(
+-                &VcpuData->SvmSingleStepBlockInterrupts,
+-                NPT_SVM_STEP_OWNER_NONE,
+-                NPT_SVM_STEP_OWNER_NONE) != NPT_SVM_STEP_OWNER_HOOK) {
+-            return FALSE;
+-        }
+         return NptHookpAppendPendingPage(StepContext, PageOwner);
+     }
+ 
+     StepContext->PendingPageCount = 0;
++    StepContext->GuestTfWasSet =
++        (VcpuData->Vmcb->StateSaveArea.Rflags & 0x100ULL) != 0;
++    StepContext->DbInterceptWasSet =
++        (VcpuData->Vmcb->ControlArea.InterceptExceptions & (1ULL << 1)) != 0;
+     if (!NptHookpAppendPendingPage(StepContext, PageOwner)) {
+         return FALSE;
+     }
+ 
+-    if (!NptHookpArmGuestSingleStepState(
+-            VcpuData,
+-            NPT_SVM_STEP_OWNER_HOOK,
+-            &StepContext->GuestTfWasSet,
+-            &StepContext->SavedSvmInterruptState,
+-            &StepContext->SavedExceptionIntercepts)) {
+-        StepContext->PendingPages[0] = NULL;
+-        StepContext->PendingPageCount = 0;
+-        return FALSE;
+-    }
++    VcpuData->Vmcb->StateSaveArea.Rflags |= 0x100ULL;
++    VcpuData->Vmcb->ControlArea.InterceptExceptions |= (1ULL << 1);
+     MemoryBarrier();
+     InterlockedExchange(&StepContext->StepActive, 1);
+     return TRUE;
+ }
+ 
+@@
+ static BOOLEAN
+ NptHookpRestoreGuestDebugState(
+     _In_ PVCPU_DATA VcpuData,
+     _In_ PNPT_STEP_CONTEXT StepContext)
+ {
++    BOOLEAN reinject = FALSE;
++
+     if (!VcpuData || !VcpuData->Vmcb || !StepContext) {
+         return FALSE;
+     }
+ 
+-    return NptHookpRestoreGuestSingleStepState(
+-        VcpuData,
+-        NPT_SVM_STEP_OWNER_HOOK,
+-        StepContext->GuestTfWasSet,
+-        StepContext->SavedSvmInterruptState,
+-        StepContext->SavedExceptionIntercepts);
++    if (StepContext->GuestTfWasSet) {
++        VcpuData->Vmcb->StateSaveArea.Rflags |= 0x100ULL;
++        reinject = TRUE;
++    } else {
++        VcpuData->Vmcb->StateSaveArea.Rflags &= ~0x100ULL;
++    }
++    if (StepContext->DbInterceptWasSet) {
++        VcpuData->Vmcb->ControlArea.InterceptExceptions |= (1ULL << 1);
++    } else {
++        VcpuData->Vmcb->ControlArea.InterceptExceptions &= ~(1ULL << 1);
++    }
++
++    /* Do not swallow a hardware-breakpoint/BD/BT event that coincided with
++     * our forced BS single step. */
++    if ((VcpuData->Vmcb->StateSaveArea.Dr6 & 0xB00FULL) != 0) {
++        reinject = TRUE;
++    }
++    return reinject;
+ }
+ 
+ BOOLEAN
+ NptHookHandleNpf(
+     _In_ PVCPU_DATA VcpuData,
+@@
+             NptSwitchToOriginalPage(VcpuData, pageOwner);
+         }
+     }
+ 
+     reinject = NptHookpRestoreGuestDebugState(VcpuData, stepCtx);
+-    if (!reinject) {
+-        VcpuData->Vmcb->StateSaveArea.Dr6 &= ~NPT_DR6_BS_MASK;
+-    }
+     for (i = 0;
+          i < stepCtx->PendingPageCount &&
+          i < RTL_NUMBER_OF(stepCtx->PendingPages);
+          ++i) {
+         stepCtx->PendingPages[i] = NULL;
+     }
+     stepCtx->PendingPageCount = 0;
+     stepCtx->GuestTfWasSet = FALSE;
+-    stepCtx->SavedSvmInterruptState = 0;
+-    stepCtx->SavedExceptionIntercepts = 0;
++    stepCtx->DbInterceptWasSet = FALSE;
+     MemoryBarrier();
+     InterlockedExchange(&stepCtx->StepActive, 0);
+     return reinject ? FALSE : TRUE;
+-}
+-
+-BOOLEAN
+-NptHookAbortSvmSingleStep(
+-    _In_ PVCPU_DATA VcpuData)
+-{
+-    LONG owner;
+-    ULONG cpuIndex;
+-    ULONG i;
+-    PNPT_STEP_CONTEXT stepCtx;
+-
+-    if (!VcpuData || !VcpuData->Vmcb || VcpuData->ProcessorNumber >= 64) {
+-        return FALSE;
+-    }
+-
+-    owner = InterlockedCompareExchange(
+-        &VcpuData->SvmSingleStepBlockInterrupts,
+-        NPT_SVM_STEP_OWNER_NONE,
+-        NPT_SVM_STEP_OWNER_NONE);
+-    if (owner == NPT_SVM_STEP_OWNER_DEBUG) {
+-        return NptHookpAbortDebugSingleStep(VcpuData);
+-    }
+-    if (owner != NPT_SVM_STEP_OWNER_HOOK) {
+-        return FALSE;
+-    }
+-
+-    cpuIndex = VcpuData->ProcessorNumber;
+-    stepCtx = &g_NptHookManager.StepContext[cpuIndex];
+-    if (InterlockedCompareExchange(&stepCtx->StepActive, 2, 1) != 1) {
+-        return FALSE;
+-    }
+-    KeMemoryBarrier();
+-
+-    for (i = 0;
+-         i < stepCtx->PendingPageCount &&
+-         i < RTL_NUMBER_OF(stepCtx->PendingPages);
+-         ++i) {
+-        PNPT_HOOK_PAGE pageOwner = stepCtx->PendingPages[i];
+-        if (pageOwner && pageOwner->State == NptHookStateActive) {
+-            NptSwitchToOriginalPage(VcpuData, pageOwner);
+-        }
+-    }
+-
+-    (void)NptHookpRestoreGuestDebugState(VcpuData, stepCtx);
+-    VcpuData->Vmcb->ControlArea.TlbControl = SVM_TLB_CONTROL_FLUSH_GUEST;
+-
+-    for (i = 0;
+-         i < stepCtx->PendingPageCount &&
+-         i < RTL_NUMBER_OF(stepCtx->PendingPages);
+-         ++i) {
+-        stepCtx->PendingPages[i] = NULL;
+-    }
+-    stepCtx->PendingPageCount = 0;
+-    stepCtx->GuestTfWasSet = FALSE;
+-    stepCtx->SavedSvmInterruptState = 0;
+-    stepCtx->SavedExceptionIntercepts = 0;
+-    KeMemoryBarrier();
+-    InterlockedExchange(&stepCtx->StepActive, 0);
+-    return TRUE;
+ }
+ 
+ // ============================================================
+ // NPT 页切换
+ // ============================================================
+*** End Patch

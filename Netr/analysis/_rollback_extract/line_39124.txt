@@ -1,0 +1,33 @@
+@'
+from pathlib import Path
+path = Path(r"E:\project_learning\YuYuanVTDebug\Netr\DebuggerBridge\Bridge.cpp")
+text = path.read_text(encoding="utf-8", errors="replace")
+old = '''    if (result.Status != HV_BRIDGE_STATUS_SUCCESS) {
+        SetLastError(result.Status == HV_BRIDGE_STATUS_NOT_FOUND
+            ? ERROR_NOT_FOUND : ERROR_INVALID_PARAMETER);
+        return false;
+    }
+    return true;
+}
+
+enum class PrivateDbgkPollResult {'''
+new = '''    if (result.Status != HV_BRIDGE_STATUS_SUCCESS) {
+        // VT STEP completion is ring-only; there is no HitPending SWBP entry
+        // for Continue to consume. Treat NOT_FOUND as soft success for STEP.
+        if (event.Kind == HV_BRIDGE_PRIVATE_EVENT_STEP &&
+            result.Status == HV_BRIDGE_STATUS_NOT_FOUND) {
+            return true;
+        }
+        SetLastError(result.Status == HV_BRIDGE_STATUS_NOT_FOUND
+            ? ERROR_NOT_FOUND : ERROR_INVALID_PARAMETER);
+        return false;
+    }
+    return true;
+}
+
+enum class PrivateDbgkPollResult {'''
+if old not in text:
+    raise SystemExit("ContinuePrivateEvent status block not found")
+path.write_text(text.replace(old, new, 1), encoding="utf-8")
+print("ContinuePrivateEvent soft-ack OK")
+'@ | python -

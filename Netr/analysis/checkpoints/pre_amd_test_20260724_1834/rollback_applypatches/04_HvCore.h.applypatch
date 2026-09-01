@@ -1,0 +1,185 @@
+*** Begin Patch
+*** Update File: Netr/HvCore.h
+@@
+ // 每 CPU 回调
+ VOID HvStartOnProcessor(PVOID Context);
+ 
+ // Hypervisor 状态检查
+ BOOLEAN HvIsHypervisorRunning(VOID);
+-VOID HvLogInactiveDiagnostics(_In_z_ PCSTR Source, _In_ NTSTATUS Status);
+-
+-#define HV_SVM_STARTUP_DIAGNOSTIC_MAX_CPUS 64u
+-
+-typedef enum _HV_SVM_START_PHASE {
+-    HvSvmStartPhaseNone = 0,
+-    HvSvmStartPhaseAffinityRequested,
+-    HvSvmStartPhaseAffinityBound,
+-    HvSvmStartPhaseAffinityMismatch,
+-    HvSvmStartPhaseEntered,
+-    HvSvmStartPhaseEnableBegin,
+-    HvSvmStartPhaseSvmeEnabled,
+-    HvSvmStartPhaseHostSaveAllocated,
+-    HvSvmStartPhaseVmcbAllocated,
+-    HvSvmStartPhaseMsrpmAllocated,
+-    HvSvmStartPhaseExitStackAllocated,
+-    HvSvmStartPhaseNptBegin,
+-    HvSvmStartPhaseNptReady,
+-    HvSvmStartPhaseNptBypassed,
+-    HvSvmStartPhaseVmcbControlReady,
+-    HvSvmStartPhaseVmcbStateReady,
+-    HvSvmStartPhaseMsrpmConfigured,
+-    HvSvmStartPhaseVmcbReady,
+-    HvSvmStartPhaseLaunchValidation,
+-    HvSvmStartPhaseVmrunEntered,
+-    HvSvmStartPhaseGuestReturned,
+-    HvSvmStartPhaseVirtualized,
+-    HvSvmStartPhaseLaunchFailed,
+-    HvSvmStartPhaseException,
+-    HvSvmStartPhaseCleanup,
+-    HvSvmStartPhaseSkipped
+-} HV_SVM_START_PHASE;
+-
+-#define HV_SVM_START_FLAG_AFFINITY_REQUESTED 0x00000001u
+-#define HV_SVM_START_FLAG_AFFINITY_BOUND     0x00000002u
+-#define HV_SVM_START_FLAG_SVME_ENABLED       0x00000004u
+-#define HV_SVM_START_FLAG_HOSTSAVE_ALLOCATED 0x00000008u
+-#define HV_SVM_START_FLAG_VMCB_ALLOCATED     0x00000010u
+-#define HV_SVM_START_FLAG_MSRPM_ALLOCATED    0x00000020u
+-#define HV_SVM_START_FLAG_EXIT_STACK_ALLOCATED 0x00000040u
+-#define HV_SVM_START_FLAG_NPT_ATTEMPTED      0x00000080u
+-#define HV_SVM_START_FLAG_NPT_READY          0x00000100u
+-#define HV_SVM_START_FLAG_NPT_BYPASSED       0x00000200u
+-#define HV_SVM_START_FLAG_VMCB_READY         0x00000400u
+-#define HV_SVM_START_FLAG_LAUNCH_VALIDATED   0x00000800u
+-#define HV_SVM_START_FLAG_VMRUN_ENTERED      0x00001000u
+-#define HV_SVM_START_FLAG_GUEST_RETURNED     0x00002000u
+-#define HV_SVM_START_FLAG_VIRTUALIZED        0x00004000u
+-#define HV_SVM_START_FLAG_CLEANUP            0x00008000u
+-
+-#define HV_SVM_LAUNCH_INVALID_VMCB           0x00000001u
+-#define HV_SVM_LAUNCH_INVALID_HOST_SAVE      0x00000002u
+-#define HV_SVM_LAUNCH_INVALID_MSRPM          0x00000004u
+-#define HV_SVM_LAUNCH_INVALID_EXIT_STACK     0x00000008u
+-#define HV_SVM_LAUNCH_INVALID_PHYSICAL       0x00000010u
+-#define HV_SVM_LAUNCH_INVALID_ALIGNMENT      0x00000020u
+-#define HV_SVM_LAUNCH_INVALID_ASID           0x00000040u
+-#define HV_SVM_LAUNCH_INVALID_INTERCEPT1     0x00000080u
+-#define HV_SVM_LAUNCH_INVALID_INTERCEPT2     0x00000100u
+-#define HV_SVM_LAUNCH_INVALID_INTERCEPT3     0x00000200u
+-#define HV_SVM_LAUNCH_INVALID_VINTR          0x00000400u
+-#define HV_SVM_LAUNCH_INVALID_CS              0x00000800u
+-#define HV_SVM_LAUNCH_INVALID_SS              0x00001000u
+-#define HV_SVM_LAUNCH_INVALID_TR              0x00002000u
+-#define HV_SVM_LAUNCH_INVALID_NPT             0x00004000u
+-
+-#define HV_SVM_SS_DIAG_LONG_MODE              0x00000001u
+-#define HV_SVM_SS_DIAG_NULL_SELECTOR           0x00000002u
+-#define HV_SVM_SS_DIAG_SOURCE_UNUSABLE         0x00000004u
+-#define HV_SVM_SS_DIAG_VMCB_PRESENT            0x00000008u
+-#define HV_SVM_SS_DIAG_LONG_MODE_ALLOWED       0x00000010u
+-
+-#pragma pack(push, 1)
+-typedef struct _HV_SVM_CPU_STARTUP_DIAGNOSTIC {
+-    ULONG RequestedProcessor;
+-    ULONG ActualProcessor;
+-    ULONG LastPhase;
+-    NTSTATUS LastStatus;
+-    ULONG FailurePhase;
+-    NTSTATUS FailureStatus;
+-    ULONG ExceptionCode;
+-    ULONG Flags;
+-    ULONG LaunchValidationMask;
+-    ULONG Reserved;
+-    ULONG64 Efer;
+-    ULONG64 VmCr;
+-    ULONG64 HostSavePa;
+-    ULONG64 VmcbPa;
+-    ULONG64 MsrpmPa;
+-    ULONG64 Ncr3;
+-    ULONG64 VmcbExitCode;
+-    ULONG64 AsmDebugFlag;
+-    ULONG SsSelector;
+-    ULONG SsAccessRights;
+-    ULONG SsVmcbAttributes;
+-    ULONG SsFlags;
+-} HV_SVM_CPU_STARTUP_DIAGNOSTIC, *PHV_SVM_CPU_STARTUP_DIAGNOSTIC;
+-
+-typedef struct _HV_INACTIVE_DIAGNOSTICS {
+-    ULONG Version;
+-    ULONG Size;
+-    NTSTATUS Status;
+-    ULONG HealthProbeReason;
+-    ULONG64 HealthProbeResult;
+-    NTSTATUS HealthProbeException;
+-    ULONG CpuVendor;
+-    ULONG CurrentProcessor;
+-    ULONG ProcessorCount;
+-    ULONG VirtualizedCount;
+-    UCHAR GlobalActive;
+-    UCHAR PowerOffline;
+-    UCHAR CurrentProcessorVirtualized;
+-    UCHAR HypervisorPresent;
+-    ULONG Cpuid1Ecx;
+-    ULONG MaximumExtendedLeaf;
+-    ULONG SvmFeaturesEcx;
+-    ULONG SvmRevision;
+-    ULONG SvmMaxAsid;
+-    ULONG SvmFeaturesEdx;
+-    ULONG64 Efer;
+-    ULONG64 VmCr;
+-    ULONG64 HostSavePa;
+-    NTSTATUS AmdMsrStatus;
+-    ULONG Reserved;
+-    ULONG64 SvmDebugFlag;
+-    ULONG64 SvmExitCounter;
+-    ULONG64 SvmLastExitCode;
+-    ULONG SvmStartupRecordCount;
+-    ULONG SvmStartupAttemptedCount;
+-    ULONG SvmStartupReadyCount;
+-    ULONG SvmStartupFirstFailureCpu;
+-    ULONG SvmStartupFirstFailurePhase;
+-    NTSTATUS SvmStartupFirstFailureStatus;
+-    ULONG SvmStartupFirstFailureException;
+-    ULONG SvmStartupReserved;
+-    HV_SVM_CPU_STARTUP_DIAGNOSTIC SvmStartup[HV_SVM_STARTUP_DIAGNOSTIC_MAX_CPUS];
+-} HV_INACTIVE_DIAGNOSTICS, *PHV_INACTIVE_DIAGNOSTICS;
+-#pragma pack(pop)
+-
+-C_ASSERT(sizeof(HV_SVM_CPU_STARTUP_DIAGNOSTIC) == 120);
+-C_ASSERT(sizeof(HV_INACTIVE_DIAGNOSTICS) == 7840);
+-VOID HvGetInactiveDiagnostics(_Out_ PHV_INACTIVE_DIAGNOSTICS Diagnostics);
+-VOID HvSvmStartupDiagnosticsReset(_In_ ULONG ProcessorCount);
+-VOID HvSvmStartupRecord(
+-    _In_ ULONG RequestedProcessor,
+-    _In_ ULONG ActualProcessor,
+-    _In_ HV_SVM_START_PHASE Phase,
+-    _In_ NTSTATUS Status,
+-    _In_ BOOLEAN Fatal);
+-VOID HvSvmStartupRecordVcpu(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ HV_SVM_START_PHASE Phase,
+-    _In_ NTSTATUS Status,
+-    _In_ BOOLEAN Fatal);
+-VOID HvSvmStartupRecordMsrs(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG64 Efer,
+-    _In_ ULONG64 VmCr);
+-VOID HvSvmStartupRecordLaunchValidation(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG ValidationMask);
+-VOID HvSvmStartupRecordSsState(
+-    _In_ PVCPU_DATA VcpuData,
+-    _In_ ULONG SsSelector,
+-    _In_ ULONG SsAccessRights,
+-    _In_ ULONG SsVmcbAttributes,
+-    _In_ ULONG SsFlags);
+-VOID HvSvmStartupRecordException(
+-    _In_ ULONG RequestedProcessor,
+-    _In_ ULONG ActualProcessor,
+-    _In_ NTSTATUS ExceptionCode);
+ BOOLEAN HvIsCurrentProcessorVirtualized(VOID);
+ BOOLEAN HvAreAllProcessorsVirtualized(VOID);
+ BOOLEAN HvIsPowerOffline(VOID);
+ VOID HvMarkPowerOffline(VOID);
+ VOID HvClearPowerOffline(VOID);
+*** End Patch

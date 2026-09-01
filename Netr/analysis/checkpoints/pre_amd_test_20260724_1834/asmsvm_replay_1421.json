@@ -1,0 +1,16 @@
+{
+  "start": "2026-07-23T14:21:20.595Z",
+  "end": "2026-07-23T14:21:20.595Z",
+  "only_file": "Netr/AsmSvm.asm",
+  "candidate_calls": 1,
+  "applied_product_calls": 1,
+  "changed_operations": 1,
+  "changed_files": [
+    "Netr/AsmSvm.asm"
+  ],
+  "skipped_failed_calls": [],
+  "skipped_dynamic_analysis_calls": [],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": []
+}

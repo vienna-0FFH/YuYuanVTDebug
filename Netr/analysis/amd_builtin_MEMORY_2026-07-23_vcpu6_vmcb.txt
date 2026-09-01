@@ -1,0 +1,274 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-23_vcpu6_vmcb.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.015 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             C:\ProgramData\Dbg\sym
+OK                                             E:\Symbols
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;C:\ProgramData\Dbg\sym;E:\Symbols
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff803`ee200000 PsLoadedModuleList = 0xfffff803`ef0f5350
+Debug session time: Thu Jul 23 23:07:14.205 2026 (UTC + 8:00)
+System Uptime: 0 days 0:01:53.937
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+....................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 0000002f`0e979018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+7: kd> .reload /f GuardMetaCore.sys
+7: kd> .echo === VMCB6_CONTROL ===
+=== VMCB6_CONTROL ===
+7: kd> dt GuardMetaCore!_VMCB_CONTROL_AREA ffff80818591a000
+   +0x000 InterceptCrRead  : 0
+   +0x002 InterceptCrWrite : 0
+   +0x004 InterceptDrRead  : 0
+   +0x006 InterceptDrWrite : 0
+   +0x008 InterceptExceptions : 2
+   +0x00c InterceptMisc1   : 0x90040001
+   +0x010 InterceptMisc2   : 0x203f
+   +0x014 InterceptMisc3   : 0
+   +0x018 Reserved1        : [36]  ""
+   +0x03c PauseFilterThreshold : 0
+   +0x03e PauseFilterCount : 0
+   +0x040 IopmBasePa       : 0
+   +0x048 MsrpmBasePa      : 0x00000006`1264b000
+   +0x050 TscOffset        : 0
+   +0x058 GuestAsid        : 7
+   +0x05c TlbControl       : 3
+   +0x060 VIntr            : 0x1000000
+   +0x068 InterruptShadow  : 0
+   +0x070 ExitCode         : 0x400
+   +0x078 ExitInfo1        : 0x00000001`00000015
+   +0x080 ExitInfo2        : 0x00000001`129b7000
+   +0x088 ExitIntInfo      : 0
+   +0x090 NpEnable         : 1
+   +0x098 AvicApicBar      : 0
+   +0x0a0 GhcbPa           : 0
+   +0x0a8 EventInj         : 0
+   +0x0b0 NCr3             : 0x00000006`11237000
+   +0x0b8 LbrVirtualizationEnable : 0
+   +0x0c0 VmcbCleanBits    : 0
+   +0x0c8 NRip             : 0
+   +0x0d0 NumOfBytesFetched : 0 ''
+   +0x0d1 GuestInstructionBytes : [15]  ""
+   +0x0e0 AvicApicBackingPagePtr : 0
+   +0x0e8 Reserved3        : 0
+   +0x0f0 AvicLogicalTablePtr : 0
+   +0x0f8 AvicPhysicalTablePtr : 0
+   +0x100 Reserved4        : [768]  ""
+7: kd> .echo === VMCB6_STATE ===
+=== VMCB6_STATE ===
+7: kd> dt GuardMetaCore!_VMCB_STATE_SAVE_AREA ffff80818591a400
+   +0x000 Es               : _SVM_SEGMENT_REGISTER
+   +0x010 Cs               : _SVM_SEGMENT_REGISTER
+   +0x020 Ss               : _SVM_SEGMENT_REGISTER
+   +0x030 Ds               : _SVM_SEGMENT_REGISTER
+   +0x040 Fs               : _SVM_SEGMENT_REGISTER
+   +0x050 Gs               : _SVM_SEGMENT_REGISTER
+   +0x060 Gdtr             : _SVM_SEGMENT_REGISTER
+   +0x070 Ldtr             : _SVM_SEGMENT_REGISTER
+   +0x080 Idtr             : _SVM_SEGMENT_REGISTER
+   +0x090 Tr               : _SVM_SEGMENT_REGISTER
+   +0x0a0 Reserved1        : [43]  ""
+   +0x0cb Cpl              : 0 ''
+   +0x0cc Reserved2        : [4]  ""
+   +0x0d0 Efer             : 0x5d01
+   +0x0d8 Reserved3        : [112]  ""
+   +0x148 Cr4              : 0xb50ef8
+   +0x150 Cr3              : 0x00000001`c1401000
+   +0x158 Cr0              : 0x80050031
+   +0x160 Dr7              : 0x400
+   +0x168 Dr6              : 0xffff0ff0
+   +0x170 Rflags           : 0x40386
+   +0x178 Rip              : 0xfffff803`c0d768aa
+   +0x180 Reserved4        : [88]  ""
+   +0x1d8 Rsp              : 0xffffec89`56330c10
+   +0x1e0 SCet             : 0
+   +0x1e8 Ssp              : 0x000000ca`b71fef60
+   +0x1f0 IsstAddr         : 0
+   +0x1f8 Rax              : 0xfffff803`ee23ac30
+   +0x200 Star             : 0x00230010`00000000
+   +0x208 LStar            : 0xfffff803`ee8bed40
+   +0x210 CStar            : 0xfffff803`ee8be800
+   +0x218 SfMask           : 0x4700
+   +0x220 KernelGsBase     : 0x0000003f`8a480000
+   +0x228 SysenterCs       : 0
+   +0x230 SysenterEsp      : 0
+   +0x238 SysenterEip      : 0
+   +0x240 Cr2              : 0x0000003f`829edc58
+   +0x248 Reserved6        : [32]  ""
+   +0x268 GPat             : 0x00070106`00070106
+   +0x270 DbgCtl           : 0
+   +0x278 BrFrom           : 0
+   +0x280 BrTo             : 0
+   +0x288 LastExcepFrom    : 0
+   +0x290 LastExcepTo      : 0
+   +0x298 Reserved7        : [2408]  ""
+7: kd> .echo === VMCB6_RAW_CONTROL ===
+=== VMCB6_RAW_CONTROL ===
+7: kd> dd ffff80818591a000 L8
+ffff8081`8591a000  00000000 00000000 00000002 90040001
+ffff8081`8591a010  0000203f 00000000 00000000 00000000
+7: kd> dq ffff80818591a050 L20
+ffff8081`8591a050  00000000`00000000 00000003`00000007
+ffff8081`8591a060  00000000`01000000 00000000`00000000
+ffff8081`8591a070  00000000`00000400 00000001`00000015
+ffff8081`8591a080  00000001`129b7000 00000000`00000000
+ffff8081`8591a090  00000000`00000001 00000000`00000000
+ffff8081`8591a0a0  00000000`00000000 00000000`00000000
+ffff8081`8591a0b0  00000006`11237000 00000000`00000000
+ffff8081`8591a0c0  00000000`00000000 00000000`00000000
+ffff8081`8591a0d0  00000000`00000000 00000000`00000000
+ffff8081`8591a0e0  00000000`00000000 00000000`00000000
+ffff8081`8591a0f0  00000000`00000000 00000000`00000000
+ffff8081`8591a100  00000000`00000000 00000000`00000000
+ffff8081`8591a110  00000000`00000000 00000000`00000000
+ffff8081`8591a120  00000000`00000000 00000000`00000000
+ffff8081`8591a130  00000000`00000000 00000000`00000000
+ffff8081`8591a140  00000000`00000000 00000000`00000000
+7: kd> .echo === VMCB6_RAW_STATE ===
+=== VMCB6_RAW_STATE ===
+7: kd> dq ffff80818591a548 L28
+ffff8081`8591a548  00000000`00b50ef8 00000001`c1401000
+ffff8081`8591a558  00000000`80050031 00000000`00000400
+ffff8081`8591a568  00000000`ffff0ff0 00000000`00040386
+ffff8081`8591a578  fffff803`c0d768aa 00000000`00000000
+ffff8081`8591a588  00000000`00000000 00000000`00000000
+ffff8081`8591a598  00000000`00000000 00000000`00000000
+ffff8081`8591a5a8  00000000`00000000 00000000`00000000
+ffff8081`8591a5b8  00000000`00000000 00000000`00000000
+ffff8081`8591a5c8  00000000`00000000 00000000`00000000
+ffff8081`8591a5d8  ffffec89`56330c10 00000000`00000000
+ffff8081`8591a5e8  000000ca`b71fef60 00000000`00000000
+ffff8081`8591a5f8  fffff803`ee23ac30 00230010`00000000
+ffff8081`8591a608  fffff803`ee8bed40 fffff803`ee8be800
+ffff8081`8591a618  00000000`00004700 0000003f`8a480000
+ffff8081`8591a628  00000000`00000000 00000000`00000000
+ffff8081`8591a638  00000000`00000000 0000003f`829edc58
+ffff8081`8591a648  00000000`00000000 00000000`00000000
+ffff8081`8591a658  00000000`00000000 00000000`00000000
+ffff8081`8591a668  00070106`00070106 00000000`00000000
+ffff8081`8591a678  00000000`00000000 00000000`00000000
+7: kd> .echo === STEP_TYPES ===
+=== STEP_TYPES ===
+7: kd> ?? sizeof(GuardMetaCore!_NPT_STEP_CONTEXT)
+unsigned int64 0x210
+7: kd> dt GuardMetaCore!_NPT_STEP_CONTEXT
+   +0x000 StepActive       : Int4B
+   +0x004 PendingPageCount : Uint4B
+   +0x008 PendingPages     : [64] Ptr64 _NPT_HOOK_PAGE
+   +0x208 GuestTfWasSet    : UChar
+   +0x209 SavedSvmInterruptState : UChar
+   +0x20a DbInterceptWasSet : UChar
+7: kd> ?? sizeof(GuardMetaCore!_NPT_HOOK_MANAGER)
+unsigned int64 0x84d0
+7: kd> dt GuardMetaCore!_NPT_HOOK_MANAGER
+   +0x000 HookList         : _LIST_ENTRY
+   +0x010 HookCount        : Uint4B
+   +0x018 RetiredHookList  : _LIST_ENTRY
+   +0x028 RetiredHookCount : Uint4B
+   +0x030 PageList         : _LIST_ENTRY
+   +0x040 PageCount        : Uint4B
+   +0x048 RetiredPageList  : _LIST_ENTRY
+   +0x058 RetiredPageCount : Uint4B
+   +0x060 Lock             : Uint8B
+   +0x068 MutationMutex    : _FAST_MUTEX
+   +0x0a0 RootEpoch        : Int4B
+   +0x0a4 RootReaders      : [2] Int4B
+   +0x0b0 TrampolinePool   : Ptr64 Void
+   +0x0b8 TrampolinePoolPhysical : Uint8B
+   +0x0c0 TrampolinePoolUsed : Uint4B
+   +0x0c8 StepContext      : [64] _NPT_STEP_CONTEXT
+   +0x84c8 Initialized      : UChar
+   +0x84c9 NxSupported      : UChar
+7: kd> .echo === MANAGER ===
+=== MANAGER ===
+7: kd> dt GuardMetaCore!_NPT_HOOK_MANAGER fffff803c1e22c90
+   +0x000 HookList         : _LIST_ENTRY [ 0xffffd687`2117f300 - 0xffffd687`21195680 ]
+   +0x010 HookCount        : 0x19
+   +0x018 RetiredHookList  : _LIST_ENTRY [ 0xfffff803`c1e22ca8 - 0xfffff803`c1e22ca8 ]
+   +0x028 RetiredHookCount : 0
+   +0x030 PageList         : _LIST_ENTRY [ 0xffffd687`206ae660 - 0xffffd687`21a54560 ]
+   +0x040 PageCount        : 0x17
+   +0x048 RetiredPageList  : _LIST_ENTRY [ 0xfffff803`c1e22cd8 - 0xfffff803`c1e22cd8 ]
+   +0x058 RetiredPageCount : 0
+   +0x060 Lock             : 0
+   +0x068 MutationMutex    : _FAST_MUTEX
+   +0x0a0 RootEpoch        : 0n0
+   +0x0a4 RootReaders      : [2] 0n0
+   +0x0b0 TrampolinePool   : 0xffffd687`062f1000 Void
+   +0x0b8 TrampolinePoolPhysical : 0x00000006`175cc000
+   +0x0c0 TrampolinePoolUsed : 0x380
+   +0x0c8 StepContext      : [64] _NPT_STEP_CONTEXT
+   +0x84c8 Initialized      : 0x1 ''
+   +0x84c9 NxSupported      : 0x1 ''
+7: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

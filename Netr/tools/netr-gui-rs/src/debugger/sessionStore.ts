@@ -1,5 +1,12 @@
 import { create } from "zustand";
-import type { ThreadContextView, SwBreakpoint, ValueType, AnnotationsSnapshot } from "./ipc";
+import type {
+  AnnotationsSnapshot,
+  BuiltinAttachResult,
+  BuiltinDebuggerMode,
+  SwBreakpoint,
+  ThreadContextView,
+  ValueType,
+} from "./ipc";
 import { dbgIpc } from "./ipc";
 
 export interface WatchItem {
@@ -17,15 +24,15 @@ export interface WatchItem {
 }
 
 /** 主区子 tab — memview 永久挂载,这是其中显示的视图 */
-export type MainTab = "disasm" | "hex" | "regs" | "stack" | "bps";
+export type MainTab = "disasm" | "hex" | "bps";
 
 /** 底部停靠 tab — 不固定显示某一个,默认显示扫描器,可切到监视表 */
-export type BottomTab = "scanner" | "watches" | "log" | "ptrscan" | "script" | "modules" | "aob" | "globals" | "functions" | "strings" | "signatures";
+export type BottomTab = "scanner" | "watches" | "hex" | "log" | "ptrscan" | "script" | "modules" | "aob" | "globals" | "functions" | "strings" | "signatures";
 
 /** 右侧停靠 tab — 默认隐藏,打开后显示对应工具 */
-export type RightTab = "hwbp" | "callstack" | "dissect" | "ai" | "mcp" | null;
+export type RightTab = "regs" | "hwbp" | "callstack" | "dissect" | "ai" | "mcp" | null;
 
-/** 断点命中事件 — driver 上报后弹窗 + 自动 suspend + 跳转 RIP */
+/** 断点命中事件 — VT 命中由后端挂起真实线程；legacy 事件由前端挂起后跳转 RIP。 */
 export interface BreakHit {
   ts: number;
   tid: number;
@@ -44,14 +51,44 @@ export interface Bookmark {
   note: string;
 }
 
+export interface DebuggerCapabilities {
+  debuggerProtected: boolean;
+  vtMemory: boolean;
+  privateSwBp: boolean;
+  vtHwBp: boolean;
+  vtStep: boolean;
+  drFallback: boolean;
+}
+
+export type ActiveStepKind = "into" | "over" | "out" | "many";
+
+export interface ActiveStepExecution {
+  tid: number;
+  kind: ActiveStepKind;
+}
+
+export type DisasmNavigationMode = "force" | "reveal";
+
+export interface DisasmNavigationRequest {
+  address: bigint;
+  mode: DisasmNavigationMode;
+  sequence: number;
+}
+
 interface SessionState {
   pid: number | null;
   processName: string;
+  attachingPid: number | null;
+  debugMode: BuiltinDebuggerMode;
+  syntheticMtfStep: boolean;
+  capabilities: DebuggerCapabilities | null;
   selectedTid: number | null;
   ctx: ThreadContextView | null;
+  activeStep: ActiveStepExecution | null;
   bps: SwBreakpoint[];
   address: bigint;
   followAddress: bigint | null;
+  disasmNavigation: DisasmNavigationRequest;
 
   /** 用户监视表(CE 下方 Active Address List) */
   watches: WatchItem[];
@@ -60,6 +97,7 @@ interface SessionState {
   mainTab: MainTab;
   /** 当前底部停靠 tab */
   bottomTab: BottomTab;
+  bottomHexAddress: bigint;
   /** 底部是否折叠 */
   bottomCollapsed: boolean;
   /** 当前右侧停靠 tab(null = 不显示) */
@@ -78,16 +116,23 @@ interface SessionState {
   /** P93: 注解 (labels / comments / functions) — 从后端同步, 反汇编渲染时读 */
   annotations: AnnotationsSnapshot | null;
 
-  attach: (pid: number, name: string) => void;
+  setDebugMode: (mode: BuiltinDebuggerMode) => void;
+  setSyntheticMtfStep: (enabled: boolean) => void;
+  setAttachingPid: (pid: number | null) => void;
+  attach: (pid: number, name: string, result: BuiltinAttachResult) => void;
   detach: () => void;
   setSelectedTid: (tid: number | null) => void;
   setCtx: (ctx: ThreadContextView | null) => void;
+  setActiveStep: (execution: ActiveStepExecution | null) => void;
   setBps: (bps: SwBreakpoint[]) => void;
   setAddress: (a: bigint) => void;
+  requestDisasmNavigation: (a: bigint, mode?: DisasmNavigationMode) => void;
   setFollow: (a: bigint | null) => void;
 
   setMainTab: (t: MainTab) => void;
   setBottomTab: (t: BottomTab) => void;
+  setBottomHexAddress: (a: bigint) => void;
+  openBottomHexAt: (a: bigint) => void;
   setBottomCollapsed: (v: boolean) => void;
   setRightTab: (t: RightTab) => void;
 
@@ -130,14 +175,21 @@ const FRESH: Pick<
   SessionState,
   | "pid"
   | "processName"
+  | "attachingPid"
+  | "debugMode"
+  | "syntheticMtfStep"
+  | "capabilities"
   | "selectedTid"
   | "ctx"
+  | "activeStep"
   | "bps"
   | "address"
   | "followAddress"
+  | "disasmNavigation"
   | "watches"
   | "mainTab"
   | "bottomTab"
+  | "bottomHexAddress"
   | "bottomCollapsed"
   | "rightTab"
   | "lastHit"
@@ -150,14 +202,21 @@ const FRESH: Pick<
 > = {
   pid: null,
   processName: "",
+  attachingPid: null,
+  debugMode: "native",
+  syntheticMtfStep: true,
+  capabilities: null,
   selectedTid: null,
   ctx: null,
+  activeStep: null,
   bps: [],
   address: 0n,
   followAddress: null,
+  disasmNavigation: { address: 0n, mode: "reveal", sequence: 0 },
   watches: [],
   mainTab: "disasm",
   bottomTab: "scanner",
+  bottomHexAddress: 0n,
   bottomCollapsed: false,
   rightTab: null,
   lastHit: null,
@@ -172,21 +231,59 @@ const FRESH: Pick<
 export const useSession = create<SessionState>((set) => ({
   ...FRESH,
 
-  attach: (pid, name) =>
+  setDebugMode: (mode) => set((s) => (s.pid ? s : { debugMode: mode })),
+  setSyntheticMtfStep: (enabled) => set({ syntheticMtfStep: enabled }),
+  setAttachingPid: (pid) => set({ attachingPid: pid }),
+  attach: (pid, name, result) =>
     set({
-      ...FRESH,
       pid,
       processName: name,
+      attachingPid: null,
+      debugMode: result.mode,
+      capabilities: {
+        debuggerProtected: result.debugger_protected,
+        vtMemory: result.vt_memory,
+        privateSwBp: result.private_swbp,
+        vtHwBp: result.vt_hwbp,
+        vtStep: result.vt_step,
+        drFallback: result.dr_fallback,
+      },
+      selectedTid: null,
+      ctx: null,
+      activeStep: null,
+      bps: [],
+      followAddress: null,
+      lastHit: null,
     }),
-  detach: () => set({ ...FRESH }),
+  detach: () => set((state) => ({
+    ...FRESH,
+    debugMode: state.debugMode,
+    syntheticMtfStep: state.syntheticMtfStep,
+  })),
   setSelectedTid: (tid) => set({ selectedTid: tid }),
   setCtx: (ctx) => set({ ctx }),
+  setActiveStep: (execution) => set({ activeStep: execution }),
   setBps: (bps) => set({ bps }),
   setAddress: (a) => set({ address: a, followAddress: null }),
+  requestDisasmNavigation: (a, mode = "force") => set((state) => ({
+    address: a,
+    followAddress: null,
+    disasmNavigation: {
+      address: a,
+      mode,
+      sequence: state.disasmNavigation.sequence + 1,
+    },
+  })),
   setFollow: (a) => set({ followAddress: a }),
 
   setMainTab: (t) => set({ mainTab: t }),
-  setBottomTab: (t) => set({ bottomTab: t, bottomCollapsed: false }),
+  setBottomTab: (t) => set((s) => ({
+    bottomTab: t,
+    bottomCollapsed: false,
+    bottomHexAddress: t === "hex" && s.bottomHexAddress === 0n ? s.address : s.bottomHexAddress,
+  })),
+  setBottomHexAddress: (a) => set({ bottomHexAddress: a }),
+  openBottomHexAt: (a) => set({ bottomHexAddress: a, bottomTab: "hex", bottomCollapsed: false }),
   setBottomCollapsed: (v) => set({ bottomCollapsed: v }),
   setRightTab: (t) => set({ rightTab: t }),
 
@@ -234,3 +331,40 @@ export const useSession = create<SessionState>((set) => ({
     } catch { /* 忽略 */ }
   },
 }));
+
+export function beginStepExecution(tid: number, kind: ActiveStepKind): string | null {
+  const state = useSession.getState();
+  if (state.activeStep) {
+    return `线程 ${state.activeStep.tid} 的调试器步进仍在执行`;
+  }
+  state.setActiveStep({ tid, kind });
+  return null;
+}
+
+export function endStepExecution(tid: number, kind?: ActiveStepKind) {
+  const state = useSession.getState();
+  if (state.activeStep?.tid !== tid) return;
+  if (kind && state.activeStep.kind !== kind) return;
+  state.setActiveStep(null);
+}
+
+export async function cancelActiveRunExecution(
+  pid: number,
+  tid: number,
+  kind?: "over" | "out",
+): Promise<boolean> {
+  const execution = useSession.getState().activeStep;
+  if (
+    execution?.tid !== tid
+    || (execution.kind !== "over" && execution.kind !== "out")
+    || (kind && execution.kind !== kind)
+  ) {
+    return false;
+  }
+  try {
+    return await dbgIpc.cancelActiveRun(pid, tid);
+  } finally {
+    const state = useSession.getState();
+    if (state.activeStep === execution) state.setActiveStep(null);
+  }
+}

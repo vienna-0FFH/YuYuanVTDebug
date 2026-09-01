@@ -1,0 +1,72 @@
+diff --git a/Netr/HvTypes.h b/Netr/HvTypes.h
+--- a/Netr/HvTypes.h
++++ b/Netr/HvTypes.h
+@@ -1194,4 +1194,2 @@
+-    // Supervisor CET state (0x5E0 - 0x5F7)
+-    ULONG64 SCet;                       // +0x5E0
+-    ULONG64 Ssp;                        // +0x5E8
+-    ULONG64 IsstAddr;                   // +0x5F0
++    // 保留 (0x5E0 - 0x5F7)
++    UCHAR Reserved5[0x18];              // +0x5E0
+diff --git a/Netr/HvVmcb.c b/Netr/HvVmcb.c
+--- a/Netr/HvVmcb.c
++++ b/Netr/HvVmcb.c
+@@ -73,7 +73,4 @@
+ C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rflags) == 0x170);
+ C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rip) == 0x178);
+ C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rsp) == 0x1D8);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, SCet) == 0x1E0);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Ssp) == 0x1E8);
+-C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, IsstAddr) == 0x1F0);
+ C_ASSERT(FIELD_OFFSET(VMCB_STATE_SAVE_AREA, Rax) == 0x1F8);
+diff --git a/Netr/AsmSvm.asm b/Netr/AsmSvm.asm
+--- a/Netr/AsmSvm.asm
++++ b/Netr/AsmSvm.asm
+@@ -73,14 +73,9 @@
+ VMCB_STATE_RFLAGS       EQU 570h
+ VMCB_STATE_RIP          EQU 578h
+ VMCB_STATE_RSP          EQU 5D8h
+-VMCB_STATE_S_CET        EQU 5E0h
+-VMCB_STATE_SSP          EQU 5E8h
+-VMCB_STATE_ISST_ADDR    EQU 5F0h
+ VMCB_STATE_RAX          EQU 5F8h
+ VMCB_STATE_CR2          EQU 640h
+ 
+ SVM_EXIT_VMMCALL        EQU 081h
+ MSR_IA32_EFER           EQU 0C0000080h
+-MSR_IA32_S_CET          EQU 06A2h
+-MSR_IA32_INT_SSP_TABLE  EQU 06A8h
+ MSR_AMD_VM_HSAVE_PA     EQU 0C0010117h
+@@ -508,32 +508,5 @@
+     mov     [r8 + VMCB_STATE_RFLAGS], rcx
+     
+     mov     QWORD PTR g_SvmDebugFlag, 4
+-
+-    mov     rax, cr4
+-    bt      rax, 23
+-    jnc     SvmLaunchCetDisabled
+-
+-    mov     ecx, MSR_IA32_S_CET
+-    rdmsr
+-    shl     rdx, 32
+-    or      rax, rdx
+-    mov     [r8 + VMCB_STATE_S_CET], rax
+-
+-    DB      0F3h, 048h, 00Fh, 01Eh, 0C8h
+-    mov     [r8 + VMCB_STATE_SSP], rax
+-
+-    mov     ecx, MSR_IA32_INT_SSP_TABLE
+-    rdmsr
+-    shl     rdx, 32
+-    or      rax, rdx
+-    mov     [r8 + VMCB_STATE_ISST_ADDR], rax
+-    jmp     SvmLaunchCetReady
+-
+-SvmLaunchCetDisabled:
+-    mov     QWORD PTR [r8 + VMCB_STATE_S_CET], 0
+-    mov     QWORD PTR [r8 + VMCB_STATE_SSP], 0
+-    mov     QWORD PTR [r8 + VMCB_STATE_ISST_ADDR], 0
+-
+-SvmLaunchCetReady:
+     
+     mov     QWORD PTR [r11 + SVM_GUEST_STARTED_OFFSET], 0

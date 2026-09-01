@@ -1,0 +1,120 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_load_072226-14296-01_globals.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072226-14296-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000;E:\project_learning\YuYuanVTDebug\Netr\test-package
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff807`eea00000 PsLoadedModuleList = 0xfffff807`ef8f5350
+Debug session time: Wed Jul 22 23:40:52.188 2026 (UTC + 8:00)
+System Uptime: 0 days 1:53:25.922
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+................................................................
+......
+Loading User Symbols
+
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+0: kd> .lines
+Line number information will be loaded
+0: kd> .reload /f nt
+0: kd> .reload /f GuardMetaCore.sys
+0: kd> x GuardMetaCore!g_Svm*
+fffff807`c267d0c8 GuardMetaCore!g_SvmExitCounter = <Memory access error>
+fffff807`c267d0c8 GuardMetaCore!g_SvmExitCounter = <Memory access error>
+fffff807`c26b2838 GuardMetaCore!g_SvmExitCountMsr = <Memory access error>
+fffff807`c26b2840 GuardMetaCore!g_SvmExitCountNpf = <Memory access error>
+fffff807`c26b2848 GuardMetaCore!g_SvmExitCountOther = <Memory access error>
+fffff807`c26ba470 GuardMetaCore!g_SvmMaxAsid = <Memory access error>
+fffff807`c26ba474 GuardMetaCore!g_SvmAsidInitialized = <Memory access error>
+fffff807`c267d0e0 GuardMetaCore!g_SvmRestoreRip = <Memory access error>
+fffff807`c26ba478 GuardMetaCore!g_SvmPendingLockInit = <Memory access error>
+fffff807`c267d0d0 GuardMetaCore!g_SvmLastExitCode = <Memory access error>
+fffff807`c267d0d0 GuardMetaCore!g_SvmLastExitCode = <Memory access error>
+fffff807`c26c2480 GuardMetaCore!g_SvmPendingLock = <Memory access error>
+fffff807`c26b2828 GuardMetaCore!g_SvmExitCountCpuid = <Memory access error>
+fffff807`c26b2830 GuardMetaCore!g_SvmExitCountVmmcall = <Memory access error>
+fffff807`c26ba070 GuardMetaCore!g_SvmAsidBitmap = long [256]
+fffff807`c26b2820 GuardMetaCore!g_SvmTerminated = <Memory access error>
+fffff807`c267d0c0 GuardMetaCore!g_SvmDebugFlag = <Memory access error>
+fffff807`c267d0c0 GuardMetaCore!g_SvmDebugFlag = <Memory access error>
+fffff807`c267d0d8 GuardMetaCore!g_SvmRestoreRsp = <Memory access error>
+fffff807`c26ba480 GuardMetaCore!g_SvmPendingQueue = struct _SVM_PENDING_EVENT [256][8]
+0: kd> x GuardMetaCore!g_HypervisorContext
+fffff807`c26b5480 GuardMetaCore!g_HypervisorContext = struct _HYPERVISOR_CONTEXT
+0: kd> dq GuardMetaCore!g_SvmDebugFlag L1
+fffff807`c267d0c0  ????????`????????
+0: kd> dq GuardMetaCore!g_SvmExitCounter L1
+fffff807`c267d0c8  ????????`????????
+0: kd> dt GuardMetaCore!_HYPERVISOR_CONTEXT GuardMetaCore!g_HypervisorContext
+Cannot find specified field members.
+0: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

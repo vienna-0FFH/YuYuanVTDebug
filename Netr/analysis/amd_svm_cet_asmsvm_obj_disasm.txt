@@ -1,0 +1,501 @@
+﻿
+Dump of file E:\project_learning\YuYuanVTDebug\Netr\x64\Release\AsmSvm.obj
+
+File Type: COFF OBJECT
+
+SvmAfterVmrun:
+  0000000000000000: 48 8B 44 24 78     mov         rax,qword ptr [rsp+78h]
+  0000000000000005: 48 8B 80 88 00 00  mov         rax,qword ptr [rax+88h]
+                    00
+  000000000000000C: 48 83 78 70 FF     cmp         qword ptr [rax+70h],0FFFFFFFFFFFFFFFFh
+  0000000000000011: 0F 85 8E 00 00 00  jne         AsmSvmVmExitHandler
+  0000000000000017: 48 83 7C 24 18 00  cmp         qword ptr [rsp+18h],0
+  000000000000001D: 74 44              je          SvmInitialVmrunInvalid
+  000000000000001F: 48 8B 44 24 78     mov         rax,qword ptr [rsp+78h]
+  0000000000000024: 48 8B 80 A0 00 00  mov         rax,qword ptr [rax+0A0h]
+                    00
+  000000000000002B: 0F 01 DA           vmload      rax
+  000000000000002E: 0F 01 DC           stgi
+  0000000000000031: 4C 8B 5C 24 78     mov         r11,qword ptr [rsp+78h]
+  0000000000000036: 4D 8B 93 88 00 00  mov         r10,qword ptr [r11+88h]
+                    00
+  000000000000003D: 41 8B 13           mov         edx,dword ptr [r11]
+  0000000000000040: 4D 8B 42 70        mov         r8,qword ptr [r10+70h]
+  0000000000000044: 4D 8B 4A 78        mov         r9,qword ptr [r10+78h]
+  0000000000000048: 49 8B 82 80 00 00  mov         rax,qword ptr [r10+80h]
+                    00
+  000000000000004F: B9 01 00 02 00     mov         ecx,20001h
+  0000000000000054: 48 83 EC 30        sub         rsp,30h
+  0000000000000058: 48 89 44 24 20     mov         qword ptr [rsp+20h],rax
+  000000000000005D: E8 00 00 00 00     call        KeBugCheckEx
+  0000000000000062: CC                 int         3
+SvmInitialVmrunInvalid:
+  0000000000000063: 48 8B 54 24 78     mov         rdx,qword ptr [rsp+78h]
+  0000000000000068: 48 8B 82 A0 00 00  mov         rax,qword ptr [rdx+0A0h]
+                    00
+  000000000000006F: 0F 01 DA           vmload      rax
+  0000000000000072: 48 8B 82 88 00 00  mov         rax,qword ptr [rdx+88h]
+                    00
+  0000000000000079: 48 8B A0 D8 05 00  mov         rsp,qword ptr [rax+5D8h]
+                    00
+  0000000000000080: 41 5F              pop         r15
+  0000000000000082: 41 5E              pop         r14
+  0000000000000084: 41 5D              pop         r13
+  0000000000000086: 41 5C              pop         r12
+  0000000000000088: 41 5B              pop         r11
+  000000000000008A: 41 5A              pop         r10
+  000000000000008C: 41 59              pop         r9
+  000000000000008E: 41 58              pop         r8
+  0000000000000090: 5F                 pop         rdi
+  0000000000000091: 5E                 pop         rsi
+  0000000000000092: 5D                 pop         rbp
+  0000000000000093: 48 83 C4 08        add         rsp,8
+  0000000000000097: 5B                 pop         rbx
+  0000000000000098: 5A                 pop         rdx
+  0000000000000099: 59                 pop         rcx
+  000000000000009A: 58                 pop         rax
+  000000000000009B: 9D                 popfq
+  000000000000009C: 0F 01 DC           stgi
+  000000000000009F: B8 01 00 00 00     mov         eax,1
+  00000000000000A4: C3                 ret
+AsmSvmVmExitHandler:
+  00000000000000A5: 41 57              push        r15
+  00000000000000A7: 41 56              push        r14
+  00000000000000A9: 41 55              push        r13
+  00000000000000AB: 41 54              push        r12
+  00000000000000AD: 41 53              push        r11
+  00000000000000AF: 41 52              push        r10
+  00000000000000B1: 41 51              push        r9
+  00000000000000B3: 41 50              push        r8
+  00000000000000B5: 55                 push        rbp
+  00000000000000B6: 57                 push        rdi
+  00000000000000B7: 56                 push        rsi
+  00000000000000B8: 52                 push        rdx
+  00000000000000B9: 51                 push        rcx
+  00000000000000BA: 53                 push        rbx
+  00000000000000BB: 50                 push        rax
+  00000000000000BC: 4C 8D 44 24 78     lea         r8,[rsp+78h]
+  00000000000000C1: 4D 8B 48 78        mov         r9,qword ptr [r8+78h]
+  00000000000000C5: 49 8B 81 90 00 00  mov         rax,qword ptr [r9+90h]
+                    00
+  00000000000000CC: 0F 01 DB           vmsave      rax
+  00000000000000CF: 49 8B 81 A0 00 00  mov         rax,qword ptr [r9+0A0h]
+                    00
+  00000000000000D6: 0F 01 DA           vmload      rax
+  00000000000000D9: 48 81 EC 08 01 00  sub         rsp,108h
+                    00
+  00000000000000E0: 0F 29 04 24        movaps      xmmword ptr [rsp],xmm0
+  00000000000000E4: 0F 29 4C 24 10     movaps      xmmword ptr [rsp+10h],xmm1
+  00000000000000E9: 0F 29 54 24 20     movaps      xmmword ptr [rsp+20h],xmm2
+  00000000000000EE: 0F 29 5C 24 30     movaps      xmmword ptr [rsp+30h],xmm3
+  00000000000000F3: 0F 29 64 24 40     movaps      xmmword ptr [rsp+40h],xmm4
+  00000000000000F8: 0F 29 6C 24 50     movaps      xmmword ptr [rsp+50h],xmm5
+  00000000000000FD: 0F 29 74 24 60     movaps      xmmword ptr [rsp+60h],xmm6
+  0000000000000102: 0F 29 7C 24 70     movaps      xmmword ptr [rsp+70h],xmm7
+  0000000000000107: 44 0F 29 84 24 80  movaps      xmmword ptr [rsp+80h],xmm8
+                    00 00 00
+  0000000000000110: 44 0F 29 8C 24 90  movaps      xmmword ptr [rsp+90h],xmm9
+                    00 00 00
+  0000000000000119: 44 0F 29 94 24 A0  movaps      xmmword ptr [rsp+0A0h],xmm10
+                    00 00 00
+  0000000000000122: 44 0F 29 9C 24 B0  movaps      xmmword ptr [rsp+0B0h],xmm11
+                    00 00 00
+  000000000000012B: 44 0F 29 A4 24 C0  movaps      xmmword ptr [rsp+0C0h],xmm12
+                    00 00 00
+  0000000000000134: 44 0F 29 AC 24 D0  movaps      xmmword ptr [rsp+0D0h],xmm13
+                    00 00 00
+  000000000000013D: 44 0F 29 B4 24 E0  movaps      xmmword ptr [rsp+0E0h],xmm14
+                    00 00 00
+  0000000000000146: 44 0F 29 BC 24 F0  movaps      xmmword ptr [rsp+0F0h],xmm15
+                    00 00 00
+  000000000000014F: 0F AE 9C 24 00 01  stmxcsr     dword ptr [rsp+100h]
+                    00 00
+  0000000000000157: F0 48 FF 05 00 00  lock inc    qword ptr [g_SvmExitCounter]
+                    00 00
+  000000000000015F: 4C 8D 84 24 80 01  lea         r8,[rsp+180h]
+                    00 00
+  0000000000000167: 49 8B 48 78        mov         rcx,qword ptr [r8+78h]
+  000000000000016B: 48 8D 94 24 08 01  lea         rdx,[rsp+108h]
+                    00 00
+  0000000000000173: 48 83 EC 20        sub         rsp,20h
+  0000000000000177: E8 00 00 00 00     call        SvmVmExitDispatch
+  000000000000017C: 48 83 C4 20        add         rsp,20h
+  0000000000000180: 84 C0              test        al,al
+  0000000000000182: 0F 84 BC 00 00 00  je          SvmExitTerminate
+  0000000000000188: 0F AE 94 24 00 01  ldmxcsr     dword ptr [rsp+100h]
+                    00 00
+  0000000000000190: 0F 28 04 24        movaps      xmm0,xmmword ptr [rsp]
+  0000000000000194: 0F 28 4C 24 10     movaps      xmm1,xmmword ptr [rsp+10h]
+  0000000000000199: 0F 28 54 24 20     movaps      xmm2,xmmword ptr [rsp+20h]
+  000000000000019E: 0F 28 5C 24 30     movaps      xmm3,xmmword ptr [rsp+30h]
+  00000000000001A3: 0F 28 64 24 40     movaps      xmm4,xmmword ptr [rsp+40h]
+  00000000000001A8: 0F 28 6C 24 50     movaps      xmm5,xmmword ptr [rsp+50h]
+  00000000000001AD: 0F 28 74 24 60     movaps      xmm6,xmmword ptr [rsp+60h]
+  00000000000001B2: 0F 28 7C 24 70     movaps      xmm7,xmmword ptr [rsp+70h]
+  00000000000001B7: 44 0F 28 84 24 80  movaps      xmm8,xmmword ptr [rsp+80h]
+                    00 00 00
+  00000000000001C0: 44 0F 28 8C 24 90  movaps      xmm9,xmmword ptr [rsp+90h]
+                    00 00 00
+  00000000000001C9: 44 0F 28 94 24 A0  movaps      xmm10,xmmword ptr [rsp+0A0h]
+                    00 00 00
+  00000000000001D2: 44 0F 28 9C 24 B0  movaps      xmm11,xmmword ptr [rsp+0B0h]
+                    00 00 00
+  00000000000001DB: 44 0F 28 A4 24 C0  movaps      xmm12,xmmword ptr [rsp+0C0h]
+                    00 00 00
+  00000000000001E4: 44 0F 28 AC 24 D0  movaps      xmm13,xmmword ptr [rsp+0D0h]
+                    00 00 00
+  00000000000001ED: 44 0F 28 B4 24 E0  movaps      xmm14,xmmword ptr [rsp+0E0h]
+                    00 00 00
+  00000000000001F6: 44 0F 28 BC 24 F0  movaps      xmm15,xmmword ptr [rsp+0F0h]
+                    00 00 00
+  00000000000001FF: 48 81 C4 08 01 00  add         rsp,108h
+                    00
+  0000000000000206: 4C 8D 44 24 78     lea         r8,[rsp+78h]
+  000000000000020B: 49 8B 40 78        mov         rax,qword ptr [r8+78h]
+  000000000000020F: 48 8B 80 90 00 00  mov         rax,qword ptr [rax+90h]
+                    00
+  0000000000000216: 0F 01 DA           vmload      rax
+SvmExitResume:
+  0000000000000219: 58                 pop         rax
+  000000000000021A: 5B                 pop         rbx
+  000000000000021B: 59                 pop         rcx
+  000000000000021C: 5A                 pop         rdx
+  000000000000021D: 5E                 pop         rsi
+  000000000000021E: 5F                 pop         rdi
+  000000000000021F: 5D                 pop         rbp
+  0000000000000220: 41 58              pop         r8
+  0000000000000222: 41 59              pop         r9
+  0000000000000224: 41 5A              pop         r10
+  0000000000000226: 41 5B              pop         r11
+  0000000000000228: 41 5C              pop         r12
+  000000000000022A: 41 5D              pop         r13
+  000000000000022C: 41 5E              pop         r14
+  000000000000022E: 41 5F              pop         r15
+  0000000000000230: 48 8B 44 24 78     mov         rax,qword ptr [rsp+78h]
+  0000000000000235: 48 8B 80 90 00 00  mov         rax,qword ptr [rax+90h]
+                    00
+  000000000000023C: 0F 01 D8           vmrun       rax
+  000000000000023F: E9 BC FD FF FF     jmp         SvmAfterVmrun
+SvmExitTerminate:
+  0000000000000244: 0F AE 94 24 00 01  ldmxcsr     dword ptr [rsp+100h]
+                    00 00
+  000000000000024C: 0F 28 04 24        movaps      xmm0,xmmword ptr [rsp]
+  0000000000000250: 0F 28 4C 24 10     movaps      xmm1,xmmword ptr [rsp+10h]
+  0000000000000255: 0F 28 54 24 20     movaps      xmm2,xmmword ptr [rsp+20h]
+  000000000000025A: 0F 28 5C 24 30     movaps      xmm3,xmmword ptr [rsp+30h]
+  000000000000025F: 0F 28 64 24 40     movaps      xmm4,xmmword ptr [rsp+40h]
+  0000000000000264: 0F 28 6C 24 50     movaps      xmm5,xmmword ptr [rsp+50h]
+  0000000000000269: 0F 28 74 24 60     movaps      xmm6,xmmword ptr [rsp+60h]
+  000000000000026E: 0F 28 7C 24 70     movaps      xmm7,xmmword ptr [rsp+70h]
+  0000000000000273: 44 0F 28 84 24 80  movaps      xmm8,xmmword ptr [rsp+80h]
+                    00 00 00
+  000000000000027C: 44 0F 28 8C 24 90  movaps      xmm9,xmmword ptr [rsp+90h]
+                    00 00 00
+  0000000000000285: 44 0F 28 94 24 A0  movaps      xmm10,xmmword ptr [rsp+0A0h]
+                    00 00 00
+  000000000000028E: 44 0F 28 9C 24 B0  movaps      xmm11,xmmword ptr [rsp+0B0h]
+                    00 00 00
+  0000000000000297: 44 0F 28 A4 24 C0  movaps      xmm12,xmmword ptr [rsp+0C0h]
+                    00 00 00
+  00000000000002A0: 44 0F 28 AC 24 D0  movaps      xmm13,xmmword ptr [rsp+0D0h]
+                    00 00 00
+  00000000000002A9: 44 0F 28 B4 24 E0  movaps      xmm14,xmmword ptr [rsp+0E0h]
+                    00 00 00
+  00000000000002B2: 44 0F 28 BC 24 F0  movaps      xmm15,xmmword ptr [rsp+0F0h]
+                    00 00 00
+  00000000000002BB: 48 81 C4 08 01 00  add         rsp,108h
+                    00
+  00000000000002C2: 4C 8D 44 24 78     lea         r8,[rsp+78h]
+  00000000000002C7: 4D 8B 58 78        mov         r11,qword ptr [r8+78h]
+  00000000000002CB: 4D 85 DB           test        r11,r11
+  00000000000002CE: 0F 84 E0 00 00 00  je          SvmTerminateUnexpected
+  00000000000002D4: 4D 8B 93 88 00 00  mov         r10,qword ptr [r11+88h]
+                    00
+  00000000000002DB: 4D 85 D2           test        r10,r10
+  00000000000002DE: 0F 84 D0 00 00 00  je          SvmTerminateUnexpected
+  00000000000002E4: 49 81 7A 70 81 00  cmp         qword ptr [r10+70h],81h
+                    00 00
+  00000000000002EC: 0F 85 C2 00 00 00  jne         SvmTerminateUnexpected
+  00000000000002F2: 49 8B 82 78 05 00  mov         rax,qword ptr [r10+578h]
+                    00
+  00000000000002F9: 49 89 40 68        mov         qword ptr [r8+68h],rax
+  00000000000002FD: 49 8B 82 D8 05 00  mov         rax,qword ptr [r10+5D8h]
+                    00
+  0000000000000304: 49 89 40 70        mov         qword ptr [r8+70h],rax
+  0000000000000308: 49 8B 82 70 05 00  mov         rax,qword ptr [r10+570h]
+                    00
+  000000000000030F: 49 89 40 60        mov         qword ptr [r8+60h],rax
+  0000000000000313: 49 8B 82 F8 05 00  mov         rax,qword ptr [r10+5F8h]
+                    00
+  000000000000031A: 48 89 04 24        mov         qword ptr [rsp],rax
+  000000000000031E: 49 8B 83 90 00 00  mov         rax,qword ptr [r11+90h]
+                    00
+  0000000000000325: 0F 01 DA           vmload      rax
+  0000000000000328: FA                 cli
+  0000000000000329: 0F 01 DC           stgi
+  000000000000032C: B9 17 01 01 C0     mov         ecx,0C0010117h
+  0000000000000331: 33 C0              xor         eax,eax
+  0000000000000333: 33 D2              xor         edx,edx
+  0000000000000335: 0F 30              wrmsr
+  0000000000000337: B9 80 00 00 C0     mov         ecx,0C0000080h
+  000000000000033C: 0F 32              rdmsr
+  000000000000033E: 25 FF EF FF FF     and         eax,0FFFFEFFFh
+  0000000000000343: 0F 30              wrmsr
+  0000000000000345: 41 C6 43 04 00     mov         byte ptr [r11+4],0
+  000000000000034A: 49 8B 82 50 05 00  mov         rax,qword ptr [r10+550h]
+                    00
+  0000000000000351: 0F 22 D8           mov         cr3,rax
+  0000000000000354: 49 8B 82 58 05 00  mov         rax,qword ptr [r10+558h]
+                    00
+  000000000000035B: 0F 22 C0           mov         cr0,rax
+  000000000000035E: 49 8B 82 48 05 00  mov         rax,qword ptr [r10+548h]
+                    00
+  0000000000000365: 0F 22 E0           mov         cr4,rax
+  0000000000000368: 49 8B 82 40 06 00  mov         rax,qword ptr [r10+640h]
+                    00
+  000000000000036F: 0F 22 D0           mov         cr2,rax
+  0000000000000372: 49 8B 82 68 05 00  mov         rax,qword ptr [r10+568h]
+                    00
+  0000000000000379: 0F 23 F0           mov         dr6,rax
+  000000000000037C: 49 8B 82 60 05 00  mov         rax,qword ptr [r10+560h]
+                    00
+  0000000000000383: 0F 23 F8           mov         dr7,rax
+  0000000000000386: 58                 pop         rax
+  0000000000000387: 5B                 pop         rbx
+  0000000000000388: 59                 pop         rcx
+  0000000000000389: 5A                 pop         rdx
+  000000000000038A: 5E                 pop         rsi
+  000000000000038B: 5F                 pop         rdi
+  000000000000038C: 5D                 pop         rbp
+  000000000000038D: 41 58              pop         r8
+  000000000000038F: 41 59              pop         r9
+  0000000000000391: 41 5A              pop         r10
+  0000000000000393: 41 5B              pop         r11
+  0000000000000395: 41 5C              pop         r12
+  0000000000000397: 41 5D              pop         r13
+  0000000000000399: 41 5E              pop         r14
+  000000000000039B: 41 5F              pop         r15
+  000000000000039D: 48 8B 4C 24 68     mov         rcx,qword ptr [rsp+68h]
+  00000000000003A2: 48 8B 54 24 70     mov         rdx,qword ptr [rsp+70h]
+  00000000000003A7: 4C 8B 44 24 60     mov         r8,qword ptr [rsp+60h]
+  00000000000003AC: 48 8B E2           mov         rsp,rdx
+  00000000000003AF: 41 50              push        r8
+  00000000000003B1: 9D                 popfq
+  00000000000003B2: FF E1              jmp         rcx
+SvmTerminateUnexpected:
+  00000000000003B4: 0F 01 DC           stgi
+  00000000000003B7: 33 D2              xor         edx,edx
+  00000000000003B9: 45 33 C0           xor         r8d,r8d
+  00000000000003BC: 45 33 C9           xor         r9d,r9d
+  00000000000003BF: 33 C0              xor         eax,eax
+  00000000000003C1: 4D 85 DB           test        r11,r11
+  00000000000003C4: 74 17              je          SvmTerminateBugcheck
+  00000000000003C6: 41 8B 13           mov         edx,dword ptr [r11]
+  00000000000003C9: 4D 85 D2           test        r10,r10
+  00000000000003CC: 74 0F              je          SvmTerminateBugcheck
+  00000000000003CE: 4D 8B 42 70        mov         r8,qword ptr [r10+70h]
+  00000000000003D2: 4D 8B 4A 78        mov         r9,qword ptr [r10+78h]
+  00000000000003D6: 49 8B 82 80 00 00  mov         rax,qword ptr [r10+80h]
+                    00
+SvmTerminateBugcheck:
+  00000000000003DD: B9 01 00 02 00     mov         ecx,20001h
+  00000000000003E2: 48 83 EC 28        sub         rsp,28h
+  00000000000003E6: 48 89 44 24 20     mov         qword ptr [rsp+20h],rax
+  00000000000003EB: E8 00 00 00 00     call        KeBugCheckEx
+  00000000000003F0: CC                 int         3
+AsmSvmLaunch:
+  00000000000003F1: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],1
+                    00 01 00 00 00
+  00000000000003FC: 9C                 pushfq
+  00000000000003FD: 50                 push        rax
+  00000000000003FE: 51                 push        rcx
+  00000000000003FF: 52                 push        rdx
+  0000000000000400: 53                 push        rbx
+  0000000000000401: 54                 push        rsp
+  0000000000000402: 55                 push        rbp
+  0000000000000403: 56                 push        rsi
+  0000000000000404: 57                 push        rdi
+  0000000000000405: 41 50              push        r8
+  0000000000000407: 41 51              push        r9
+  0000000000000409: 41 52              push        r10
+  000000000000040B: 41 53              push        r11
+  000000000000040D: 41 54              push        r12
+  000000000000040F: 41 55              push        r13
+  0000000000000411: 41 56              push        r14
+  0000000000000413: 41 57              push        r15
+  0000000000000415: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],2
+                    00 02 00 00 00
+  0000000000000420: 4C 8B D1           mov         r10,rcx
+  0000000000000423: 4D 8B 5A 08        mov         r11,qword ptr [r10+8]
+  0000000000000427: 49 81 C3 00 60 00  add         r11,6000h
+                    00
+  000000000000042E: 49 81 EB 80 00 00  sub         r11,80h
+                    00
+  0000000000000435: 4D 89 53 78        mov         qword ptr [r11+78h],r10
+  0000000000000439: 49 89 5B 58        mov         qword ptr [r11+58h],rbx
+  000000000000043D: 49 89 6B 50        mov         qword ptr [r11+50h],rbp
+  0000000000000441: 49 89 73 48        mov         qword ptr [r11+48h],rsi
+  0000000000000445: 49 89 7B 40        mov         qword ptr [r11+40h],rdi
+  0000000000000449: 4D 89 63 38        mov         qword ptr [r11+38h],r12
+  000000000000044D: 4D 89 6B 30        mov         qword ptr [r11+30h],r13
+  0000000000000451: 4D 89 73 28        mov         qword ptr [r11+28h],r14
+  0000000000000455: 4D 89 7B 20        mov         qword ptr [r11+20h],r15
+  0000000000000459: 48 8B 84 24 88 00  mov         rax,qword ptr [rsp+88h]
+                    00 00
+  0000000000000461: 49 89 43 68        mov         qword ptr [r11+68h],rax
+  0000000000000465: 48 89 05 00 00 00  mov         qword ptr [g_SvmRestoreRip],rax
+                    00
+  000000000000046C: 48 8D 94 24 90 00  lea         rdx,[rsp+90h]
+                    00 00
+  0000000000000474: 49 89 53 70        mov         qword ptr [r11+70h],rdx
+  0000000000000478: 48 89 15 00 00 00  mov         qword ptr [g_SvmRestoreRsp],rdx
+                    00
+  000000000000047F: 48 8B 84 24 80 00  mov         rax,qword ptr [rsp+80h]
+                    00 00
+  0000000000000487: 49 89 43 60        mov         qword ptr [r11+60h],rax
+  000000000000048B: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],3
+                    00 03 00 00 00
+  0000000000000496: 49 8B 82 90 00 00  mov         rax,qword ptr [r10+90h]
+                    00
+  000000000000049D: 4D 8B 82 88 00 00  mov         r8,qword ptr [r10+88h]
+                    00
+  00000000000004A4: 48 8D 0D 00 00 00  lea         rcx,[SvmGuestEntry]
+                    00
+  00000000000004AB: 49 89 88 78 05 00  mov         qword ptr [r8+578h],rcx
+                    00
+  00000000000004B2: 49 89 A0 D8 05 00  mov         qword ptr [r8+5D8h],rsp
+                    00
+  00000000000004B9: 49 C7 80 F8 05 00  mov         qword ptr [r8+5F8h],0
+                    00 00 00 00 00
+  00000000000004C4: 48 8B 8C 24 80 00  mov         rcx,qword ptr [rsp+80h]
+                    00 00
+  00000000000004CC: 48 81 C9 00 02 00  or          rcx,200h
+                    00
+  00000000000004D3: 48 81 E1 FF FE FF  and         rcx,0FFFFFFFFFFFFFEFFh
+                    FF
+  00000000000004DA: 49 89 88 70 05 00  mov         qword ptr [r8+570h],rcx
+                    00
+  00000000000004E1: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],4
+                    00 04 00 00 00
+  00000000000004EC: 0F 20 E0           mov         rax,cr4
+  00000000000004EF: 48 0F BA E0 17     bt          rax,17h
+  00000000000004F4: 73 38              jae         SvmLaunchCetDisabled
+  00000000000004F6: B9 A2 06 00 00     mov         ecx,6A2h
+  00000000000004FB: 0F 32              rdmsr
+  00000000000004FD: 48 C1 E2 20        shl         rdx,20h
+  0000000000000501: 48 0B C2           or          rax,rdx
+  0000000000000504: 49 89 80 E0 05 00  mov         qword ptr [r8+5E0h],rax
+                    00
+  000000000000050B: F3 48 0F 1E C8     rdsspq      rax
+  0000000000000510: 49 89 80 E8 05 00  mov         qword ptr [r8+5E8h],rax
+                    00
+  0000000000000517: B9 A8 06 00 00     mov         ecx,6A8h
+  000000000000051C: 0F 32              rdmsr
+  000000000000051E: 48 C1 E2 20        shl         rdx,20h
+  0000000000000522: 48 0B C2           or          rax,rdx
+  0000000000000525: 49 89 80 F0 05 00  mov         qword ptr [r8+5F0h],rax
+                    00
+  000000000000052C: EB 21              jmp         SvmLaunchCetReady
+SvmLaunchCetDisabled:
+  000000000000052E: 49 C7 80 E0 05 00  mov         qword ptr [r8+5E0h],0
+                    00 00 00 00 00
+  0000000000000539: 49 C7 80 E8 05 00  mov         qword ptr [r8+5E8h],0
+                    00 00 00 00 00
+  0000000000000544: 49 C7 80 F0 05 00  mov         qword ptr [r8+5F0h],0
+                    00 00 00 00 00
+SvmLaunchCetReady:
+  000000000000054F: 49 C7 43 18 00 00  mov         qword ptr [r11+18h],0
+                    00 00
+  0000000000000557: 0F 01 DD           clgi
+  000000000000055A: 49 8B 82 A0 00 00  mov         rax,qword ptr [r10+0A0h]
+                    00
+  0000000000000561: 0F 01 DB           vmsave      rax
+  0000000000000564: 49 8B 82 90 00 00  mov         rax,qword ptr [r10+90h]
+                    00
+  000000000000056B: 0F 01 DA           vmload      rax
+  000000000000056E: 49 8B E3           mov         rsp,r11
+  0000000000000571: 0F 01 D8           vmrun       rax
+  0000000000000574: E9 87 FA FF FF     jmp         SvmAfterVmrun
+SvmGuestEntry:
+  0000000000000579: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],0Ah
+                    00 0A 00 00 00
+  0000000000000584: 49 C7 43 18 01 00  mov         qword ptr [r11+18h],1
+                    00 00
+  000000000000058C: 41 5F              pop         r15
+  000000000000058E: 41 5E              pop         r14
+  0000000000000590: 41 5D              pop         r13
+  0000000000000592: 41 5C              pop         r12
+  0000000000000594: 41 5B              pop         r11
+  0000000000000596: 41 5A              pop         r10
+  0000000000000598: 41 59              pop         r9
+  000000000000059A: 41 58              pop         r8
+  000000000000059C: 5F                 pop         rdi
+  000000000000059D: 5E                 pop         rsi
+  000000000000059E: 5D                 pop         rbp
+  000000000000059F: 48 83 C4 08        add         rsp,8
+  00000000000005A3: 5B                 pop         rbx
+  00000000000005A4: 5A                 pop         rdx
+  00000000000005A5: 59                 pop         rcx
+  00000000000005A6: 58                 pop         rax
+  00000000000005A7: 9D                 popfq
+  00000000000005A8: 48 C7 05 00 00 00  mov         qword ptr [g_SvmDebugFlag],0Bh
+                    00 0B 00 00 00
+  00000000000005B3: 48 33 C0           xor         rax,rax
+  00000000000005B6: C3                 ret
+AsmVmmcall:
+  00000000000005B7: 48 8B C1           mov         rax,rcx
+  00000000000005BA: 0F 01 D9           vmmcall
+  00000000000005BD: C3                 ret
+AsmVmmcallWithResult:
+  00000000000005BE: 48 8B C1           mov         rax,rcx
+  00000000000005C1: 0F 01 D9           vmmcall
+  00000000000005C4: C3                 ret
+AsmVmmCallPhysCopy:
+  00000000000005C5: 4D 8B D1           mov         r10,r9
+  00000000000005C8: 4D 8B C8           mov         r9,r8
+  00000000000005CB: 4C 8B C2           mov         r8,rdx
+  00000000000005CE: 48 8B D1           mov         rdx,rcx
+  00000000000005D1: 48 B9 10 00 F0 EB  mov         rcx,0EBF00010h
+                    00 00 00 00
+  00000000000005DB: 44 8B 5C 24 28     mov         r11d,dword ptr [rsp+28h]
+  00000000000005E0: 48 8B C1           mov         rax,rcx
+  00000000000005E3: 0F 01 D9           vmmcall
+  00000000000005E6: 48 8B 4C 24 30     mov         rcx,qword ptr [rsp+30h]
+  00000000000005EB: 48 85 C9           test        rcx,rcx
+  00000000000005EE: 74 03              je          00000000000005F3
+  00000000000005F0: 4C 89 11           mov         qword ptr [rcx],r10
+  00000000000005F3: C3                 ret
+AsmStgi:
+  00000000000005F4: 0F 01 DC           stgi
+  00000000000005F7: C3                 ret
+AsmClgi:
+  00000000000005F8: 0F 01 DD           clgi
+  00000000000005FB: C3                 ret
+AsmSvmVmsave:
+  00000000000005FC: 48 8B C1           mov         rax,rcx
+  00000000000005FF: 0F 01 DB           vmsave      rax
+  0000000000000602: C3                 ret
+AsmSvmVmload:
+  0000000000000603: 48 8B C1           mov         rax,rcx
+  0000000000000606: 0F 01 DA           vmload      rax
+  0000000000000609: C3                 ret
+AsmSvmVmrun:
+  000000000000060A: 48 8B C1           mov         rax,rcx
+  000000000000060D: 0F 01 D8           vmrun       rax
+  0000000000000610: C3                 ret
+AsmSkinit:
+  0000000000000611: 8B C1              mov         eax,ecx
+  0000000000000613: 0F 01 DE           skinit      eax
+  0000000000000616: C3                 ret
+AsmInvlpga:
+  0000000000000617: 48 8B C1           mov         rax,rcx
+  000000000000061A: 8B CA              mov         ecx,edx
+  000000000000061C: 0F 01 DF           invlpga     rax,ecx
+  000000000000061F: C3                 ret
+
+  Summary
+
+          28 .data
+        1224 .debug$S
+         12C .debug$T
+         620 .text$mn

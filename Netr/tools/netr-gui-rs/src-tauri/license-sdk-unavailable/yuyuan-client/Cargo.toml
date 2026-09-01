@@ -1,0 +1,7 @@
+[package]
+name = "yuyuan-client"
+version = "0.0.0-sdk-unavailable"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"

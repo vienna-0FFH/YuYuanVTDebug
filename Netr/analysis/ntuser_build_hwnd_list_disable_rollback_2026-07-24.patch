@@ -1,0 +1,13 @@
+diff --git a/Netr/HvHook.c b/Netr/HvHook.c
+--- a/Netr/HvHook.c
++++ b/Netr/HvHook.c
+@@ -168,7 +168,7 @@ static HV_HOOK_HANDLE g_HookNtQuerySystemInformation = NULL;
+ static HV_HOOK_HANDLE g_HookNtQueryVirtualMemory = NULL;
+ // 2026-06-17: win32k window-enumeration spoofing hooks
+ // 2026-06-19: NtUserBuildHwndList hook 复活 — 从枚举结果里抹掉 debugger hwnd
+ #ifndef HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK
+-#define HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK 1
++#define HV_ENABLE_AMD_NTUSER_BUILD_HWND_LIST_HOOK 0
+ #endif
+ static HV_HOOK_HANDLE g_HookNtUserBuildHwndList = NULL;
+ // 2026-06-19: 防 Spy++ 拖拽 — point-based hwnd 查询

@@ -1,0 +1,30 @@
+*** Begin Patch
+*** Update File: Netr/HvVmcb.h
+@@
+  * 2. 分配 Host Save Area
+  * 3. 设置 MSR_VM_HSAVE_PA
+  * 4. 分配并初始化 VMCB
+  */
+ NTSTATUS SvmEnableOnCpu(PVCPU_DATA VcpuData);
+-VOID SvmDisableOnCpu(VOID);
+ 
+ /*
+  * 配置 VMCB
+  */
+ NTSTATUS SvmSetupVmcb(PVCPU_DATA VcpuData);
+@@
+  * 设置 VMCB 拦截位
+  */
+ VOID SvmSetInterceptCr(PVCPU_DATA VcpuData, ULONG CrNumber, BOOLEAN Read, BOOLEAN Write);
+ VOID SvmSetInterceptDr(PVCPU_DATA VcpuData, ULONG DrNumber, BOOLEAN Read, BOOLEAN Write);
+ VOID SvmSetInterceptException(PVCPU_DATA VcpuData, ULONG ExceptionVector);
+-VOID SvmSetInterceptMisc1(PVCPU_DATA VcpuData, ULONG Flags);
+-VOID SvmSetInterceptMisc2(PVCPU_DATA VcpuData, ULONG Flags);
++VOID SvmSetInterceptMisc1(PVCPU_DATA VcpuData, ULONG64 Flags);
++VOID SvmSetInterceptMisc2(PVCPU_DATA VcpuData, ULONG64 Flags);
+ 
+ /*
+  * 事件注入
+  */
+ VOID SvmInjectEvent(PVCPU_DATA VcpuData, UCHAR Vector, UCHAR Type, BOOLEAN HasErrorCode, ULONG ErrorCode);
+*** End Patch

@@ -1,0 +1,151 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-23_vcpu6.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             C:\ProgramData\Dbg\sym
+OK                                             E:\Symbols
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;C:\ProgramData\Dbg\sym;E:\Symbols
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff803`ee200000 PsLoadedModuleList = 0xfffff803`ef0f5350
+Debug session time: Thu Jul 23 23:07:14.205 2026 (UTC + 8:00)
+System Uptime: 0 days 0:01:53.937
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+....................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 0000002f`0e979018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+7: kd> .reload /f GuardMetaCore.sys
+7: kd> .echo === VCPU6 ===
+=== VCPU6 ===
+7: kd> dt GuardMetaCore!_VCPU_DATA ffffd68721af37b0
+   +0x000 ProcessorNumber  : 6
+   +0x004 IsVirtualized    : 0x1 ''
+   +0x005 IsVmxOn          : 0 ''
+   +0x008 VmExitStack      : 0xffffd687`00f02000 Void
+   +0x010 VmExitStackPhysical : 0
+   +0x018 VmxonRegion      : (null) 
+   +0x020 VmxonRegionPhysical : _LARGE_INTEGER 0x0
+   +0x028 VmcsRegion       : (null) 
+   +0x030 VmcsRegionPhysical : _LARGE_INTEGER 0x0
+   +0x038 MsrBitmap        : (null) 
+   +0x040 MsrBitmapPhysical : _LARGE_INTEGER 0x0
+   +0x048 EptTables        : (null) 
+   +0x050 Vpid             : 0
+   +0x058 EptPebSpoof      : (null) 
+   +0x060 EptpMain         : 0
+   +0x068 EptpPebSpoof     : 0
+   +0x070 ActiveEptpIsPebSpoof : 0n0
+   +0x078 LastSnoopedCr3   : 0
+   +0x080 LastCallerClass  : 0
+   +0x088 Vmcb             : 0xffff8081`8591a000 _VMCB
+   +0x090 VmcbPhysical     : _LARGE_INTEGER 0x00000006`1264d000
+   +0x098 HostSaveArea     : 0xffff8081`85919000 Void
+   +0x0a0 HostSaveAreaPhysical : _LARGE_INTEGER 0x00000006`1264e000
+   +0x0a8 MsrPermissionMap : 0xffff8081`8591b000 Void
+   +0x0b0 MsrPermissionMapPhysical : _LARGE_INTEGER 0x00000006`1264b000
+   +0x0b8 NptTables        : 0xffff907a`3e000000 _NPT_TABLES
+   +0x0c0 NestedVmx        : _NESTED_VMX_STATE
+   +0x5c0 NestedSvm        : _NESTED_SVM_STATE
+   +0x7f0 IsInL2           : 0 ''
+   +0x7f8 GuestState       : _VCPU_STATE
+   +0x8b0 HostRsp          : 0
+   +0x8b8 HostRip          : 0
+   +0x8c0 RestoreRsp       : 0
+   +0x8c8 RestoreRip       : 0
+   +0x8d0 RestoreRbx       : 0
+   +0x8d8 RestoreRbp       : 0
+   +0x8e0 RestoreRsi       : 0
+   +0x8e8 RestoreRdi       : 0
+   +0x8f0 RestoreR12       : 0
+   +0x8f8 RestoreR13       : 0
+   +0x900 RestoreR14       : 0
+   +0x908 RestoreR15       : 0
+   +0x910 VtRootGadget     : <unnamed-tag>
+   +0x930 LastVmExitHostTsc : 0
+   +0x938 TscOffsetCompensation : 0n0
+   +0x940 SvmSingleStepBlockInterrupts : 0n2
+7: kd> .echo === VCPU6_RAW ===
+=== VCPU6_RAW ===
+7: kd> dd ffffd68721af37b0 L4
+ffffd687`21af37b0  00000006 00000001 00f02000 ffffd687
+7: kd> dq ffffd68721af3838 L6
+ffffd687`21af3838  ffff8081`8591a000 00000006`1264d000
+ffffd687`21af3848  ffff8081`85919000 00000006`1264e000
+ffffd687`21af3858  ffff8081`8591b000 00000006`1264b000
+7: kd> dd ffffd68721af40f0 L2
+ffffd687`21af40f0  00000002 00000000
+7: kd> .echo === VMCB_POINTER ===
+=== VMCB_POINTER ===
+7: kd> dq ffffd68721af3838 L1
+ffffd687`21af3838  ffff8081`8591a000
+7: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

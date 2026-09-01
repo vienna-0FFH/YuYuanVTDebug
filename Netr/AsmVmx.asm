@@ -82,12 +82,23 @@ EXTERN HvVmExitDispatch:PROC
 GUEST_RSP_ENCODING EQU 0681Ch
 GUEST_RIP_ENCODING EQU 0681Eh
 GUEST_RFLAGS_ENCODING EQU 06820h
+GUEST_CR0_ENCODING EQU 06800h
+GUEST_CR3_ENCODING EQU 06802h
+GUEST_CR4_ENCODING EQU 06804h
+GUEST_FS_BASE_ENCODING EQU 0680Eh
+GUEST_GS_BASE_ENCODING EQU 06810h
+CR0_GUEST_HOST_MASK_ENCODING EQU 06000h
+CR4_GUEST_HOST_MASK_ENCODING EQU 06002h
+CR0_READ_SHADOW_ENCODING EQU 06004h
+CR4_READ_SHADOW_ENCODING EQU 06006h
 VM_EXIT_INSTRUCTION_LEN_ENCODING EQU 0440Ch
 
 ; ==================== 栈偏移常量 ====================
-; HOST_RSP 指向 VmExitStack + 0x10000 - 0x80
+; HOST_RSP 指向 VmExitStack + 0x10000 - 0xA0
 ; 预留区域布局：
 VCPU_DATA_OFFSET    EQU 078h    ; VcpuData 指针
+RESTORE_FS_BASE_OFFSET EQU 080h
+RESTORE_GS_BASE_OFFSET EQU 088h
 RESTORE_RSP_OFFSET  EQU 070h    ; 恢复栈指针
 RESTORE_RIP_OFFSET  EQU 068h    ; 恢复返回地址
 RESTORE_RFLAGS_OFFSET EQU 060h  ; 恢复 RFLAGS
@@ -100,6 +111,9 @@ RESTORE_R13_OFFSET  EQU 030h
 RESTORE_R14_OFFSET  EQU 028h
 RESTORE_R15_OFFSET  EQU 020h
 PENDING_INTR_OFFSET EQU 018h
+RESTORE_CR3_OFFSET  EQU 010h
+RESTORE_CR0_OFFSET  EQU 008h
+RESTORE_CR4_OFFSET  EQU 000h
 
 ; ==================== 段寄存器读取函数 ====================
 ; 这些必须用汇编，因为 MSVC 没有提供 intrinsic
@@ -693,6 +707,24 @@ VmExitResume:
 ; 栈上保存的是 VMCALL 时的 Guest 寄存器状态
 ; 注意：HvAdvanceGuestRip() 已经在 C 代码中被调用，GUEST_RIP 已是下一条指令
 VmExitTerminate:
+    ldmxcsr DWORD PTR [rsp + MXCSR_SAVE_OFFSET]
+    movaps  xmm0,  xmmword ptr [rsp + 0]
+    movaps  xmm1,  xmmword ptr [rsp + 16]
+    movaps  xmm2,  xmmword ptr [rsp + 32]
+    movaps  xmm3,  xmmword ptr [rsp + 48]
+    movaps  xmm4,  xmmword ptr [rsp + 64]
+    movaps  xmm5,  xmmword ptr [rsp + 80]
+    movaps  xmm6,  xmmword ptr [rsp + 96]
+    movaps  xmm7,  xmmword ptr [rsp + 112]
+    movaps  xmm8,  xmmword ptr [rsp + 128]
+    movaps  xmm9,  xmmword ptr [rsp + 144]
+    movaps  xmm10, xmmword ptr [rsp + 160]
+    movaps  xmm11, xmmword ptr [rsp + 176]
+    movaps  xmm12, xmmword ptr [rsp + 192]
+    movaps  xmm13, xmmword ptr [rsp + 208]
+    movaps  xmm14, xmmword ptr [rsp + 224]
+    movaps  xmm15, xmmword ptr [rsp + 240]
+
     ; 此时 RSP 仍指向 XMM 区底部（add rsp,20h 后），先撤销 XMM 区
     add     rsp, XMM_SAVE_TOTAL
 
@@ -708,9 +740,65 @@ VmExitTerminate:
     mov     rcx, GUEST_RSP_ENCODING
     vmread  rax, rcx
     mov     [r8 + RESTORE_RSP_OFFSET], rax    ; 保存 Guest RSP
+
+    mov     rcx, GUEST_RFLAGS_ENCODING
+    vmread  rax, rcx
+    mov     [r8 + RESTORE_RFLAGS_OFFSET], rax
+
+    mov     rcx, GUEST_FS_BASE_ENCODING
+    vmread  rax, rcx
+    mov     [r8 + RESTORE_FS_BASE_OFFSET], rax
+
+    mov     rcx, GUEST_GS_BASE_ENCODING
+    vmread  rax, rcx
+    mov     [r8 + RESTORE_GS_BASE_OFFSET], rax
+
+    ; VM-exit 已加载 HOST_CR3/CR0/CR4。VMXOFF 不会自动恢复 Guest 状态，
+    ; 必须在 VMCS 失效前保存，并在返回 Windows 前显式写回。
+    mov     rcx, GUEST_CR3_ENCODING
+    vmread  rax, rcx
+    mov     [r8 + RESTORE_CR3_OFFSET], rax
+
+    mov     rcx, GUEST_CR0_ENCODING
+    vmread  r9, rcx
+    mov     rcx, CR0_GUEST_HOST_MASK_ENCODING
+    vmread  rdx, rcx
+    mov     rcx, CR0_READ_SHADOW_ENCODING
+    vmread  r10, rcx
+    mov     rax, rdx
+    not     rax
+    and     r9, rax
+    and     r10, rdx
+    or      r9, r10
+    mov     [r8 + RESTORE_CR0_OFFSET], r9
+
+    mov     rcx, GUEST_CR4_ENCODING
+    vmread  r9, rcx
+    mov     rcx, CR4_GUEST_HOST_MASK_ENCODING
+    vmread  rdx, rcx
+    mov     rcx, CR4_READ_SHADOW_ENCODING
+    vmread  r10, rcx
+    mov     rax, rdx
+    not     rax
+    and     r9, rax
+    and     r10, rdx
+    or      r9, r10
+    mov     [r8 + RESTORE_CR4_OFFSET], r9
     
     ; 执行 VMXOFF（退出 VMX 操作模式）
     vmxoff
+
+    mov     rax, [r8 + RESTORE_FS_BASE_OFFSET]
+    mov     rdx, rax
+    shr     rdx, 32
+    mov     ecx, 0C0000100h
+    wrmsr
+
+    mov     rax, [r8 + RESTORE_GS_BASE_OFFSET]
+    mov     rdx, rax
+    shr     rdx, 32
+    mov     ecx, 0C0000101h
+    wrmsr
     
     ; 恢复所有 Guest GPR（从栈上 pop）
     ; 栈布局: [RSP] = RAX, [RSP+8] = RBX, ... [RSP+112] = R15
@@ -731,15 +819,28 @@ VmExitTerminate:
     pop     r15
     
     ; 此时 RSP = HOST_RSP
-    ; 从预留区域读取 Guest RIP 和 RSP
+    ; 从预留区域读取 Guest RIP/RSP 和控制寄存器
+    mov     rdx, [rsp + RESTORE_CR3_OFFSET]
+    mov     r9,  [rsp + RESTORE_CR0_OFFSET]
+    mov     r10, [rsp + RESTORE_CR4_OFFSET]
+    mov     r11, [rsp + RESTORE_RFLAGS_OFFSET]
     mov     rcx, [rsp + RESTORE_RIP_OFFSET]   ; RCX = Guest RIP (返回地址)
     mov     rax, [rsp + RESTORE_RSP_OFFSET]   ; RAX = Guest RSP
-    
+
+    ; 先恢复 Guest 地址空间，再恢复 guest-visible CR0/CR4。
+    ; CR4 shadow 不含 hypervisor 强制隐藏的 VMXE 位。
+    mov     cr3, rdx
+    mov     cr0, r9
+    mov     cr4, r10
+
+    push    r11
+    popfq
+
     ; 切换到 Guest 栈
     mov     rsp, rax
-    
+
     ; 设置返回值 = 0（表示成功退出虚拟化）
-    xor     rax, rax
+    mov     rax, 0
     
     ; 跳转到 VMCALL 的下一条指令（即 AsmVmCall 的 ret 指令）
     jmp     rcx
@@ -750,6 +851,12 @@ VmResumeFailed:
     mov     rcx, 4400h              ; VM_INSTRUCTION_ERROR
     vmread  rax, rcx
     mov     g_VmInstructionError, rax
+
+    mov     rdx, [rsp + VCPU_DATA_OFFSET]
+    test    rdx, rdx
+    jz      @F
+    mov     BYTE PTR [rdx + 04h], 0
+@@:
     
     ; 尝试终止
     vmxoff
@@ -1088,6 +1195,46 @@ AsmInvvpidAllContexts PROC
     ret
 AsmInvvpidAllContexts ENDP
 
+PUBLIC AsmInvvpidSingleContext
+AsmInvvpidSingleContext PROC
+    ; RCX = VPID, type 1 invalidates one VPID including global translations
+    and     ecx, 0FFFFh
+    mov     rax, 1
+
+    sub     rsp, 16
+    mov     QWORD PTR [rsp], rcx
+    mov     QWORD PTR [rsp + 8], 0
+
+    invvpid rax, OWORD PTR [rsp]
+
+    add     rsp, 16
+
+    ; VMfailInvalid sets CF; VMfailValid sets ZF.
+    setbe   al
+    movzx   eax, al
+    ret
+AsmInvvpidSingleContext ENDP
+
+PUBLIC AsmInvvpidSingleContextRetainingGlobals
+AsmInvvpidSingleContextRetainingGlobals PROC
+    ; RCX = VPID, type 3 matches MOV CR3: retain global translations
+    and     ecx, 0FFFFh
+    mov     rax, 3
+
+    sub     rsp, 16
+    mov     QWORD PTR [rsp], rcx
+    mov     QWORD PTR [rsp + 8], 0
+
+    invvpid rax, OWORD PTR [rsp]
+
+    add     rsp, 16
+
+    ; VMfailInvalid sets CF; VMfailValid sets ZF.
+    setbe   al
+    movzx   eax, al
+    ret
+AsmInvvpidSingleContextRetainingGlobals ENDP
+
 ; ============================================================
 ; 2026-06-20: VMXOFF 后描述符表恢复 helper
 ; ============================================================
@@ -1128,5 +1275,18 @@ AsmLoadLdtr PROC
     lldt    cx
     ret
 AsmLoadLdtr ENDP
+
+PUBLIC AsmLoadDataSegments
+AsmLoadDataSegments PROC
+    mov     ax, cx
+    mov     ds, ax
+    mov     ax, dx
+    mov     es, ax
+    mov     ax, r8w
+    mov     fs, ax
+    mov     ax, r9w
+    mov     gs, ax
+    ret
+AsmLoadDataSegments ENDP
 
 END

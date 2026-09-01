@@ -46,9 +46,65 @@ export interface ThreadContextView {
   ss: number;
 }
 
+export interface StepManyResult {
+  kind: "into" | "over";
+  steps: number;
+  tid: number;
+  rip: number;
+}
+
 export interface SwBreakpoint {
   address: number;
   original_byte: number;
+}
+
+export type BuiltinDebuggerMode = "native" | "vt";
+
+export interface BuiltinAttachResult {
+  pid: number;
+  mode: BuiltinDebuggerMode;
+  debugger_protected: boolean;
+  vt_memory: boolean;
+  private_swbp: boolean;
+  vt_hwbp: boolean;
+  vt_step: boolean;
+  dr_fallback: boolean;
+}
+
+export interface BuiltinPrivateHit {
+  sequence: number;
+  pid: number;
+  tid: number;
+  rip: number;
+  kind: number;
+  entry?: boolean;
+  slot?: number | null;
+  transient?: boolean;
+  cleanup_error?: string | null;
+}
+
+export interface BuiltinLaunchResult {
+  attach: BuiltinAttachResult;
+  primary_tid: number;
+  entry_address: number;
+  stopped_at_entry: boolean;
+}
+
+export interface BuiltinRunToEntryResult {
+  pid: number;
+  primary_tid: number;
+  entry_address: number;
+  stopped_at_entry: boolean;
+}
+
+export interface BuiltinRestartResult {
+  old_pid: number;
+  new_pid: number;
+  process_name: string;
+  attach: BuiltinAttachResult;
+  primary_tid: number;
+  entry_address: number;
+  stopped_at_entry: boolean;
 }
 
 // ===== 内存扫描 =====
@@ -85,7 +141,24 @@ export const dbgIpc = {
   // window
   openWindow: () => invoke<string>("dbg_open_window"),
   closeWindow: (label: string) => invoke<void>("dbg_close_window", { label }),
+  attach: (pid: number, mode: BuiltinDebuggerMode) =>
+    invoke<BuiltinAttachResult>("dbg_attach", { pid, mode }),
   detach: (pid: number) => invoke<void>("dbg_detach", { pid }),
+  launchExecutable: (
+    exePath: string,
+    mode: BuiltinDebuggerMode,
+    args: string | null = null,
+    workingDir: string | null = null,
+  ) => invoke<BuiltinLaunchResult>("dbg_launch_executable", {
+    exePath,
+    args,
+    workingDir,
+    mode,
+  }),
+  runToEntry: (pid: number) =>
+    invoke<BuiltinRunToEntryResult>("dbg_run_to_entry", { pid }),
+  restartProcess: (pid: number) =>
+    invoke<BuiltinRestartResult>("dbg_restart_process", { pid }),
 
   // memory
   readMemory: (pid: number, address: number, size: number) =>
@@ -94,8 +167,8 @@ export const dbgIpc = {
     invoke<void>("dbg_write_memory", { pid, address, bytes }),
 
   // disasm
-  disasm: (address: number, bytes: number[]) =>
-    invoke<DisasmLine[]>("dbg_disasm", { address, bytes }),
+  disasm: (address: number, bytes: number[], anchor?: number) =>
+    invoke<DisasmLine[]>("dbg_disasm", { address, bytes, anchor: anchor ?? null }),
 
   // 枚举
   listModules: (pid: number) => invoke<ModuleInfo[]>("dbg_list_modules", { pid }),
@@ -109,11 +182,24 @@ export const dbgIpc = {
     invoke<void>("dbg_set_thread_context", { ctx }),
   suspendThread: (tid: number) => invoke<number>("dbg_suspend_thread", { tid }),
   resumeThread: (tid: number) => invoke<number>("dbg_resume_thread", { tid }),
-  stepInto: (tid: number) => invoke<void>("dbg_step_into", { tid }),
-  stepOver: (pid: number, tid: number) =>
-    invoke<{ kind: "step" | "run-over"; next_rip: number }>("dbg_step_over", { pid, tid }),
+  stepInto: (tid: number, syntheticMtf = true) =>
+    invoke<void>("dbg_step_into", { tid, syntheticMtf }),
+  stepOver: (pid: number, tid: number, syntheticMtf = true) =>
+    invoke<{
+      kind: "step" | "run-over" | "vt-single-step" | "real-tf-single-step";
+      next_rip: number;
+    }>("dbg_step_over", { pid, tid, syntheticMtf }),
+  stepMany: (
+    pid: number,
+    tid: number,
+    kind: "into" | "over",
+    count: number,
+    syntheticMtf = true,
+  ) => invoke<StepManyResult>("dbg_step_many", { pid, tid, kind, count, syntheticMtf }),
   stepOut: (pid: number, tid: number) =>
     invoke<number>("dbg_step_out", { pid, tid }),
+  cancelActiveRun: (pid: number, tid: number) =>
+    invoke<boolean>("dbg_cancel_active_run", { pid, tid }),
   consumeTransientBp: (pid: number, address: number) =>
     invoke<boolean>("dbg_consume_transient_bp", { pid, address }),
 
@@ -186,7 +272,7 @@ export const dbgIpc = {
   aiRun: (req: AiRunReq) => invoke<AiRunResp>("dbg_ai_run", { req }),
   aiCancel: (sessionId: string) => invoke<void>("dbg_ai_cancel", { sessionId }),
   aiSessionList: () => invoke<AiSessionFileInfo[]>("dbg_ai_session_list"),
-  aiSessionLoad: (sessionId: string) => invoke<unknown[]>("dbg_ai_session_load", { sessionId }),
+  aiSessionLoad: (sessionId: string) => invoke<AiSessionLoad>("dbg_ai_session_load", { sessionId }),
   aiSessionDelete: (sessionId: string) => invoke<void>("dbg_ai_session_delete", { sessionId }),
   aiToolsDescribe: () => invoke<AiToolInfo[]>("dbg_ai_tools_describe"),
 
@@ -195,6 +281,7 @@ export const dbgIpc = {
     invoke<DroppedFileResult>("ai_read_dropped_file", { req: { path, max_kb: max_kb ?? null } }),
 
   // P88 项目
+  projectNew: () => invoke<void>("project_new"),
   projectSave: (path: string, doc: ProjectDoc) => invoke<void>("project_save", { path, doc }),
   projectLoad: (path: string) => invoke<ProjectDoc>("project_load", { path }),
   projectListRecent: () => invoke<RecentProject[]>("project_list_recent"),
@@ -467,8 +554,15 @@ export interface AiRunReq {
     api_key: string;
     model: string;
     temperature?: number;
+    reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+    context_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+    output_token_max?: number;
+    compaction_reserved_tokens?: number;
   };
   messages: unknown[];
+  display_messages?: unknown[];
   enabled_tools?: string[] | null;
   max_rounds?: number;
 }
@@ -476,6 +570,9 @@ export interface AiRunResp {
   rounds: number;
   input_tokens: number;
   output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  total_tokens: number;
   truncated: boolean;
   cancelled: boolean;
   completed: boolean;
@@ -486,6 +583,10 @@ export interface AiSessionFileInfo {
   size_bytes: number;
   modified: number;
   first_user: string | null;
+}
+export interface AiSessionLoad {
+  history: unknown[];
+  context: unknown[];
 }
 
 export interface ProjectTarget {
@@ -528,6 +629,12 @@ export interface AiChatReq {
     api_key: string;
     model: string;
     temperature?: number;
+    reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+    context_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+    output_token_max?: number;
+    compaction_reserved_tokens?: number;
   };
   /** 完整对话历史 — 由前端维护,后端追加 */
   messages: unknown[];

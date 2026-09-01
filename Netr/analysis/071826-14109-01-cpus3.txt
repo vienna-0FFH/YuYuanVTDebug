@@ -1,0 +1,219 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\071826-14109-01-cpus3.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Windows\Minidump\071826-14109-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Symbol search path is: srv*E:\project_learning\YuYuanVTDebug\Netr\analysis\symbols*https://msdl.microsoft.com/download/symbols;E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 22621 MP (20 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS Personal
+Kernel base = 0xfffff805`27600000 PsLoadedModuleList = 0xfffff805`282135f0
+Debug session time: Sat Jul 18 20:53:37.065 2026 (UTC + 8:00)
+System Uptime: 0 days 4:12:53.734
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+...........................................................
+Loading User Symbols
+
+Loading unloaded module list
+.......................
+For analysis of this file, run !analyze -v
+6: kd> .symopt+ 0x40
+Symbol options are 0xB0367:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000040 - SYMOPT_LOAD_ANYTHING
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+6: kd> ~
+       ^ Syntax error in '~'
+6: kd> ~* kv
+       ^ Syntax error in '~* kv'
+6: kd> !dpcwatchdog
+
+All durations are in seconds (1 System tick = 0.000000 milliseconds)
+
+Circular Kernel Context Logger history: !logdump 0x2
+DPC and ISR stats (total since boot): !intstats /d
+DPC and ISR stats (during DPC watchdog period): !intstats /w
+
+--------------------------------------------------
+CPU#0
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#1
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#2
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#3
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#4
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#5
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#6
+--------------------------------------------------
+Current DPC: Unable to read nt!_KDPC.DeferredRoutine
+
+DPC Watchdog Captures Analysis for CPU #6.
+   DPC Watchdog capture size: 108 stacks.
+   Number of unique stacks: 4.
+   Most common function: fffff80527a1f16e  nt!KiIdleLoop+0x9E
+
+The captured stacks seem to indicate that only a single DPC or generic function is the culprit.
+Try to analyse what other processors were doing at the time of the following reference capture:
+CPU #6 DPC Watchdog Reference Stack (#0 of 108) - Profiling started at time since boot: 252 Min 52 Sec 46.88 mSec
+ # RetAddr           Call Site
+00 fffff80527882f9f  nt!KiUpdateRunTime+0xD1 
+01 fffff80527883b88  nt!KiUpdateTime+0x63F 
+02 fffff8052788344a  nt!KeClockInterruptNotify+0x228 
+03 fffff8052791e66c  nt!HalpTimerClockInterrupt+0x10A 
+04 fffff80527a1c36a  nt!KiCallInterruptServiceRoutine+0x9C 
+05 fffff80527a1cc37  nt!KiInterruptSubDispatchNoLockNoEtw+0xFA 
+06 fffff805279d2972  nt!KiInterruptDispatchNoLockNoEtw+0x37 
+07 fffff805278c126c  nt!KiSwapDirectoryTableBaseTarget+0x42 
+08 fffff805278c0274  nt!KiExecuteAllDpcs+0x42C 
+09 fffff80527a1f16e  nt!KiRetireDpcList+0x1B4 
+0a ----------------  nt!KiIdleLoop+0x9E 
+
+--------------------------------------------------
+CPU#7
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#8
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#9
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#10
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#11
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#12
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#13
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#14
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#15
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#16
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#17
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#18
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+--------------------------------------------------
+CPU#19
+--------------------------------------------------
+Failed to read nt!_KPRCB for the processor
+6: kd> !cpuinfo
+CP  F/M/S Manufacturer  MHz PRCB Signature    MSR 8B Signature Features ArchitectureClass
+ 6  6,183,1 GenuineIntel 2803 0000012200000000                   3d1b3fff 1
+                      Cached Update Signature 0000012200000000
+                     Initial Update Signature 0000012200000000
+6: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

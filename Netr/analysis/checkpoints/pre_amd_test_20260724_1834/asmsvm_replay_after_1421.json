@@ -1,0 +1,30 @@
+{
+  "start": "2026-07-23T14:21:20.596Z",
+  "end": "2026-07-24T10:34:00.000Z",
+  "only_file": "Netr/AsmSvm.asm",
+  "candidate_calls": 43,
+  "applied_product_calls": 1,
+  "changed_operations": 1,
+  "changed_files": [
+    "Netr/AsmSvm.asm"
+  ],
+  "skipped_failed_calls": [
+    "call_qzr59LZXYCwpks5VduqqtZ29",
+    "call_rTOFtapsaUREMCcCWddEh6WQ",
+    "call_dUrSRQguS4u2efR5hlk8Rx0b"
+  ],
+  "skipped_dynamic_analysis_calls": [
+    "call_i2CgqTF4MbMSsQ8Rr5vXuTt4"
+  ],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": [
+    {
+      "path": "E:\\project_learning\\YuYuanVTDebug\\Netr\\analysis\\checkpoints\\pre_amd_test_20260724_1834\\reconstructed_pre_amd\\Netr\\AsmSvm.asm",
+      "header": "@@",
+      "deleted": [
+        "VCPU_SVM_STEP_BLOCK_IRQ EQU 940h    ; volatile LONG SvmSingleStepBlockInterrupts"
+      ]
+    }
+  ]
+}

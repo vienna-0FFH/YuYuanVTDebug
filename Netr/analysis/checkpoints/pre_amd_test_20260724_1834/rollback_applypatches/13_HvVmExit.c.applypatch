@@ -1,0 +1,80 @@
+*** Begin Patch
+*** Update File: Netr/HvVmExit.c
+@@
+         // 返回版本号
+         Vmcb->StateSaveArea.Rax = (HV_VERSION_MAJOR << 16) | HV_VERSION_MINOR;
+         break;
+         
+     case SVM_VMMCALL_TERMINATE:
+-        if (!NptHookSvmTerminationReady(VcpuData)) {
+-            Vmcb->StateSaveArea.Rax = STATUS_DEVICE_BUSY;
+-            SvmAdvanceGuestRip(Vmcb);
+-            return TRUE;
+-        }
+-
+         // 终止虚拟化
+         Vmcb->StateSaveArea.Rax = 0;
+         SvmAdvanceGuestRip(Vmcb);
+         return FALSE;
+ 
+@@
+     }
+ 
+     return TRUE;
+ }
+ 
+-static __forceinline BOOLEAN
+-SvmExitAbortsOwnedSingleStep(
+-    _In_ ULONG64 ExitCode)
+-{
+-    if (ExitCode == SVM_EXIT_INTR ||
+-        ExitCode == SVM_EXIT_NMI ||
+-        ExitCode == SVM_EXIT_SMI ||
+-        ExitCode == SVM_EXIT_INIT ||
+-        ExitCode == SVM_EXIT_VINTR) {
+-        return TRUE;
+-    }
+-
+-    return ExitCode >= SVM_EXIT_EXCEPTION_DE &&
+-           ExitCode <= SVM_EXIT_EXCEPTION_XF &&
+-           ExitCode != SVM_EXIT_EXCEPTION_DB;
+-}
+-
+ /*
+  * 处理异常 (SVM)
+  * 
+  * @param VcpuData  VCPU 数据
+  * @param ExitCode  退出码 (SVM_EXIT_EXCEPTION_xx)
+@@
+     NptCheckAndInvalidateTlb(VcpuData);
+ 
+     exitCode = vmcb->ControlArea.ExitCode;
+     exitInfo1 = vmcb->ControlArea.ExitInfo1;
+     exitInfo2 = vmcb->ControlArea.ExitInfo2;
+-
+-    if (SvmExitAbortsOwnedSingleStep(exitCode)) {
+-        (void)NptHookAbortSvmSingleStep(VcpuData);
+-    }
+ 
+     g_SvmLastExitCode = exitCode;
+ 
+     // 被动嗅探当前 guest CR3 (SVM 上从 VMCB StateSaveArea.Cr3 直接读)。
+     // 同时传 RIP, 让 ring 只收 user-mode CR3 (避开 shadow CR3 污染)。
+@@
+             // 注意：SVM root 模式下不要调用 DbgPrint
+             InterlockedIncrement64((volatile LONG64*)&g_SvmExitCountOther);
+         }
+         break;
+     }
+-
+-    if ((vmcb->ControlArea.EventInj & (1ULL << 31)) != 0) {
+-        (void)NptHookAbortSvmSingleStep(VcpuData);
+-    }
+-
++    
+     // 阶段 7.9: VMRUN 前累积 host 处理时间,写入 VMCB.TscOffset
+ #if !HV_DISABLE_TSC_COMPENSATION
+     if (g_GlobalHwbpRefCount > 0) {
+         UINT64 endTsc = __rdtsc();
+         UINT64 delta = endTsc - VcpuData->LastVmExitHostTsc;
+*** End Patch

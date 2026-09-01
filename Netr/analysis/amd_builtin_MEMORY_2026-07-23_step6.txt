@@ -1,0 +1,235 @@
+Opened log file 'E:\project_learning\YuYuanVTDebug\Netr\analysis\amd_builtin_MEMORY_2026-07-23_step6.txt'
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.016 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\MEMORY.DMP]
+Kernel Bitmap Dump File: Kernel address space is available, User address space may not be available.
+
+Primary dump contents written successfully
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\x64\Release
+OK                                             C:\Symbols
+OK                                             C:\ProgramData\Dbg\sym
+OK                                             E:\Symbols
+Symbol search path is: E:\project_learning\YuYuanVTDebug\Netr\test-package;E:\project_learning\YuYuanVTDebug\Netr\x64\Release;C:\Symbols;C:\ProgramData\Dbg\sym;E:\Symbols
+Executable search path is: 
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script successfully loaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Edition build lab: 26100.1.amd64fre.ge_release.240331-1435
+Kernel base = 0xfffff803`ee200000 PsLoadedModuleList = 0xfffff803`ef0f5350
+Debug session time: Thu Jul 23 23:07:14.205 2026 (UTC + 8:00)
+System Uptime: 0 days 0:01:53.937
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+....................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 0000002f`0e979018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+7: kd> .reload /f GuardMetaCore.sys
+7: kd> .echo === STEP6 ===
+=== STEP6 ===
+7: kd> dt GuardMetaCore!_NPT_STEP_CONTEXT fffff803c1e239b8
+   +0x000 StepActive       : 0n1
+   +0x004 PendingPageCount : 1
+   +0x008 PendingPages     : [64] 0xffffd687`21a54a30 _NPT_HOOK_PAGE
+   +0x208 GuestTfWasSet    : 0 ''
+   +0x209 SavedSvmInterruptState : 0 ''
+   +0x20a DbInterceptWasSet : 0 ''
+7: kd> dq fffff803c1e239b8 L70
+fffff803`c1e239b8  00000001`00000001 ffffd687`21a54a30
+fffff803`c1e239c8  00000000`00000000 00000000`00000000
+fffff803`c1e239d8  00000000`00000000 00000000`00000000
+fffff803`c1e239e8  00000000`00000000 00000000`00000000
+fffff803`c1e239f8  00000000`00000000 00000000`00000000
+fffff803`c1e23a08  00000000`00000000 00000000`00000000
+fffff803`c1e23a18  00000000`00000000 00000000`00000000
+fffff803`c1e23a28  00000000`00000000 00000000`00000000
+fffff803`c1e23a38  00000000`00000000 00000000`00000000
+fffff803`c1e23a48  00000000`00000000 00000000`00000000
+fffff803`c1e23a58  00000000`00000000 00000000`00000000
+fffff803`c1e23a68  00000000`00000000 00000000`00000000
+fffff803`c1e23a78  00000000`00000000 00000000`00000000
+fffff803`c1e23a88  00000000`00000000 00000000`00000000
+fffff803`c1e23a98  00000000`00000000 00000000`00000000
+fffff803`c1e23aa8  00000000`00000000 00000000`00000000
+fffff803`c1e23ab8  00000000`00000000 00000000`00000000
+fffff803`c1e23ac8  00000000`00000000 00000000`00000000
+fffff803`c1e23ad8  00000000`00000000 00000000`00000000
+fffff803`c1e23ae8  00000000`00000000 00000000`00000000
+fffff803`c1e23af8  00000000`00000000 00000000`00000000
+fffff803`c1e23b08  00000000`00000000 00000000`00000000
+fffff803`c1e23b18  00000000`00000000 00000000`00000000
+fffff803`c1e23b28  00000000`00000000 00000000`00000000
+fffff803`c1e23b38  00000000`00000000 00000000`00000000
+fffff803`c1e23b48  00000000`00000000 00000000`00000000
+fffff803`c1e23b58  00000000`00000000 00000000`00000000
+fffff803`c1e23b68  00000000`00000000 00000000`00000000
+fffff803`c1e23b78  00000000`00000000 00000000`00000000
+fffff803`c1e23b88  00000000`00000000 00000000`00000000
+fffff803`c1e23b98  00000000`00000000 00000000`00000000
+fffff803`c1e23ba8  00000000`00000000 00000000`00000000
+fffff803`c1e23bb8  00000000`00000000 00000000`00000000
+fffff803`c1e23bc8  00000000`00000000 00000000`00000000
+fffff803`c1e23bd8  00000000`00000000 00000000`00000000
+fffff803`c1e23be8  00000000`00000000 00000000`00000000
+fffff803`c1e23bf8  00000000`00000000 00000000`00000000
+fffff803`c1e23c08  00000000`00000000 00000000`00000000
+fffff803`c1e23c18  00000000`00000000 00000000`00000000
+fffff803`c1e23c28  00000000`00000000 00000000`00000000
+fffff803`c1e23c38  00000000`00000000 00000000`00000000
+fffff803`c1e23c48  00000000`00000000 00000000`00000000
+fffff803`c1e23c58  00000000`00000000 00000000`00000000
+fffff803`c1e23c68  00000000`00000000 00000000`00000000
+fffff803`c1e23c78  00000000`00000000 00000000`00000000
+fffff803`c1e23c88  00000000`00000000 00000000`00000000
+fffff803`c1e23c98  00000000`00000000 00000000`00000000
+fffff803`c1e23ca8  00000000`00000000 00000000`00000000
+fffff803`c1e23cb8  00000000`00000000 00000000`00000000
+fffff803`c1e23cc8  00000000`00000000 00000000`00000000
+fffff803`c1e23cd8  00000000`00000000 00000000`00000000
+fffff803`c1e23ce8  00000000`00000000 00000000`00000000
+fffff803`c1e23cf8  00000000`00000000 00000000`00000000
+fffff803`c1e23d08  00000000`00000000 00000000`00000000
+fffff803`c1e23d18  00000000`00000000 00000000`00000000
+fffff803`c1e23d28  00000000`00000000 00000000`00000000
+7: kd> .echo === GUEST_RIP ===
+=== GUEST_RIP ===
+7: kd> ln fffff803c0d768aa
+Browse module
+Set bu breakpoint
+
+Unable to load image \SystemRoot\System32\win32kfull.sys, Win32 error 0n2
+(fffff803`c0d76670)   win32kfull!NtUserBuildHwndList+0x23a   |  (fffff803`c0d76970)   win32kfull!NtUserCheckImeShowStatusInThread
+7: kd> u fffff803c0d76870 L30
+win32kfull!NtUserBuildHwndList+0x200:
+fffff803`c0d76870 0000            add     byte ptr [rax],al
+fffff803`c0d76872 0048c1          add     byte ptr [rax-3Fh],cl
+fffff803`c0d76875 e203            loop    win32kfull!NtUserBuildHwndList+0x20a (fffff803`c0d7687a)
+fffff803`c0d76877 41b804000000    mov     r8d,4
+fffff803`c0d7687d 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff803`c0d76885 4c8b151c241800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21278 (fffff803`c0ef8ca8)]
+fffff803`c0d7688c e8af76d42d      call    nt!ProbeForWrite (fffff803`eeabdf40)
+fffff803`c0d76891 4c8b8424f8000000 mov     r8,qword ptr [rsp+0F8h]
+fffff803`c0d76899 488b0508251800  mov     rax,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21378 (fffff803`c0ef8da8)]
+fffff803`c0d768a0 488b10          mov     rdx,qword ptr [rax]
+fffff803`c0d768a3 4c3bc2          cmp     r8,rdx
+fffff803`c0d768a6 4c0f43c2        cmovae  r8,rdx
+fffff803`c0d768aa 418b00          mov     eax,dword ptr [r8]
+fffff803`c0d768ad 418900          mov     dword ptr [r8],eax
+fffff803`c0d768b0 3b9c24e8000000  cmp     ebx,dword ptr [rsp+0E8h]
+fffff803`c0d768b7 7722            ja      win32kfull!NtUserBuildHwndList+0x26b (fffff803`c0d768db)
+fffff803`c0d768b9 448bc3          mov     r8d,ebx
+fffff803`c0d768bc 49c1e003        shl     r8,3
+fffff803`c0d768c0 488d5620        lea     rdx,[rsi+20h]
+fffff803`c0d768c4 488b8c24f0000000 mov     rcx,qword ptr [rsp+0F0h]
+fffff803`c0d768cc e8af851000      call    win32kfull!NtGdiSwapBuffers+0x36f0 (fffff803`c0e7ee80)
+fffff803`c0d768d1 c744242000000000 mov     dword ptr [rsp+20h],0
+fffff803`c0d768d9 eb08            jmp     win32kfull!NtUserBuildHwndList+0x273 (fffff803`c0d768e3)
+fffff803`c0d768db c7442420230000c0 mov     dword ptr [rsp+20h],0C0000023h
+fffff803`c0d768e3 488b8424f8000000 mov     rax,qword ptr [rsp+0F8h]
+fffff803`c0d768eb 8918            mov     dword ptr [rax],ebx
+fffff803`c0d768ed 8b5c2420        mov     ebx,dword ptr [rsp+20h]
+fffff803`c0d768f1 eb0e            jmp     win32kfull!NtUserBuildHwndList+0x291 (fffff803`c0d76901)
+fffff803`c0d768f3 bb080000c0      mov     ebx,0C0000008h
+fffff803`c0d768f8 895c2420        mov     dword ptr [rsp+20h],ebx
+fffff803`c0d768fc 488b742438      mov     rsi,qword ptr [rsp+38h]
+fffff803`c0d76901 4885f6          test    rsi,rsi
+fffff803`c0d76904 7408            je      win32kfull!NtUserBuildHwndList+0x29e (fffff803`c0d7690e)
+fffff803`c0d76906 488bce          mov     rcx,rsi
+fffff803`c0d76909 e832f5dfff      call    win32kfull!FreeHwndList (fffff803`c0b75e40)
+fffff803`c0d7690e 488b8c24c8000000 mov     rcx,qword ptr [rsp+0C8h]
+fffff803`c0d76916 4885c9          test    rcx,rcx
+fffff803`c0d76919 740c            je      win32kfull!NtUserBuildHwndList+0x2b7 (fffff803`c0d76927)
+fffff803`c0d7691b 4c8b1576251800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x21468 (fffff803`c0ef8e98)]
+fffff803`c0d76922 e8e978752d      call    nt!ObfDereferenceObject (fffff803`ee4ce210)
+fffff803`c0d76927 488d8c2480000000 lea     rcx,[rsp+80h]
+fffff803`c0d7692f e82041deff      call    win32kfull!NtUserSetTimer+0x144 (fffff803`c0b5aa54)
+fffff803`c0d76934 4c8b15fd4d1800  mov     r10,qword ptr [win32kfull!ext_ms_win_core_win32k_fulluser64_l1_table+0x23d08 (fffff803`c0efb738)]
+Unable to load image \SystemRoot\System32\win32kbase.sys, Win32 error 0n2
+fffff803`c0d7693b e850c9b2fe      call    win32kbase!UserSessionSwitchLeaveCritWithNonPaged (fffff803`bf8a3290)
+fffff803`c0d76940 8bc3            mov     eax,ebx
+fffff803`c0d76942 488b9c24c0000000 mov     rbx,qword ptr [rsp+0C0h]
+fffff803`c0d7694a 4881c490000000  add     rsp,90h
+fffff803`c0d76951 415f            pop     r15
+7: kd> !address fffff803c0d768aa
+
+
+Usage:                  Module
+Base Address:           fffff803`c0b40000
+End Address:            fffff803`c0f50000
+Region Size:            00000000`00410000
+VA Type:                BootLoaded
+Module name:            win32kfull.sys
+Module path:            [\SystemRoot\System32\win32kfull.sys]
+7: kd> lm a fffff803c0d768aa
+Browse full module list
+start             end                 module name
+fffff803`c0b40000 fffff803`c0f50000   win32kfull   (export symbols)       win32kfull.sys
+7: kd> .echo === GPA ===
+=== GPA ===
+7: kd> !pte fffff803c0d768aa
+                                           VA fffff803c0d768aa
+PXE at FFFFA45229148F80    PPE at FFFFA452291F0078    PDE at FFFFA4523E00F030    PTE at FFFFA47C01E06BB0
+contains 0000000000200063  contains 0000000000279063  contains 0A00000115878863  contains 09000001129B7121
+pfn 200       ---DA--KWEV  pfn 279       ---DA--KWEV  pfn 115878    ---DA--KWEV  pfn 1129b7    -G--A--KREV
+
+7: kd> q
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

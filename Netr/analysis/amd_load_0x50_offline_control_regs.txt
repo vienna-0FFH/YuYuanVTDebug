@@ -1,0 +1,117 @@
+﻿
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.031 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 30
+
+Microsoft (R) Windows Debugger Version 10.0.26100.6901 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [E:\project_learning\YuYuanVTDebug\Netr\test-package\072226-15296-01.dmp]
+Mini Kernel Dump File: Only registers and stack trace are available
+
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+OK                                             C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431
+OK                                             E:\project_learning\YuYuanVTDebug\Netr\test-package
+Symbol search path is: C:\Symbols\ntkrnlmp.pdb\1924BC23550919F88B17A384B944B5431;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Executable search path is: C:\Symbols\ntkrnlmp.exe\4A63AF4E1450000;E:\project_learning\YuYuanVTDebug\Netr\test-package
+Windows 10 Kernel Version 26100 MP (16 procs) Free x64
+Product: WinNt, suite: TerminalServer SingleUserTS
+Kernel base = 0xfffff802`cce00000 PsLoadedModuleList = 0xfffff802`cdcf5350
+Debug session time: Wed Jul 22 21:47:13.771 2026 (UTC + 8:00)
+System Uptime: 0 days 1:25:51.504
+Loading Kernel Symbols
+...............................................................
+................................................................
+................................................................
+.............................................................
+Loading User Symbols
+PEB is paged out (Peb.Ldr = 00000001`b6bfa018).  Type ".hh dbgerr001" for details
+Loading unloaded module list
+................
+For analysis of this file, run !analyze -v
+2: kd> cdb: Reading initial command '.symopt+0x80000000; .reload /f nt; .trap ffffa50c639825f0; r cr0; r cr2; r cr3; r cr4; r efl; !cpuinfo; !pte 00000001b6a7f7ee; q'
+Symbol options are 0x800B0327:
+  0x00000001 - SYMOPT_CASE_INSENSITIVE
+  0x00000002 - SYMOPT_UNDNAME
+  0x00000004 - SYMOPT_DEFERRED_LOADS
+  0x00000020 - SYMOPT_OMAP_FIND_NEAREST
+  0x00000100 - SYMOPT_NO_UNQUALIFIED_LOADS
+  0x00000200 - SYMOPT_FAIL_CRITICAL_ERRORS
+  0x00010000 - SYMOPT_AUTO_PUBLICS
+  0x00020000 - SYMOPT_NO_IMAGE_SEARCH
+  0x00080000 - SYMOPT_NO_PROMPTS
+  0x80000000 - SYMOPT_DEBUG
+DBGHELP: c:\symbols\ntkrnlmp.exe\4a63af4e1450000\ntkrnlmp.exe - OK
+DBGENG:  c:\symbols\ntkrnlmp.exe\4a63af4e1450000\ntkrnlmp.exe - Mapped image memory
+DBGHELP: nt - public symbols  
+        c:\symbols\ntkrnlmp.pdb\1924bc23550919f88b17a384b944b5431\ntkrnlmp.pdb
+NOTE: The trap frame does not contain all registers.
+Some register values may be zeroed or incorrect.
+rax=ffffa50c680e7c30 rbx=0000000000000000 rcx=ffffa50c63983000
+rdx=ffffa50c63983000 rsi=0000000000000000 rdi=0000000000000000
+rip=fffff802cd0339b9 rsp=ffffa50c63982780 rbp=ffffa50c63982d60
+ r8=ffffa50c6397c000  r9=ffffa50c63982d98 r10=0000000000000000
+r11=0000000000000800 r12=0000000000000000 r13=0000000000000000
+r14=0000000000000000 r15=0000000000000000
+iopl=0         nv up ei pl nz na po nc
+nt!RtlpWalkFrameChain+0x1b9:
+fffff802`cd0339b9 66410fbaa6ee17000008 bt  word ptr [r14+17EEh],8 ds:00000000`000017ee=????
+Last set context:
+cr0=0000000080050031
+Last set context:
+cr2=00000001b6a7f7ee
+Last set context:
+cr3=000000031aae3000
+Last set context:
+cr4=0000000000b50ef8
+Last set context:
+efl=00010206
+CP  F/M/S Manufacturer  MHz PRCB Signature    MSR 8B Signature Features ArchitectureClass
+ 2 25,68,1 AuthenticAMD 3094 000000000a404105                   3c3b3dff 0
+                      Cached Update Signature 0000000000000000
+                     Initial Update Signature 000000000a404105
+                                           VA 00000001b6a7f7ee
+PXE at FFFFF178BC5E2000    PPE at FFFFF178BC400030    PDE at FFFFF17880006DA8    PTE at FFFFF10000DB53F8
+contains 0A0000045F40F867  contains 0A000005A0010867  contains 1A000005A0011867  contains 80000003DEE30867
+pfn 45f40f    ---DA--UWEV  pfn 5a0010    ---DA--UWEV  pfn 5a0011    ---DA--UWEV  pfn 3dee30    ---DA--UW-V
+
+quit:
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Kernel.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+NatVis script unloaded from 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\Visualizers\Usb4Kd.natvis'

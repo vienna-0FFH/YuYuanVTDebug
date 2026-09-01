@@ -1,0 +1,24 @@
+{
+  "start": "2026-07-23T06:42:36.055Z",
+  "end": "2026-07-24T10:34:00.000Z",
+  "only_file": "Netr/Driver.c",
+  "candidate_calls": 78,
+  "applied_product_calls": 1,
+  "changed_operations": 1,
+  "changed_files": [
+    "Netr/Driver.c"
+  ],
+  "skipped_failed_calls": [
+    "call_qzr59LZXYCwpks5VduqqtZ29",
+    "call_rTOFtapsaUREMCcCWddEh6WQ",
+    "call_dUrSRQguS4u2efR5hlk8Rx0b",
+    "call_CyCCZZsUeJtgmrU6T1CWhBW8",
+    "call_kPds95uSsFIr9e8HFjwUHIvS"
+  ],
+  "skipped_dynamic_analysis_calls": [
+    "call_i2CgqTF4MbMSsQ8Rr5vXuTt4"
+  ],
+  "reverse_order_ambiguities": [],
+  "already_reversed_hunks": [],
+  "deferred_context_free_deletions": []
+}

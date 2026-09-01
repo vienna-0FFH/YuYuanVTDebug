@@ -1,0 +1,251 @@
+@'
+from pathlib import Path
+p = Path(r"E:\project_learning\YuYuanVTDebug\Netr\DebuggerBridge\Bridge.cpp")
+text = p.read_text(encoding="utf-8", errors="replace")
+
+# 1) Add suppress map after g_pending_vt_steps
+old_maps = """std::unordered_map<std::uint64_t, PendingVtStep> g_pending_vt_steps;
+std::unordered_map<HMODULE, ModulePatchState> g_module_patch_states;"""
+new_maps = """std::unordered_map<std::uint64_t, PendingVtStep> g_pending_vt_steps;
+// One-shot suppress window for native EXCEPTION_SINGLE_STEP after a private
+// HV_BRIDGE_PRIVATE_EVENT_STEP stop was already delivered (dual-notify).
+std::unordered_map<std::uint64_t, ULONGLONG> g_suppress_native_single_step;
+SRWLOCK g_suppress_ss_lock = SRWLOCK_INIT;
+std::unordered_map<HMODULE, ModulePatchState> g_module_patch_states;"""
+if old_maps not in text:
+    raise SystemExit("maps block not found")
+text = text.replace(old_maps, new_maps, 1)
+
+# 2) Add helper after LookupPendingVtStep
+old_lookup_end = """bool LookupPendingVtStep(DWORD pid, DWORD tid, PendingVtStep* step)
+{
+    const std::uint64_t key = PrivateEventKey(pid, tid);
+    AcquireSRWLockShared(&g_vt_step_lock);
+    const auto found = g_pending_vt_steps.find(key);
+    const bool exists = found != g_pending_vt_steps.end();
+    if (exists && step) *step = found->second;
+    ReleaseSRWLockShared(&g_vt_step_lock);
+    return exists;
+}
+
+bool InstallVtStepGate("""
+new_lookup_end = """bool LookupPendingVtStep(DWORD pid, DWORD tid, PendingVtStep* step)
+{
+    const std::uint64_t key = PrivateEventKey(pid, tid);
+    AcquireSRWLockShared(&g_vt_step_lock);
+    const auto found = g_pending_vt_steps.find(key);
+    const bool exists = found != g_pending_vt_steps.end();
+    if (exists && step) *step = found->second;
+    ReleaseSRWLockShared(&g_vt_step_lock);
+    return exists;
+}
+
+void ArmNativeSingleStepSuppress(DWORD pid, DWORD tid)
+{
+    const std::uint64_t key = PrivateEventKey(pid, tid);
+    AcquireSRWLockExclusive(&g_suppress_ss_lock);
+    g_suppress_native_single_step[key] = GetTickCount64() + 2000ULL;
+    ReleaseSRWLockExclusive(&g_suppress_ss_lock);
+}
+
+bool ShouldSuppressNativeSingleStep(const DEBUG_EVENT* event)
+{
+    if (!event || event->dwDebugEventCode != EXCEPTION_DEBUG_EVENT) {
+        return false;
+    }
+    if (event->u.Exception.ExceptionRecord.ExceptionCode !=
+        EXCEPTION_SINGLE_STEP) {
+        return false;
+    }
+
+    const std::uint64_t key =
+        PrivateEventKey(event->dwProcessId, event->dwThreadId);
+    AcquireSRWLockExclusive(&g_suppress_ss_lock);
+    const auto found = g_suppress_native_single_step.find(key);
+    if (found == g_suppress_native_single_step.end()) {
+        ReleaseSRWLockExclusive(&g_suppress_ss_lock);
+        return false;
+    }
+    const ULONGLONG expire = found->second;
+    const ULONGLONG now = GetTickCount64();
+    g_suppress_native_single_step.erase(found);
+    ReleaseSRWLockExclusive(&g_suppress_ss_lock);
+    if (now > expire) {
+        return false;
+    }
+    Trace(L"[VT-STEP] suppressed duplicate native SS pid=%lu tid=%lu\\n",
+          event->dwProcessId, event->dwThreadId);
+    return true;
+}
+
+bool ConsumeNativeDebugEvent(LPDEBUG_EVENT event)
+{
+    if (ShouldSuppressNativeSingleStep(event)) {
+        if (g_continue_debug_event) {
+            (void)g_continue_debug_event(
+                event->dwProcessId, event->dwThreadId, DBG_CONTINUE);
+        }
+        return false;
+    }
+    ObserveDebugEvent(event);
+    return true;
+}
+
+bool InstallVtStepGate("""
+if old_lookup_end not in text:
+    raise SystemExit("lookup block not found")
+text = text.replace(old_lookup_end, new_lookup_end, 1)
+
+# 3) Late STEP discard + arm suppress on STEP delivery in TryDeliverPrivateEventCore
+old_gate = """    // Secondary safety only: if a gate SWBP still arrives while a VT step is
+    // armed at the same RIP, continue it without delivering a user BP.  The
+    // real stop must come from HV_BRIDGE_PRIVATE_EVENT_STEP.
+    if (is_swbp) {"""
+new_gate = """    // Late STEP after inject #DB already completed the stop and cleared the
+    // pending VT step receiver. Soft-continue and discard the duplicate so
+    // external debuggers do not see a second free-run stop.
+    if (is_step &&
+        !LookupPendingVtStep(
+            private_event.ProcessId, private_event.ThreadId, nullptr)) {
+        Trace(L"[VT-STEP] discarded late STEP route=%s pid=%lu tid=%lu "
+              L"rip=0x%llX seq=%llu\\n",
+              route ? route : L"unknown",
+              private_event.ProcessId,
+              private_event.ThreadId,
+              static_cast<unsigned long long>(private_event.Rip),
+              static_cast<unsigned long long>(private_event.Sequence));
+        acknowledge_discarded();
+        return PrivateDeliveryResult::Skipped;
+    }
+
+    // Secondary safety only: if a gate SWBP still arrives while a VT step is
+    // armed at the same RIP, continue it without delivering a user BP.  The
+    // real stop must come from HV_BRIDGE_PRIVATE_EVENT_STEP.
+    if (is_swbp) {"""
+if old_gate not in text:
+    raise SystemExit("gate suppress block not found")
+text = text.replace(old_gate, new_gate, 1)
+
+old_deliver = """    Trace(L"[PRIVATE] delivered %s route=%s pid=%lu tid=%lu rip=0x%llX seq=%llu previous_suspend=%lu\\n",
+          is_step ? L"STEP" : L"SWBP",
+          route ? route : L"unknown",
+          private_event.ProcessId, private_event.ThreadId,
+          static_cast<unsigned long long>(private_event.Rip),
+          static_cast<unsigned long long>(private_event.Sequence),
+          previous_suspend_count);
+    ObserveDebugEvent(debug_event);
+    return PrivateDeliveryResult::Delivered;
+}"""
+new_deliver = """    Trace(L"[PRIVATE] delivered %s route=%s pid=%lu tid=%lu rip=0x%llX seq=%llu previous_suspend=%lu\\n",
+          is_step ? L"STEP" : L"SWBP",
+          route ? route : L"unknown",
+          private_event.ProcessId, private_event.ThreadId,
+          static_cast<unsigned long long>(private_event.Rip),
+          static_cast<unsigned long long>(private_event.Sequence),
+          previous_suspend_count);
+    ObserveDebugEvent(debug_event);
+    if (is_step) {
+        // Dual-notify inject #DB may still surface a native SINGLE_STEP.
+        // Suppress that second stop so x64dbg / external waiters do not free-run.
+        ArmNativeSingleStepSuppress(
+            private_event.ProcessId, private_event.ThreadId);
+    }
+    return PrivateDeliveryResult::Delivered;
+}"""
+if old_deliver not in text:
+    raise SystemExit("deliver block not found")
+text = text.replace(old_deliver, new_deliver, 1)
+
+# 4) Replace ObserveDebugEvent after native_ok with ConsumeNativeDebugEvent
+# Be careful - only in WaitForMergedDebugEvent and similar wait loops.
+# Pattern: "if (native_ok) {\n            ObserveDebugEvent(event);\n            return TRUE;\n        }"
+text2 = text.replace(
+    """        if (native_ok) {
+            ObserveDebugEvent(event);
+            return TRUE;
+        }""",
+    """        if (native_ok) {
+            if (ConsumeNativeDebugEvent(event)) {
+                return TRUE;
+            }
+            continue;
+        }""",
+)
+# waited_ok path
+text2 = text2.replace(
+    """        if (waited_ok) {
+            ObserveDebugEvent(event);
+            return TRUE;
+        }""",
+    """        if (waited_ok) {
+            if (ConsumeNativeDebugEvent(event)) {
+                return TRUE;
+            }
+            continue;
+        }""",
+)
+
+# private dbgk fallback native_ok
+text2 = text2.replace(
+    """                const BOOL native_ok = native_wait(event, 0);
+                if (native_ok) {
+                    ObserveDebugEvent(event);
+                    return TRUE;
+                }""",
+    """                const BOOL native_ok = native_wait(event, 0);
+                if (native_ok) {
+                    if (ConsumeNativeDebugEvent(event)) {
+                        return TRUE;
+                    }
+                    continue;
+                }""",
+)
+
+# There may be more ObserveDebugEvent after native waits in other functions.
+# Search for remaining "ObserveDebugEvent(event); return TRUE" patterns in wait paths.
+if text2 == text:
+    print("WARN: no wait loop ObserveDebugEvent replacements applied")
+else:
+    print("wait loops updated")
+text = text2
+
+# Forget suppress tokens on unbind - patch ForgetTargetVtSteps or UnbindTarget
+old_forget = """void ForgetTargetVtSteps(DWORD pid)
+{
+    AcquireSRWLockExclusive(&g_vt_step_lock);
+    for (auto step = g_pending_vt_steps.begin();
+         step != g_pending_vt_steps.end();) {
+"""
+# find full function and add suppress cleanup after it
+import re
+m = re.search(r"void ForgetTargetVtSteps\(DWORD pid\)\s*\{.*?\n\}", text, re.S)
+if not m:
+    raise SystemExit("ForgetTargetVtSteps not found")
+# append cleanup after the function
+func = m.group(0)
+# simpler: after ForgetTargetVtSteps closing, inject a call site in Unbind
+# Just clean suppress map in ForgetTargetVtSteps body end
+if "g_suppress_native_single_step" not in func:
+    # rewrite function end
+    if not func.rstrip().endswith("}"):
+        raise SystemExit("bad func end")
+    # insert erase before final }
+    new_func = func[:-1] + """    AcquireSRWLockExclusive(&g_suppress_ss_lock);
+    for (auto it = g_suppress_native_single_step.begin();
+         it != g_suppress_native_single_step.end();) {
+        const DWORD step_pid = static_cast<DWORD>(it->first >> 32);
+        if (pid == 0 || step_pid == pid) {
+            it = g_suppress_native_single_step.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    ReleaseSRWLockExclusive(&g_suppress_ss_lock);
+}
+"""
+    text = text[:m.start()] + new_func + text[m.end():]
+    print("ForgetTargetVtSteps suppress cleanup ok")
+
+p.write_text(text, encoding="utf-8")
+print("bridge ok")
+'@ | python -

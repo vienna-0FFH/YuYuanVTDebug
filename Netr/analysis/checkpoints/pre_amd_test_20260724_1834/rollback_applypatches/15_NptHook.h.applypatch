@@ -1,0 +1,35 @@
+*** Begin Patch
+*** Update File: Netr/NptHook.h
+@@
+ typedef struct _NPT_STEP_CONTEXT {
+     volatile LONG StepActive;                    // 0=idle, 1=armed, 2=completing
+     ULONG PendingPageCount;
+     PNPT_HOOK_PAGE PendingPages[NPT_MAX_PENDING_STEP_PAGES];
+     BOOLEAN GuestTfWasSet;
+-    UCHAR SavedSvmInterruptState;
+-    USHORT Reserved;
+-    ULONG SavedExceptionIntercepts;
++    BOOLEAN DbInterceptWasSet;
+ } NPT_STEP_CONTEXT, *PNPT_STEP_CONTEXT;
+ 
+ // NPT Hook 管理器
+ typedef struct _NPT_HOOK_MANAGER {
+     // Hook 链表
+@@
+     _In_ ULONG64 ErrorCode);
+ 
+ ULONG NptHookHandleDebugStepDb(
+     _In_ PVCPU_DATA VcpuData);
+ 
+-BOOLEAN NptHookAbortSvmSingleStep(
+-    _In_ PVCPU_DATA VcpuData);
+-
+-BOOLEAN NptHookSvmTerminationReady(
+-    _In_ PVCPU_DATA VcpuData);
+-
+ //
+ // NPT 页表操作
+ //
+ 
+ /*
+*** End Patch
